@@ -4,7 +4,7 @@
 #include <vector>
 
 struct QueueFamily {
-	uint32_t execute;
+	uint32_t graphics;
 	uint32_t present;
 };
 
@@ -14,41 +14,71 @@ struct SwapChainSupport {
 	std::vector<VkPresentModeKHR> presentMode;
 };
 
+struct InFlightFrame {
+	VkSemaphore semaphoreImageAquired;
+	VkSemaphore semaphoreRenderFinished;
+	VkFence fenceInFlight;
+};
+
 class VulkanEnv
 {
 private:
+	GLFWwindow *window;
 	VkInstance instance;
 	VkSurfaceKHR surface;
 	VkPhysicalDevice physicalDevice;
 	VkDevice device;
-	VkQueue queue;
+	VkQueue graphicsQueue;
 	VkQueue presentQueue;
 	VkSwapchainKHR swapchain;
 	VkSurfaceFormatKHR swapchainFormat;
 	VkExtent2D swapchainExtent;
 	std::vector<VkImage> swapchainImage;
 	std::vector<VkImageView> swapchainImageView;
-	VkPipelineLayout pipelineLayout;
-	VkPipeline pipeline;
+	std::vector<VkFramebuffer> swapchainFramebuffer;
+	VkRenderPass renderPass;
+	VkPipelineLayout graphicsPipelineLayout;
+	VkPipeline graphicsPipeline;
+	VkCommandPool commandPool;
+	std::vector<VkCommandBuffer> commandBuffer;
+
+	int maxFrameInFlight;
+	std::vector<InFlightFrame> inFlightFrame;
+	uint32_t currentFrame;
 
 	QueueFamily queueFamily;
 	float queuePriority = 1.0;
 	SwapChainSupport swapChainSupport;
 
-	uint32_t windowWidth;
-	uint32_t windowHeight;
+	bool frameBufferResized;
+
+	VkViewport viewport;
 private:
 	bool queueFamilyValid(const VkPhysicalDevice device);
+	void destroySwapchain();
 public:
-	void setExtent(uint32_t width, uint32_t height);
+	void setWindow(GLFWwindow *window) noexcept; 
+	void setMaxFrameInFlight(uint32_t value) noexcept;
+	void onFramebufferResize() noexcept;
+	void waitUntilIdle();
+
 	bool createInstance(const char* appName);
 	bool createPhysicalDevice();
 	bool createDevice();
-	bool createSurface(GLFWwindow* window);
+	bool createSurface();
 	bool createSwapchain();
 	bool createImageView();
-	bool createPipeline();
-
+	bool createRenderPass();
+	bool createGraphicsPipelineLayout();
+	bool createGraphicsPipeline();
+	bool createFrameBuffer();
+	bool createCommandPool();
+	bool allocateCommandBuffer();
+	bool setupCommandBuffer();
+	bool createFrameSyncObject();
 	void destroy();
+
+	bool recreateSwapchain();
+	bool drawFrame();
 };
 

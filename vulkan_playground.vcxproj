@@ -157,6 +157,9 @@
     <ClInclude Include="VulkanEnv.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="README.md">
+      <FileType>Text</FileType>
+    </None>
     <None Include="shader\frag_color.glsl">
       <FileType>Text</FileType>
     </None>

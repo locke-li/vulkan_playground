@@ -7,6 +7,11 @@ const char* APP_TITLE = "vulkan";
 const uint32_t WIDTH = 400;
 const uint32_t HEIGHT = 200;
 
+static void onFramebufferResize(GLFWwindow *window, int width, int height) {
+	auto* vulkanEnv = reinterpret_cast<VulkanEnv*>(glfwGetWindowUserPointer(window));
+	vulkanEnv->onFramebufferResize();
+}
+
 int main(int argc, char** argv) {
 	if (!glfwInit()) {
 		return 1;
@@ -15,12 +20,13 @@ int main(int argc, char** argv) {
 
 	auto* window = glfwCreateWindow(WIDTH, HEIGHT, APP_TITLE, nullptr, nullptr);
 	VulkanEnv vulkanEnv;
-	vulkanEnv.setExtent(WIDTH, HEIGHT);
+	vulkanEnv.setWindow(window);
+	vulkanEnv.setMaxFrameInFlight(2);
 
 	if (!vulkanEnv.createInstance(APP_TITLE)) {
 		return 2;
 	}
-	if (!vulkanEnv.createSurface(window)) {
+	if (!vulkanEnv.createSurface()) {
 		return 3;
 	}
 	if (!vulkanEnv.createPhysicalDevice()) {
@@ -35,14 +41,40 @@ int main(int argc, char** argv) {
 	if (!vulkanEnv.createImageView()) {
 		return 7;
 	}
-	if (!vulkanEnv.createPipeline()) {
-		
+	if (!vulkanEnv.createRenderPass()) {
+		return 8;
 	}
+	if (!vulkanEnv.createGraphicsPipelineLayout()) {
+		return 9;
+	}
+	if (!vulkanEnv.createGraphicsPipeline()) {
+		return 10;
+	}
+	if (!vulkanEnv.createFrameBuffer()) {
+		return 11;
+	}
+	if (!vulkanEnv.createCommandPool()) {
+		return 12;
+	}
+	if (!vulkanEnv.allocateCommandBuffer()) {
+		return 13;
+	}
+	if (!vulkanEnv.setupCommandBuffer()) {
+		return 14;
+	}
+	if (!vulkanEnv.createFrameSyncObject()) {
+		return 15;
+	}
+
+	glfwSetWindowUserPointer(window, &vulkanEnv);
+	glfwSetFramebufferSizeCallback(window, onFramebufferResize);
 
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
+		vulkanEnv.drawFrame();
 	}
 
+	vulkanEnv.waitUntilIdle();
 	vulkanEnv.destroy();
 
 	glfwDestroyWindow(window);
