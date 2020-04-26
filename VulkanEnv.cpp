@@ -335,8 +335,8 @@ bool VulkanEnv::createRenderPass() {
 	VkSubpassDescription subpass;
 	subpass.flags = 0;
 	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-	subpass.colorAttachmentCount = 1;//this index maps to the "layout(location = 0)" variable in shader code
-	subpass.pColorAttachments = &colorAttachmentRef;
+	subpass.colorAttachmentCount = 1;
+	subpass.pColorAttachments = &colorAttachmentRef;//index of this maps to the "layout(location = 0) out" variable in shader code
 	subpass.pDepthStencilAttachment = nullptr;
 	subpass.pResolveAttachments = nullptr;
 	subpass.inputAttachmentCount = 0;
@@ -407,14 +407,17 @@ bool VulkanEnv::createGraphicsPipeline() {
 	fragStage.pSpecializationInfo = nullptr;
 	VkPipelineShaderStageCreateInfo shaderStageInfo[] = {vertStage, fragStage};
 
+	auto vertexBinding = VertexInput::getBindingDescription();
+	auto vertexAttribute = VertexInput::getAttributeDescription();
+
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo;
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 	vertexInputInfo.flags = 0;
 	vertexInputInfo.pNext = nullptr;
-	vertexInputInfo.vertexBindingDescriptionCount = 0;
-	vertexInputInfo.pVertexBindingDescriptions = nullptr;
-	vertexInputInfo.vertexAttributeDescriptionCount = 0;
-	vertexInputInfo.pVertexAttributeDescriptions = nullptr;
+	vertexInputInfo.vertexBindingDescriptionCount = 1;
+	vertexInputInfo.pVertexBindingDescriptions = &vertexBinding;
+	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(vertexAttribute.size());
+	vertexInputInfo.pVertexAttributeDescriptions = vertexAttribute.data();
 
 	VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo;
 	inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -562,6 +565,39 @@ bool VulkanEnv::createFrameBuffer() {
 	return true;
 }
 
+bool VulkanEnv::createVertexBuffer(const VertexInput& input) {
+	VkBufferCreateInfo info;
+	info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	info.flags = 0;
+	info.pNext = nullptr;
+	info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+	info.size = static_cast<uint32_t>(input.vertexSize() * input.size());//TODO handle possible overflow
+	info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	info.queueFamilyIndexCount = 0;
+	info.pQueueFamilyIndices = nullptr;
+
+	VkBuffer buffer;
+	if (vkCreateBuffer(device, &info, nullptr, &buffer) != VK_SUCCESS) {
+		return false;
+	}
+	vertexBuffer.push_back(buffer);
+
+	return true;
+}
+
+bool VulkanEnv::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags flags, uint32_t* typeIndex) {
+	//TODO WIP
+	VkPhysicalDeviceMemoryProperties memProperties;
+	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+	for (uint32_t i = 0; i < memProperties.memoryTypeCount; ++i) {
+		if (typeFilter & (1 << i)) {
+			*typeIndex = i;
+			return true;
+		}
+	}
+	return false;
+}
+
 bool VulkanEnv::createCommandPool() {
 	VkCommandPoolCreateInfo info;
 	info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -654,6 +690,9 @@ void VulkanEnv::destroy() {
 		vkDestroyFence(device, frame.fenceInFlight, nullptr);
 	}
 	destroySwapchain();
+	for (auto& buffer : vertexBuffer) {
+		vkDestroyBuffer(device, buffer, nullptr);
+	}
 	vkDestroyCommandPool(device, commandPool, nullptr);
 	vkDestroyDevice(device, nullptr);
 	vkDestroySurfaceKHR(instance, surface, nullptr);

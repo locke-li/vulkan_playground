@@ -1,6 +1,7 @@
 #pragma once
 #define GLFW_INCLUDE_VULKAN 
 #include "GLFW/glfw3.h";
+#include "VertexInput.h"
 #include <vector>
 
 struct QueueFamily {
@@ -41,6 +42,7 @@ private:
 	VkPipeline graphicsPipeline;
 	VkCommandPool commandPool;
 	std::vector<VkCommandBuffer> commandBuffer;
+	std::vector<VkBuffer> vertexBuffer;
 
 	int maxFrameInFlight;
 	std::vector<InFlightFrame> inFlightFrame;
@@ -55,6 +57,7 @@ private:
 	VkViewport viewport;
 private:
 	bool queueFamilyValid(const VkPhysicalDevice device);
+	bool findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags flags, uint32_t* typeIndex);
 	void destroySwapchain();
 public:
 	void setWindow(GLFWwindow *window) noexcept; 
@@ -72,6 +75,7 @@ public:
 	bool createGraphicsPipelineLayout();
 	bool createGraphicsPipeline();
 	bool createFrameBuffer();
+	bool createVertexBuffer(const VertexInput& input);
 	bool createCommandPool();
 	bool allocateCommandBuffer();
 	bool setupCommandBuffer();
