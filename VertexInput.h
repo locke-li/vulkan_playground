@@ -22,5 +22,6 @@ public:
 	static std::vector<VkVertexInputAttributeDescription> getAttributeDescription();
 	int vertexSize() const;
 	uint32_t size() const;
+	const Vertex* data() const;
 };
 

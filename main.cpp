@@ -22,6 +22,7 @@ int main(int argc, char** argv) {
 	VulkanEnv vulkanEnv;
 	vulkanEnv.setWindow(window);
 	vulkanEnv.setMaxFrameInFlight(2);
+	VertexInput fixedVertexInput;
 
 	if (!vulkanEnv.createInstance(APP_TITLE)) {
 		return 2;
@@ -51,6 +52,9 @@ int main(int argc, char** argv) {
 		return 10;
 	}
 	if (!vulkanEnv.createFrameBuffer()) {
+		return 11;
+	}
+	if (!vulkanEnv.createVertexBuffer(fixedVertexInput)) {
 		return 11;
 	}
 	if (!vulkanEnv.createCommandPool()) {

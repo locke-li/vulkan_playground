@@ -580,17 +580,41 @@ bool VulkanEnv::createVertexBuffer(const VertexInput& input) {
 	if (vkCreateBuffer(device, &info, nullptr, &buffer) != VK_SUCCESS) {
 		return false;
 	}
-	vertexBuffer.push_back(buffer);
 
+	VkMemoryRequirements memRequirement;
+	vkGetBufferMemoryRequirements(device, buffer, &memRequirement);
+
+	VkMemoryAllocateInfo allocInfo;
+	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocInfo.pNext = nullptr;
+	allocInfo.allocationSize = memRequirement.size;
+	auto memTypeFlag = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	findMemoryType(memRequirement.memoryTypeBits, memTypeFlag, &allocInfo.memoryTypeIndex);
+
+	VkDeviceMemory memory;
+	if (vkAllocateMemory(device, &allocInfo, nullptr, &memory)) {
+		return false;
+	}
+	vkBindBufferMemory(device, buffer, memory, 0);
+
+	void* data;
+	vkMapMemory(device, memory, 0, info.size, 0, &data);
+	memcpy(data, input.data(), static_cast<size_t>(info.size));
+	vkUnmapMemory(device, memory);
+
+	vertexBuffer.buffer.push_back(buffer);
+	vertexBuffer.memory.push_back(memory);
+	vertexBuffer.size.push_back(info.size);
+	vertexBuffer.offset.push_back(0);
 	return true;
 }
 
 bool VulkanEnv::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags flags, uint32_t* typeIndex) {
-	//TODO WIP
 	VkPhysicalDeviceMemoryProperties memProperties;
 	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
 	for (uint32_t i = 0; i < memProperties.memoryTypeCount; ++i) {
-		if (typeFilter & (1 << i)) {
+		if ((typeFilter & (1 << i)) &&
+			(memProperties.memoryTypes[i].propertyFlags & flags)) {
 			*typeIndex = i;
 			return true;
 		}
@@ -629,7 +653,8 @@ bool VulkanEnv::setupCommandBuffer() {
 		beginInfo.pNext = nullptr;
 		beginInfo.pInheritanceInfo = nullptr;
 
-		if (vkBeginCommandBuffer(commandBuffer[i], &beginInfo) != VK_SUCCESS) {
+		auto& cmd = commandBuffer[i];
+		if (vkBeginCommandBuffer(cmd, &beginInfo) != VK_SUCCESS) {
 			return false;
 		}
 
@@ -644,13 +669,16 @@ bool VulkanEnv::setupCommandBuffer() {
 		VkClearValue clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
 		renderPassBegin.pClearValues = &clearColor;
 
-		vkCmdBeginRenderPass(commandBuffer[i], &renderPassBegin, VK_SUBPASS_CONTENTS_INLINE);
-		vkCmdBindPipeline(commandBuffer[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-		vkCmdSetViewport(commandBuffer[i], 0, 1, &viewport);
-		vkCmdDraw(commandBuffer[i], 3, 1, 0, 0);
-		vkCmdEndRenderPass(commandBuffer[i]);
+		vkCmdBeginRenderPass(cmd, &renderPassBegin, VK_SUBPASS_CONTENTS_INLINE);
+		vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+		vkCmdSetViewport(cmd, 0, 1, &viewport);
+		vkCmdBindVertexBuffers(cmd, 0, static_cast<uint32_t>(vertexBuffer.buffer.size()), vertexBuffer.buffer.data(), vertexBuffer.offset.data());
+		for (auto i = 0; i < vertexBuffer.buffer.size(); ++i) {
+			vkCmdDraw(cmd, vertexBuffer.size[i], 1, 0, 0);
+		}
+		vkCmdEndRenderPass(cmd);
 
-		if (vkEndCommandBuffer(commandBuffer[i]) != VK_SUCCESS) {
+		if (vkEndCommandBuffer(cmd) != VK_SUCCESS) {
 			return false;
 		}
 	}
@@ -690,8 +718,9 @@ void VulkanEnv::destroy() {
 		vkDestroyFence(device, frame.fenceInFlight, nullptr);
 	}
 	destroySwapchain();
-	for (auto& buffer : vertexBuffer) {
-		vkDestroyBuffer(device, buffer, nullptr);
+	for (auto i = 0; i < vertexBuffer.buffer.size(); ++i) {
+		vkDestroyBuffer(device, vertexBuffer.buffer[i], nullptr);
+		vkFreeMemory(device, vertexBuffer.memory[i], nullptr);
 	}
 	vkDestroyCommandPool(device, commandPool, nullptr);
 	vkDestroyDevice(device, nullptr);

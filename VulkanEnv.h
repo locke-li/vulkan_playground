@@ -21,6 +21,13 @@ struct InFlightFrame {
 	VkFence fenceInFlight;
 };
 
+struct VertexBuffer {
+	std::vector<VkBuffer> buffer;
+	std::vector<VkDeviceMemory> memory;
+	std::vector<uint32_t> size;
+	std::vector<VkDeviceSize> offset;
+};
+
 class VulkanEnv
 {
 private:
@@ -42,7 +49,7 @@ private:
 	VkPipeline graphicsPipeline;
 	VkCommandPool commandPool;
 	std::vector<VkCommandBuffer> commandBuffer;
-	std::vector<VkBuffer> vertexBuffer;
+	VertexBuffer vertexBuffer;
 
 	int maxFrameInFlight;
 	std::vector<InFlightFrame> inFlightFrame;

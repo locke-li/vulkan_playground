@@ -30,3 +30,7 @@ int VertexInput::vertexSize() const {
 uint32_t VertexInput::size() const {
 	return static_cast<uint32_t>(vertices.size());
 }
+
+const Vertex* VertexInput::data() const {
+	return vertices.data();
+}
