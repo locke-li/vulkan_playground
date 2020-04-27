@@ -662,7 +662,7 @@ void VulkanEnv::copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size, VkFenc
 
 bool VulkanEnv::createVertexBufferIndice(const VertexInput* input, uint32_t count) {
 	const auto& vertexInput = input[0];//TODO enumerate input array
-	auto size = static_cast<uint32_t>(vertexInput.vertexSize() * vertexInput.size());//TODO handle possible overflow
+	auto size = vertexInput.vertexSize();
 	VkBuffer stagingBuffer;
 	VkDeviceMemory stagingBufferMemory;
 	createBuffer(size, 

@@ -23,14 +23,18 @@ std::vector<VkVertexInputAttributeDescription> VertexInput::getAttributeDescript
 	return attribute;
 }
 
-int VertexInput::vertexSize() const {
-	return sizeof(vertices[0]);
+uint32_t VertexInput::vertexSize() const {
+	return static_cast<uint32_t>(sizeof(vertices[0]) * vertices.size());//TODO handle possible overflow
 }
 
-uint32_t VertexInput::size() const {
-	return static_cast<uint32_t>(vertices.size());
-}
-
-const Vertex* VertexInput::data() const {
+const Vertex* VertexInput::vertexData() const {
 	return vertices.data();
+}
+
+uint32_t VertexInput::indexSize() const {
+	return static_cast<uint32_t>(sizeof(indices[0]) * indices.size());//TODO handle possible overflow
+}
+
+const uint16_t* VertexInput::indexData() const {
+	return indices.data();
 }

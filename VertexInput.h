@@ -13,15 +13,21 @@ class VertexInput
 {
 private:
 	const std::vector<Vertex> vertices = {
-		{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-		{{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-		{{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+		{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+		{{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+		{{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+		{{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
+	};
+	const std::vector<uint16_t> indices = {
+		0, 1, 2,
+		2, 3, 0,
 	};
 public:
 	static VkVertexInputBindingDescription getBindingDescription();
 	static std::vector<VkVertexInputAttributeDescription> getAttributeDescription();
-	int vertexSize() const;
-	uint32_t size() const;
-	const Vertex* data() const;
+	uint32_t vertexSize() const;
+	const Vertex* vertexData() const;
+	uint32_t indexSize() const;
+	const uint16_t* indexData() const;
 };
 
