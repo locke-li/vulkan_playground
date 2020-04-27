@@ -54,20 +54,23 @@ int main(int argc, char** argv) {
 	if (!vulkanEnv.createFrameBuffer()) {
 		return 11;
 	}
-	if (!vulkanEnv.createVertexBuffer(fixedVertexInput)) {
-		return 11;
-	}
 	if (!vulkanEnv.createCommandPool()) {
 		return 12;
 	}
-	if (!vulkanEnv.allocateCommandBuffer()) {
+	if (!vulkanEnv.setupBufferCopy()) {
 		return 13;
 	}
-	if (!vulkanEnv.setupCommandBuffer()) {
+	if (!vulkanEnv.createVertexBufferIndice(&fixedVertexInput, 1)) {
 		return 14;
 	}
-	if (!vulkanEnv.createFrameSyncObject()) {
+	if (!vulkanEnv.allocateCommandBuffer()) {
 		return 15;
+	}
+	if (!vulkanEnv.setupCommandBuffer()) {
+		return 16;
+	}
+	if (!vulkanEnv.createFrameSyncObject()) {
+		return 17;
 	}
 
 	glfwSetWindowUserPointer(window, &vulkanEnv);

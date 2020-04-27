@@ -60,11 +60,15 @@ private:
 	SwapChainSupport swapChainSupport;
 
 	bool frameBufferResized;
+	VkFence fenceBufferCopy;
+	VkCommandBuffer cmdBufferCopy;
 
 	VkViewport viewport;
 private:
 	bool queueFamilyValid(const VkPhysicalDevice device);
 	bool findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags flags, uint32_t* typeIndex);
+	bool createBuffer(uint32_t size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memTypeFlag, VkBuffer& buffer, VkDeviceMemory& memory);
+	void copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size, VkFence fence);
 	void destroySwapchain();
 public:
 	void setWindow(GLFWwindow *window) noexcept; 
@@ -82,7 +86,8 @@ public:
 	bool createGraphicsPipelineLayout();
 	bool createGraphicsPipeline();
 	bool createFrameBuffer();
-	bool createVertexBuffer(const VertexInput& input);
+	bool setupBufferCopy();
+	bool createVertexBufferIndice(const VertexInput* input, uint32_t count);
 	bool createCommandPool();
 	bool allocateCommandBuffer();
 	bool setupCommandBuffer();

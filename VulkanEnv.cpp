@@ -119,6 +119,16 @@ bool createShaderModule(const VkDevice device, const std::vector<char>& code, Vk
 	return vkCreateShaderModule(device, &info, nullptr, shaderModule) == VK_SUCCESS;
 }
 
+VkFence CreateFence(VkDevice device, VkFenceCreateFlags flags) {
+	VkFence fence;
+	VkFenceCreateInfo fenceInfo;
+	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	fenceInfo.flags = flags;
+	fenceInfo.pNext = nullptr;
+	vkCreateFence(device, &fenceInfo, nullptr, &fence);
+	return fence;
+}
+
 void VulkanEnv::setWindow(GLFWwindow* win) noexcept {
 	window = win;
 }
@@ -565,18 +575,35 @@ bool VulkanEnv::createFrameBuffer() {
 	return true;
 }
 
-bool VulkanEnv::createVertexBuffer(const VertexInput& input) {
+bool VulkanEnv::setupBufferCopy() {
+	VkCommandBufferAllocateInfo cmdInfo;
+	cmdInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	cmdInfo.pNext = nullptr;
+	cmdInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	cmdInfo.commandPool = commandPool;
+	cmdInfo.commandBufferCount = 1;
+
+	vkAllocateCommandBuffers(device, &cmdInfo, &cmdBufferCopy);
+
+	VkFenceCreateInfo fenceInfo;
+	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	fenceInfo.flags = 0;
+	fenceInfo.pNext = nullptr;
+	return vkCreateFence(device, &fenceInfo, nullptr, &fenceBufferCopy) == VK_SUCCESS;
+}
+
+bool VulkanEnv::createBuffer(uint32_t size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memTypeFlag, 
+		VkBuffer& buffer, VkDeviceMemory& memory) {
 	VkBufferCreateInfo info;
 	info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	info.flags = 0;
 	info.pNext = nullptr;
-	info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-	info.size = static_cast<uint32_t>(input.vertexSize() * input.size());//TODO handle possible overflow
+	info.usage = usage;
+	info.size = size;
 	info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	info.queueFamilyIndexCount = 0;
 	info.pQueueFamilyIndices = nullptr;
 
-	VkBuffer buffer;
 	if (vkCreateBuffer(device, &info, nullptr, &buffer) != VK_SUCCESS) {
 		return false;
 	}
@@ -588,23 +615,79 @@ bool VulkanEnv::createVertexBuffer(const VertexInput& input) {
 	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	allocInfo.pNext = nullptr;
 	allocInfo.allocationSize = memRequirement.size;
-	auto memTypeFlag = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-	findMemoryType(memRequirement.memoryTypeBits, memTypeFlag, &allocInfo.memoryTypeIndex);
 
-	VkDeviceMemory memory;
-	if (vkAllocateMemory(device, &allocInfo, nullptr, &memory)) {
+	if (!findMemoryType(memRequirement.memoryTypeBits, memTypeFlag, &allocInfo.memoryTypeIndex)) {
 		return false;
 	}
-	vkBindBufferMemory(device, buffer, memory, 0);
 
-	void* data;
-	vkMapMemory(device, memory, 0, info.size, 0, &data);
-	memcpy(data, input.data(), static_cast<size_t>(info.size));
-	vkUnmapMemory(device, memory);
+	if (vkAllocateMemory(device, &allocInfo, nullptr, &memory) != VK_SUCCESS) {
+		return false;
+	}
+	if (vkBindBufferMemory(device, buffer, memory, 0) != VK_SUCCESS) {
+		return false;
+	}
+
+	return true;
+}
+
+void VulkanEnv::copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size, VkFence fence) {
+	VkCommandBufferBeginInfo cmdBegin;
+	cmdBegin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	cmdBegin.pNext = nullptr;
+	cmdBegin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	cmdBegin.pInheritanceInfo = nullptr;
+	vkBeginCommandBuffer(cmdBufferCopy, &cmdBegin);
+
+	VkBufferCopy copy;
+	copy.srcOffset = 0;
+	copy.dstOffset = 0;
+	copy.size = size;
+	vkCmdCopyBuffer(cmdBufferCopy, src, dst, 1, &copy);
+
+	vkEndCommandBuffer(cmdBufferCopy);
+
+	VkSubmitInfo submitInfo;
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.pNext = nullptr;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &cmdBufferCopy;
+	submitInfo.waitSemaphoreCount = 0;
+	submitInfo.pWaitSemaphores = nullptr;
+	submitInfo.pWaitDstStageMask = 0;
+	submitInfo.signalSemaphoreCount = 0;
+	submitInfo.pSignalSemaphores = nullptr;
+
+	vkQueueSubmit(graphicsQueue, 1, &submitInfo, fence);
+}
+
+bool VulkanEnv::createVertexBufferIndice(const VertexInput* input, uint32_t count) {
+	const auto& vertexInput = input[0];//TODO enumerate input array
+	auto size = static_cast<uint32_t>(vertexInput.vertexSize() * vertexInput.size());//TODO handle possible overflow
+	VkBuffer stagingBuffer;
+	VkDeviceMemory stagingBufferMemory;
+	createBuffer(size, 
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		stagingBuffer,
+		stagingBufferMemory);
+
+	VkBuffer buffer;
+	VkDeviceMemory memory;
+	createBuffer(size, 
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		buffer,
+		memory);
+
+	copyBuffer(stagingBuffer, buffer, size, fenceBufferCopy);
+	vkWaitForFences(device, 1, &fenceBufferCopy, VK_TRUE, UINT64_MAX);
+
+	vkDestroyBuffer(device, stagingBuffer, nullptr);
+	vkFreeMemory(device, stagingBufferMemory, nullptr);
 
 	vertexBuffer.buffer.push_back(buffer);
 	vertexBuffer.memory.push_back(memory);
-	vertexBuffer.size.push_back(info.size);
+	vertexBuffer.size.push_back(size);
 	vertexBuffer.offset.push_back(0);
 	return true;
 }
@@ -722,6 +805,8 @@ void VulkanEnv::destroy() {
 		vkDestroyBuffer(device, vertexBuffer.buffer[i], nullptr);
 		vkFreeMemory(device, vertexBuffer.memory[i], nullptr);
 	}
+	vkFreeCommandBuffers(device, commandPool, 1, &cmdBufferCopy);
+	vkDestroyFence(device, fenceBufferCopy, nullptr);
 	vkDestroyCommandPool(device, commandPool, nullptr);
 	vkDestroyDevice(device, nullptr);
 	vkDestroySurfaceKHR(instance, surface, nullptr);
