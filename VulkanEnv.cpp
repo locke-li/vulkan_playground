@@ -634,7 +634,7 @@ void VulkanEnv::copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size, VkFenc
 	VkCommandBufferBeginInfo cmdBegin;
 	cmdBegin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	cmdBegin.pNext = nullptr;
-	cmdBegin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	cmdBegin.flags = 0;
 	cmdBegin.pInheritanceInfo = nullptr;
 	vkBeginCommandBuffer(cmdBufferCopy, &cmdBegin);
 
