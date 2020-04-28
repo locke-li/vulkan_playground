@@ -60,7 +60,7 @@ int main(int argc, char** argv) {
 	if (!vulkanEnv.setupBufferCopy()) {
 		return 13;
 	}
-	if (!vulkanEnv.createVertexBufferIndice(&fixedVertexInput, 1)) {
+	if (!vulkanEnv.createVertexBufferIndice({&fixedVertexInput})) {
 		return 14;
 	}
 	if (!vulkanEnv.allocateCommandBuffer()) {

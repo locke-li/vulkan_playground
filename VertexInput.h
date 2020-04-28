@@ -26,8 +26,10 @@ public:
 	static VkVertexInputBindingDescription getBindingDescription();
 	static std::vector<VkVertexInputAttributeDescription> getAttributeDescription();
 	uint32_t vertexSize() const;
+	uint32_t vertexCount() const;
 	const Vertex* vertexData() const;
 	uint32_t indexSize() const;
+	uint32_t indexCount() const;
 	const uint16_t* indexData() const;
 };
 

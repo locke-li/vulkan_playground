@@ -652,14 +652,14 @@ void VulkanEnv::copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size, VkFenc
 	vkQueueSubmit(graphicsQueue, 1, &submitInfo, fence);
 }
 
-bool VulkanEnv::createVertexBufferIndice(const VertexInput* input, uint32_t count) {
+bool VulkanEnv::createVertexBufferIndice(const std::vector<VertexInput*>& input) {
 	uint32_t vSize = 0, iSize = 0;
-	for (auto i = 0; i < count; ++i) {
+	for (auto i = 0; i < input.size(); ++i) {
 		const auto& vertexInput = input[i];
 		vertexBuffer.offset.push_back(vSize);
-		vSize += vertexInput.vertexSize();
+		vSize += vertexInput->vertexSize();
 		indexBuffer.offset.push_back(iSize);
-		iSize += vertexInput.indexSize();
+		iSize += vertexInput->indexSize();
 	}
 
 	//TODO merge memory block alloc
@@ -678,15 +678,15 @@ bool VulkanEnv::createVertexBufferIndice(const VertexInput* input, uint32_t coun
 		stagingIBuffer,
 		stagingIBufferMemory);
 
-	for (auto i = 0; i < count; ++i) {
+	for (auto i = 0; i < input.size(); ++i) {
 		const auto& vertexInput = input[i];
 		void* vData;
-		vkMapMemory(device, stagingVBufferMemory, vertexBuffer.offset[i], vertexInput.vertexSize(), 0, &vData);
-		memcpy(vData, vertexInput.vertexData(), vertexInput.vertexSize());
+		vkMapMemory(device, stagingVBufferMemory, vertexBuffer.offset[i], vertexInput->vertexSize(), 0, &vData);
+		memcpy(vData, vertexInput->vertexData(), vertexInput->vertexSize());
 		vkUnmapMemory(device, stagingVBufferMemory);
 		void* iData;
-		vkMapMemory(device, stagingIBufferMemory, indexBuffer.offset[i], vertexInput.indexSize(), 0, &iData);
-		memcpy(iData, vertexInput.indexData(), vertexInput.indexSize());
+		vkMapMemory(device, stagingIBufferMemory, indexBuffer.offset[i], vertexInput->indexSize(), 0, &iData);
+		memcpy(iData, vertexInput->indexData(), vertexInput->indexSize());
 		vkUnmapMemory(device, stagingIBufferMemory);
 	}
 
@@ -725,10 +725,10 @@ bool VulkanEnv::createVertexBufferIndice(const VertexInput* input, uint32_t coun
 	vkDestroyBuffer(device, stagingIBuffer, nullptr);
 	vkFreeMemory(device, stagingIBufferMemory, nullptr);
 
+	vertexBuffer.input = input;
 	vertexBuffer.buffer.push_back(vBuffer);
 	vertexBuffer.memory.push_back(vMemory);
-	vertexBuffer.size.push_back(vSize);
-	vertexBuffer.offset.push_back(0);
+	indexBuffer.input = input;
 	indexBuffer.buffer = iBuffer;
 	indexBuffer.memory = iMemory;
 	return true;
@@ -798,8 +798,9 @@ bool VulkanEnv::setupCommandBuffer() {
 		vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 		vkCmdSetViewport(cmd, 0, 1, &viewport);
 		vkCmdBindVertexBuffers(cmd, 0, static_cast<uint32_t>(vertexBuffer.buffer.size()), vertexBuffer.buffer.data(), vertexBuffer.offset.data());
-		for (auto i = 0; i < vertexBuffer.buffer.size(); ++i) {
-			vkCmdDraw(cmd, vertexBuffer.size[i], 1, 0, 0);
+		for (auto i = 0; i < indexBuffer.offset.size(); ++i) {
+			vkCmdBindIndexBuffer(cmd, indexBuffer.buffer, indexBuffer.offset[i], VK_INDEX_TYPE_UINT16);
+			vkCmdDrawIndexed(cmd, indexBuffer.input[i]->indexCount(), 1, 0, vertexBuffer.offset[i], 0);
 		}
 		vkCmdEndRenderPass(cmd);
 

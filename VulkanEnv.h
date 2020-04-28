@@ -24,7 +24,7 @@ struct InFlightFrame {
 struct VertexBuffer {
 	std::vector<VkBuffer> buffer;
 	std::vector<VkDeviceMemory> memory;
-	std::vector<uint32_t> size;
+	std::vector<VertexInput*> input;
 	std::vector<VkDeviceSize> offset;
 	VkFence fenceCopy;
 };
@@ -32,6 +32,7 @@ struct VertexBuffer {
 struct IndexBuffer {
 	VkBuffer buffer;
 	VkDeviceMemory memory;
+	std::vector<VertexInput*> input;
 	std::vector<VkDeviceSize> offset;
 	VkFence fenceCopy;
 };
@@ -94,8 +95,7 @@ public:
 	bool createGraphicsPipeline();
 	bool createFrameBuffer();
 	bool setupBufferCopy();
-	bool createVertexBufferIndice(const VertexInput* input, uint32_t count);
-	bool createIndexBuffer(uint32_t size);
+	bool createVertexBufferIndice(const std::vector<VertexInput*>& input);
 	bool createCommandPool();
 	bool allocateCommandBuffer();
 	bool setupCommandBuffer();

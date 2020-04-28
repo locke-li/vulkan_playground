@@ -27,12 +27,20 @@ uint32_t VertexInput::vertexSize() const {
 	return static_cast<uint32_t>(sizeof(vertices[0]) * vertices.size());//TODO handle possible overflow
 }
 
+uint32_t VertexInput::vertexCount() const {
+	return static_cast<uint32_t>(vertices.size());
+}
+
 const Vertex* VertexInput::vertexData() const {
 	return vertices.data();
 }
 
 uint32_t VertexInput::indexSize() const {
 	return static_cast<uint32_t>(sizeof(indices[0]) * indices.size());//TODO handle possible overflow
+}
+
+uint32_t VertexInput::indexCount() const {
+	return static_cast<uint32_t>(indices.size());
 }
 
 const uint16_t* VertexInput::indexData() const {
