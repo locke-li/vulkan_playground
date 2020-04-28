@@ -576,20 +576,12 @@ bool VulkanEnv::createFrameBuffer() {
 }
 
 bool VulkanEnv::setupBufferCopy() {
-	VkCommandBufferAllocateInfo cmdInfo;
-	cmdInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	cmdInfo.pNext = nullptr;
-	cmdInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	cmdInfo.commandPool = commandPool;
-	cmdInfo.commandBufferCount = 1;
-
-	vkAllocateCommandBuffers(device, &cmdInfo, &cmdBufferCopy);
-
 	VkFenceCreateInfo fenceInfo;
 	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 	fenceInfo.flags = 0;
 	fenceInfo.pNext = nullptr;
-	return vkCreateFence(device, &fenceInfo, nullptr, &fenceBufferCopy) == VK_SUCCESS;
+	return vkCreateFence(device, &fenceInfo, nullptr, &vertexBuffer.fenceCopy) == VK_SUCCESS &&
+			vkCreateFence(device, &fenceInfo, nullptr, &indexBuffer.fenceCopy) == VK_SUCCESS;
 }
 
 bool VulkanEnv::createBuffer(uint32_t size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memTypeFlag, 
@@ -630,27 +622,27 @@ bool VulkanEnv::createBuffer(uint32_t size, VkBufferUsageFlags usage, VkMemoryPr
 	return true;
 }
 
-void VulkanEnv::copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size, VkFence fence) {
+void VulkanEnv::copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size, VkFence fence, VkCommandBuffer cmd) {
 	VkCommandBufferBeginInfo cmdBegin;
 	cmdBegin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	cmdBegin.pNext = nullptr;
-	cmdBegin.flags = 0;
+	cmdBegin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 	cmdBegin.pInheritanceInfo = nullptr;
-	vkBeginCommandBuffer(cmdBufferCopy, &cmdBegin);
+	vkBeginCommandBuffer(cmd, &cmdBegin);
 
 	VkBufferCopy copy;
 	copy.srcOffset = 0;
 	copy.dstOffset = 0;
 	copy.size = size;
-	vkCmdCopyBuffer(cmdBufferCopy, src, dst, 1, &copy);
+	vkCmdCopyBuffer(cmd, src, dst, 1, &copy);
 
-	vkEndCommandBuffer(cmdBufferCopy);
+	vkEndCommandBuffer(cmd);
 
 	VkSubmitInfo submitInfo;
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitInfo.pNext = nullptr;
 	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &cmdBufferCopy;
+	submitInfo.pCommandBuffers = &cmd;
 	submitInfo.waitSemaphoreCount = 0;
 	submitInfo.pWaitSemaphores = nullptr;
 	submitInfo.pWaitDstStageMask = 0;
@@ -661,34 +653,84 @@ void VulkanEnv::copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size, VkFenc
 }
 
 bool VulkanEnv::createVertexBufferIndice(const VertexInput* input, uint32_t count) {
-	const auto& vertexInput = input[0];//TODO enumerate input array
-	auto size = vertexInput.vertexSize();
-	VkBuffer stagingBuffer;
-	VkDeviceMemory stagingBufferMemory;
-	createBuffer(size, 
+	uint32_t vSize = 0, iSize = 0;
+	for (auto i = 0; i < count; ++i) {
+		const auto& vertexInput = input[i];
+		vertexBuffer.offset.push_back(vSize);
+		vSize += vertexInput.vertexSize();
+		indexBuffer.offset.push_back(iSize);
+		iSize += vertexInput.indexSize();
+	}
+
+	//TODO merge memory block alloc
+	VkBuffer stagingVBuffer;
+	VkDeviceMemory stagingVBufferMemory;
+	createBuffer(vSize,
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-		stagingBuffer,
-		stagingBufferMemory);
+		stagingVBuffer,
+		stagingVBufferMemory);
+	VkBuffer stagingIBuffer;
+	VkDeviceMemory stagingIBufferMemory;
+	createBuffer(vSize,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		stagingIBuffer,
+		stagingIBufferMemory);
 
-	VkBuffer buffer;
-	VkDeviceMemory memory;
-	createBuffer(size, 
-		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 
+	for (auto i = 0; i < count; ++i) {
+		const auto& vertexInput = input[i];
+		void* vData;
+		vkMapMemory(device, stagingVBufferMemory, vertexBuffer.offset[i], vertexInput.vertexSize(), 0, &vData);
+		memcpy(vData, vertexInput.vertexData(), vertexInput.vertexSize());
+		vkUnmapMemory(device, stagingVBufferMemory);
+		void* iData;
+		vkMapMemory(device, stagingIBufferMemory, indexBuffer.offset[i], vertexInput.indexSize(), 0, &iData);
+		memcpy(iData, vertexInput.indexData(), vertexInput.indexSize());
+		vkUnmapMemory(device, stagingIBufferMemory);
+	}
+
+	VkBuffer vBuffer;
+	VkDeviceMemory vMemory;
+	createBuffer(vSize,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		buffer,
-		memory);
+		vBuffer,
+		vMemory);
+	VkBuffer iBuffer;
+	VkDeviceMemory iMemory;
+	createBuffer(iSize,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		iBuffer,
+		iMemory);
 
-	copyBuffer(stagingBuffer, buffer, size, fenceBufferCopy);
-	vkWaitForFences(device, 1, &fenceBufferCopy, VK_TRUE, UINT64_MAX);
+	VkCommandBuffer copyCmd[2];
+	VkCommandBufferAllocateInfo cmdInfo;
+	cmdInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	cmdInfo.pNext = nullptr;
+	cmdInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	cmdInfo.commandPool = commandPool;
+	cmdInfo.commandBufferCount = 2;
+	vkAllocateCommandBuffers(device, &cmdInfo, copyCmd);
 
-	vkDestroyBuffer(device, stagingBuffer, nullptr);
-	vkFreeMemory(device, stagingBufferMemory, nullptr);
+	copyBuffer(stagingVBuffer, vBuffer, vSize, vertexBuffer.fenceCopy, copyCmd[0]);
+	copyBuffer(stagingIBuffer, iBuffer, iSize, indexBuffer.fenceCopy, copyCmd[1]);
+	VkFence fence[] = { vertexBuffer.fenceCopy, indexBuffer.fenceCopy };
+	vkWaitForFences(device, 2, fence, VK_TRUE, UINT64_MAX);
 
-	vertexBuffer.buffer.push_back(buffer);
-	vertexBuffer.memory.push_back(memory);
-	vertexBuffer.size.push_back(size);
+	vkFreeCommandBuffers(device, commandPool, 2, copyCmd);
+	vkDestroyBuffer(device, stagingVBuffer, nullptr);
+	vkFreeMemory(device, stagingVBufferMemory, nullptr);
+	vkDestroyBuffer(device, stagingIBuffer, nullptr);
+	vkFreeMemory(device, stagingIBufferMemory, nullptr);
+
+	vertexBuffer.buffer.push_back(vBuffer);
+	vertexBuffer.memory.push_back(vMemory);
+	vertexBuffer.size.push_back(vSize);
 	vertexBuffer.offset.push_back(0);
+	indexBuffer.buffer = iBuffer;
+	indexBuffer.memory = iMemory;
 	return true;
 }
 
@@ -805,8 +847,10 @@ void VulkanEnv::destroy() {
 		vkDestroyBuffer(device, vertexBuffer.buffer[i], nullptr);
 		vkFreeMemory(device, vertexBuffer.memory[i], nullptr);
 	}
-	vkFreeCommandBuffers(device, commandPool, 1, &cmdBufferCopy);
-	vkDestroyFence(device, fenceBufferCopy, nullptr);
+	vkDestroyBuffer(device, indexBuffer.buffer, nullptr);
+	vkFreeMemory(device, indexBuffer.memory, nullptr);
+	vkDestroyFence(device, vertexBuffer.fenceCopy, nullptr);
+	vkDestroyFence(device, indexBuffer.fenceCopy, nullptr);
 	vkDestroyCommandPool(device, commandPool, nullptr);
 	vkDestroyDevice(device, nullptr);
 	vkDestroySurfaceKHR(instance, surface, nullptr);

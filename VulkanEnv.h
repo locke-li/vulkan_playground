@@ -26,6 +26,14 @@ struct VertexBuffer {
 	std::vector<VkDeviceMemory> memory;
 	std::vector<uint32_t> size;
 	std::vector<VkDeviceSize> offset;
+	VkFence fenceCopy;
+};
+
+struct IndexBuffer {
+	VkBuffer buffer;
+	VkDeviceMemory memory;
+	std::vector<VkDeviceSize> offset;
+	VkFence fenceCopy;
 };
 
 class VulkanEnv
@@ -50,6 +58,7 @@ private:
 	VkCommandPool commandPool;
 	std::vector<VkCommandBuffer> commandBuffer;
 	VertexBuffer vertexBuffer;
+	IndexBuffer indexBuffer;
 
 	int maxFrameInFlight;
 	std::vector<InFlightFrame> inFlightFrame;
@@ -60,15 +69,13 @@ private:
 	SwapChainSupport swapChainSupport;
 
 	bool frameBufferResized;
-	VkFence fenceBufferCopy;
-	VkCommandBuffer cmdBufferCopy;
 
 	VkViewport viewport;
 private:
 	bool queueFamilyValid(const VkPhysicalDevice device);
 	bool findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags flags, uint32_t* typeIndex);
 	bool createBuffer(uint32_t size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memTypeFlag, VkBuffer& buffer, VkDeviceMemory& memory);
-	void copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size, VkFence fence);
+	void copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size, VkFence fence, VkCommandBuffer cmd);
 	void destroySwapchain();
 public:
 	void setWindow(GLFWwindow *window) noexcept; 
@@ -88,6 +95,7 @@ public:
 	bool createFrameBuffer();
 	bool setupBufferCopy();
 	bool createVertexBufferIndice(const VertexInput* input, uint32_t count);
+	bool createIndexBuffer(uint32_t size);
 	bool createCommandPool();
 	bool allocateCommandBuffer();
 	bool setupCommandBuffer();
