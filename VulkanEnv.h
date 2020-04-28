@@ -1,6 +1,6 @@
 #pragma once
 #define GLFW_INCLUDE_VULKAN 
-#include "GLFW/glfw3.h";
+#include "GLFW/glfw3.h"
 #include "VertexInput.h"
 #include <vector>
 
@@ -53,7 +53,10 @@ private:
 	std::vector<VkImage> swapchainImage;
 	std::vector<VkImageView> swapchainImageView;
 	std::vector<VkFramebuffer> swapchainFramebuffer;
+	std::vector<VkBuffer> uniformBuffer;
+	std::vector<VkDeviceMemory> uniformBufferMemory;
 	VkRenderPass renderPass;
+	VkDescriptorSetLayout descriptorSetLayout;
 	VkPipelineLayout graphicsPipelineLayout;
 	VkPipeline graphicsPipeline;
 	VkCommandPool commandPool;
@@ -91,11 +94,13 @@ public:
 	bool createSwapchain();
 	bool createImageView();
 	bool createRenderPass();
+	bool createDescriptorSetLayout();
 	bool createGraphicsPipelineLayout();
 	bool createGraphicsPipeline();
 	bool createFrameBuffer();
 	bool setupBufferCopy();
 	bool createVertexBufferIndice(const std::vector<VertexInput*>& input);
+	bool createUniformBuffer();
 	bool createCommandPool();
 	bool allocateCommandBuffer();
 	bool setupCommandBuffer();
@@ -103,6 +108,7 @@ public:
 	void destroy();
 
 	bool recreateSwapchain();
-	bool drawFrame();
+	void updateUniformBuffer(const RenderingData& renderingData, const uint32_t imageIndex);
+	bool drawFrame(const RenderingData& renderingData);
 };
 

@@ -1,4 +1,5 @@
 #include "VulkanEnv.h"
+#include "RenderingData.h"
 #include <set>
 #include <cstdint>
 #include <algorithm>
@@ -377,6 +378,26 @@ bool VulkanEnv::createRenderPass() {
 	return vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) == VK_SUCCESS;
 }
 
+bool VulkanEnv::createDescriptorSetLayout() {
+	VkDescriptorSetLayoutBinding binding;
+	binding.binding = 0;
+	binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	binding.descriptorCount = 1;
+	binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	binding.pImmutableSamplers = nullptr;
+
+	VkDescriptorSetLayoutCreateInfo info;
+	info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	info.flags = 0;
+	info.pNext = nullptr;
+	info.bindingCount = 1;
+	info.pBindings = &binding;
+	if (vkCreateDescriptorSetLayout(device, &info, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
+		return false;
+	}
+	return true;
+}
+
 bool VulkanEnv::createGraphicsPipelineLayout() {
 	VkPipelineLayoutCreateInfo info;
 	info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -747,6 +768,24 @@ bool VulkanEnv::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags flags,
 	return false;
 }
 
+bool VulkanEnv::createUniformBuffer() {
+	VkDeviceSize size = sizeof(UniformBufferData);
+	uniformBuffer.resize(swapchainImage.size());
+	uniformBufferMemory.resize(swapchainImage.size());
+
+	for (auto i = 0; i < swapchainImage.size(); ++i) {
+		if (!createBuffer(size,
+			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+			uniformBuffer[i],
+			uniformBufferMemory[i])) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
 bool VulkanEnv::createCommandPool() {
 	VkCommandPoolCreateInfo info;
 	info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -853,6 +892,7 @@ void VulkanEnv::destroy() {
 	vkDestroyFence(device, vertexBuffer.fenceCopy, nullptr);
 	vkDestroyFence(device, indexBuffer.fenceCopy, nullptr);
 	vkDestroyCommandPool(device, commandPool, nullptr);
+	vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
 	vkDestroyDevice(device, nullptr);
 	vkDestroySurfaceKHR(instance, surface, nullptr);
 	vkDestroyInstance(instance, nullptr);
@@ -866,8 +906,10 @@ void VulkanEnv::destroySwapchain() {
 	vkDestroyPipelineLayout(device, graphicsPipelineLayout, nullptr);
 	vkDestroyPipeline(device, graphicsPipeline, nullptr);
 	vkDestroyRenderPass(device, renderPass, nullptr);
-	for (const auto imageView : swapchainImageView) {
-		vkDestroyImageView(device, imageView, nullptr);
+	for (auto i = 0; i < swapchainImageView.size(); ++i) {
+		vkDestroyImageView(device, swapchainImageView[i], nullptr);
+		vkDestroyBuffer(device, uniformBuffer[i], nullptr);
+		vkFreeMemory(device, uniformBufferMemory[i], nullptr);
 	}
 	vkDestroySwapchainKHR(device, swapchain, nullptr);
 }
@@ -893,20 +935,26 @@ bool VulkanEnv::recreateSwapchain() {
 		createGraphicsPipelineLayout() &&
 		createGraphicsPipeline() &&
 		createFrameBuffer() &&
+		createUniformBuffer() &&
 		allocateCommandBuffer() &&
 		setupCommandBuffer();
 
 	return result;
 }
 
-bool VulkanEnv::drawFrame() {
+void VulkanEnv::updateUniformBuffer(const RenderingData& renderingData, const uint32_t imageIndex) {
+	renderingData.uniform(swapchainExtent.width, swapchainExtent.height);
+}
+
+bool VulkanEnv::drawFrame(const RenderingData& renderingData) {
 	auto& frame = inFlightFrame[currentFrame];
 	currentFrame = (currentFrame + 1) % maxFrameInFlight;
 
 	uint32_t imageIndex;
 	vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, frame.semaphoreImageAquired, VK_NULL_HANDLE, &imageIndex);
-
 	vkWaitForFences(device, 1, &frame.fenceInFlight, VK_TRUE, UINT64_MAX);
+
+	updateUniformBuffer(renderingData, imageIndex);
 
 	VkSubmitInfo submitInfo;
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;

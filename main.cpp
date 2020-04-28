@@ -63,14 +63,17 @@ int main(int argc, char** argv) {
 	if (!vulkanEnv.createVertexBufferIndice({&fixedVertexInput})) {
 		return 14;
 	}
-	if (!vulkanEnv.allocateCommandBuffer()) {
+	if (!vulkanEnv.createUniformBuffer()) {
 		return 15;
 	}
-	if (!vulkanEnv.setupCommandBuffer()) {
+	if (!vulkanEnv.allocateCommandBuffer()) {
 		return 16;
 	}
-	if (!vulkanEnv.createFrameSyncObject()) {
+	if (!vulkanEnv.setupCommandBuffer()) {
 		return 17;
+	}
+	if (!vulkanEnv.createFrameSyncObject()) {
+		return 18;
 	}
 
 	glfwSetWindowUserPointer(window, &vulkanEnv);

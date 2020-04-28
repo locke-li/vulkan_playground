@@ -151,10 +151,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="RenderingData.cpp" />
     <ClCompile Include="VertexInput.cpp" />
     <ClCompile Include="VulkanEnv.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="RenderingData.h" />
     <ClInclude Include="VertexInput.h" />
     <ClInclude Include="VulkanEnv.h" />
   </ItemGroup>
