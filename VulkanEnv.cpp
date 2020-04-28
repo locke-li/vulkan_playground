@@ -1,5 +1,4 @@
 #include "VulkanEnv.h"
-#include "RenderingData.h"
 #include <set>
 #include <cstdint>
 #include <algorithm>
@@ -136,6 +135,14 @@ void VulkanEnv::setWindow(GLFWwindow* win) noexcept {
 
 void VulkanEnv::setMaxFrameInFlight(uint32_t value) noexcept {
 	maxFrameInFlight = value;
+}
+
+uint32_t VulkanEnv::getWidth() const {
+	return swapchainExtent.width;
+}
+
+uint32_t VulkanEnv::getHeight() const {
+	return swapchainExtent.height;
 }
 
 void VulkanEnv::onFramebufferResize() noexcept {
@@ -605,7 +612,7 @@ bool VulkanEnv::setupBufferCopy() {
 			vkCreateFence(device, &fenceInfo, nullptr, &indexBuffer.fenceCopy) == VK_SUCCESS;
 }
 
-bool VulkanEnv::createBuffer(uint32_t size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memTypeFlag, 
+bool VulkanEnv::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memTypeFlag, 
 		VkBuffer& buffer, VkDeviceMemory& memory) {
 	VkBufferCreateInfo info;
 	info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -943,7 +950,7 @@ bool VulkanEnv::recreateSwapchain() {
 }
 
 void VulkanEnv::updateUniformBuffer(const RenderingData& renderingData, const uint32_t imageIndex) {
-	renderingData.uniform(swapchainExtent.width, swapchainExtent.height);
+	//TODO WIP
 }
 
 bool VulkanEnv::drawFrame(const RenderingData& renderingData) {

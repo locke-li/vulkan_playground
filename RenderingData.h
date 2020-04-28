@@ -12,6 +12,7 @@ class RenderingData
 private:
 	UniformBufferData uniformData;
 public:
-	const UniformBufferData uniform(const uint32_t width, const uint32_t height) const;
+	void updateUniform(const uint32_t width, const uint32_t height);
+	const UniformBufferData& getUniform() const;
 };
 

@@ -2,6 +2,7 @@
 #define GLFW_INCLUDE_VULKAN 
 #include "GLFW/glfw3.h"
 #include "VertexInput.h"
+#include "RenderingData.h"
 #include <vector>
 
 struct QueueFamily {
@@ -78,12 +79,14 @@ private:
 private:
 	bool queueFamilyValid(const VkPhysicalDevice device);
 	bool findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags flags, uint32_t* typeIndex);
-	bool createBuffer(uint32_t size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memTypeFlag, VkBuffer& buffer, VkDeviceMemory& memory);
+	bool createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memTypeFlag, VkBuffer& buffer, VkDeviceMemory& memory);
 	void copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size, VkFence fence, VkCommandBuffer cmd);
 	void destroySwapchain();
 public:
 	void setWindow(GLFWwindow *window) noexcept; 
 	void setMaxFrameInFlight(uint32_t value) noexcept;
+	uint32_t getWidth() const;
+	uint32_t getHeight() const;
 	void onFramebufferResize() noexcept;
 	void waitUntilIdle();
 

@@ -1,6 +1,7 @@
 #define GLFW_INCLUDE_VULKAN 
 #include "GLFW/glfw3.h"
 #include "VulkanEnv.h"
+#include "RenderingData.h"
 #include <iostream>
 
 const char* APP_TITLE = "vulkan";
@@ -23,6 +24,7 @@ int main(int argc, char** argv) {
 	vulkanEnv.setWindow(window);
 	vulkanEnv.setMaxFrameInFlight(2);
 	VertexInput fixedVertexInput;
+	RenderingData renderingData;
 
 	if (!vulkanEnv.createInstance(APP_TITLE)) {
 		return 2;
@@ -81,7 +83,8 @@ int main(int argc, char** argv) {
 
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
-		vulkanEnv.drawFrame();
+		renderingData.updateUniform(vulkanEnv.getWidth(), vulkanEnv.getHeight());
+		vulkanEnv.drawFrame(renderingData);
 	}
 
 	vulkanEnv.waitUntilIdle();
