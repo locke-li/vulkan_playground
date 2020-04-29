@@ -9,7 +9,7 @@ VkVertexInputBindingDescription VertexInput::getBindingDescription() {
 }
 
 std::vector<VkVertexInputAttributeDescription> VertexInput::getAttributeDescription() {
-	std::vector<VkVertexInputAttributeDescription> attribute(2);
+	std::vector<VkVertexInputAttributeDescription> attribute(3);
 	auto& attributePos = attribute[0];
 	attributePos.binding = 0;
 	attributePos.location = 0;
@@ -20,6 +20,11 @@ std::vector<VkVertexInputAttributeDescription> VertexInput::getAttributeDescript
 	attributeColor.location = 1;
 	attributeColor.format = VK_FORMAT_R32G32B32_SFLOAT;//vec3
 	attributeColor.offset = offsetof(Vertex, color);
+	auto& attributeTexCoord = attribute[2];
+	attributeTexCoord.binding = 0;
+	attributeTexCoord.location = 2;
+	attributeTexCoord.format = VK_FORMAT_R32G32_SFLOAT;//vec2
+	attributeColor.offset = offsetof(Vertex, texCoord);
 	return attribute;
 }
 

@@ -43,6 +43,7 @@ int main(int argc, char** argv) {
 	vulkanEnv.createCommandPool();
 	vulkanEnv.createTextureImage(imageInput, false);
 	vulkanEnv.createTextureImageView();
+	vulkanEnv.createTextureSampler();
 	vulkanEnv.createVertexBufferIndice({ &fixedVertexInput });
 	vulkanEnv.createUniformBuffer();
 	vulkanEnv.createDescriptorPool();

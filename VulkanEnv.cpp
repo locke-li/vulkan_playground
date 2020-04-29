@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <iostream>
 #include <fstream>
+#include <array>
 
 const std::vector<const char*> validationLayer = {
 	"VK_LAYER_KHRONOS_validation"
@@ -381,19 +382,27 @@ bool VulkanEnv::createRenderPass() {
 }
 
 bool VulkanEnv::createDescriptorSetLayout() {
-	VkDescriptorSetLayoutBinding binding;
-	binding.binding = 0;
-	binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	binding.descriptorCount = 1;
-	binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-	binding.pImmutableSamplers = nullptr;
+	VkDescriptorSetLayoutBinding uniform;
+	uniform.binding = 0;
+	uniform.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	uniform.descriptorCount = 1;
+	uniform.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	uniform.pImmutableSamplers = nullptr;
 
+	VkDescriptorSetLayoutBinding sampler;
+	sampler.binding = 1;
+	sampler.descriptorCount = 1;
+	sampler.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	sampler.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	sampler.pImmutableSamplers = nullptr;
+
+	std::array<VkDescriptorSetLayoutBinding, 2> binding = { uniform, sampler };
 	VkDescriptorSetLayoutCreateInfo info;
 	info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 	info.flags = 0;
 	info.pNext = nullptr;
-	info.bindingCount = 1;
-	info.pBindings = &binding;
+	info.bindingCount = static_cast<uint32_t>(binding.size());
+	info.pBindings = binding.data();
 	if (vkCreateDescriptorSetLayout(device, &info, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
 		return false;
 	}
@@ -659,12 +668,13 @@ bool VulkanEnv::createTextureImage(ImageInput& input, bool perserveInput) {
 		return false;
 	}
 
-	VkCommandBuffer cmd[2];
-	allocateCommandBuffer(2, cmd);
+	std::array<VkCommandBuffer, 3> cmd;
+	allocateCommandBuffer(static_cast<uint32_t>(cmd.size()), cmd.data());
 	transitionImageLayout(image, info.format, info.initialLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, cmd[0]);
 	copyImage(stagingBuffer, image, input.getWidth(), input.getHeight(), cmd[1]);
+	transitionImageLayout(image, info.format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, cmd[2]);
 
-	submitCommand(cmd, 2, graphicsQueue, fenceImageCopy);
+	submitCommand(cmd.data(), static_cast<uint32_t>(cmd.size()), graphicsQueue, fenceImageCopy);
 	vkWaitForFences(device, 1, &fenceImageCopy, VK_TRUE, UINT64_MAX);
 
 	vkDestroyBuffer(device, stagingBuffer, nullptr);
@@ -769,7 +779,7 @@ bool VulkanEnv::createTextureSampler() {
 	info.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
 	info.unnormalizedCoordinates = VK_FALSE;
 	info.compareEnable = VK_FALSE;
-	info.compareEnable = VK_COMPARE_OP_ALWAYS;
+	info.compareOp = VK_COMPARE_OP_ALWAYS;
 	info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
 	info.mipLodBias = 0.0f;
 	info.minLod = 0.0f;
@@ -779,6 +789,7 @@ bool VulkanEnv::createTextureSampler() {
 		return false;
 	}
 	imageSet.sampler.push_back(sampler);
+	return true;
 }
 
 bool VulkanEnv::setupFence() {
@@ -957,16 +968,18 @@ bool VulkanEnv::createUniformBuffer() {
 }
 
 bool VulkanEnv::createDescriptorPool() {
-	VkDescriptorPoolSize poolSize;
-	poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	poolSize.descriptorCount = static_cast<uint32_t>(uniformBuffer.size());
+	std::array<VkDescriptorPoolSize, 2> poolSize;
+	poolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	poolSize[0].descriptorCount = static_cast<uint32_t>(uniformBuffer.size());
+	poolSize[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	poolSize[1].descriptorCount = static_cast<uint32_t>(uniformBuffer.size());
 
 	VkDescriptorPoolCreateInfo info;
 	info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	info.flags = 0;
 	info.pNext = nullptr;
-	info.poolSizeCount = 1;
-	info.pPoolSizes = &poolSize;
+	info.poolSizeCount = static_cast<uint32_t>(poolSize.size());
+	info.pPoolSizes = poolSize.data();
 	info.maxSets = static_cast<uint32_t>(uniformBuffer.size());
 
 	return vkCreateDescriptorPool(device, &info, nullptr, &descriptorPool) == VK_SUCCESS;
@@ -991,19 +1004,37 @@ bool VulkanEnv::createDescriptorSet() {
 		bufferInfo.offset = 0;
 		bufferInfo.range = sizeof(uniformBuffer[i]);
 
-		VkWriteDescriptorSet write;
-		write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		write.pNext = nullptr;
-		write.dstSet = descriptorSet[i];
-		write.dstBinding = 0;
-		write.dstArrayElement = 0;
-		write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		write.descriptorCount = 1;
-		write.pBufferInfo = &bufferInfo;
-		write.pImageInfo = nullptr;
-		write.pTexelBufferView = nullptr;
+		VkWriteDescriptorSet uniformWrite;
+		uniformWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		uniformWrite.pNext = nullptr;
+		uniformWrite.dstSet = descriptorSet[i];
+		uniformWrite.dstBinding = 0;
+		uniformWrite.dstArrayElement = 0;
+		uniformWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		uniformWrite.descriptorCount = 1;
+		uniformWrite.pBufferInfo = &bufferInfo;
+		uniformWrite.pImageInfo = nullptr;
+		uniformWrite.pTexelBufferView = nullptr;
 
-		vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
+		VkDescriptorImageInfo imageInfo;
+		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		imageInfo.imageView = imageSet.view[0];//TODO multiple texture
+		imageInfo.sampler = imageSet.sampler[0];//TODO corresponding sampler
+
+		VkWriteDescriptorSet samplerWrite;
+		samplerWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		samplerWrite.pNext = nullptr;
+		samplerWrite.dstSet = descriptorSet[i];
+		samplerWrite.dstBinding = 1;
+		samplerWrite.dstArrayElement = 0;
+		samplerWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		samplerWrite.descriptorCount = 1;
+		samplerWrite.pBufferInfo = nullptr;
+		samplerWrite.pImageInfo = &imageInfo;
+		samplerWrite.pTexelBufferView = nullptr;
+
+		std::array<VkWriteDescriptorSet, 2> writeArr = { uniformWrite, samplerWrite };
+		vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeArr.size()), writeArr.data(), 0, nullptr);
 	}
 	return true;
 }
