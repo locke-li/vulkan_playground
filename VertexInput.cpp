@@ -13,7 +13,7 @@ std::vector<VkVertexInputAttributeDescription> VertexInput::getAttributeDescript
 	auto& attributePos = attribute[0];
 	attributePos.binding = 0;
 	attributePos.location = 0;
-	attributePos.format = VK_FORMAT_R32G32_SFLOAT;//vec2
+	attributePos.format = VK_FORMAT_R32G32B32_SFLOAT;//vec3
 	attributePos.offset = offsetof(Vertex, pos);
 	auto& attributeColor = attribute[1];
 	attributeColor.binding = 0;
