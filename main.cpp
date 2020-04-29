@@ -6,11 +6,15 @@
 
 const char* APP_TITLE = "vulkan";
 const uint32_t WIDTH = 400;
-const uint32_t HEIGHT = 200;
+const uint32_t HEIGHT = 400;
 
 static void onFramebufferResize(GLFWwindow *window, int width, int height) {
 	auto* vulkanEnv = reinterpret_cast<VulkanEnv*>(glfwGetWindowUserPointer(window));
 	vulkanEnv->onFramebufferResize();
+}
+
+static void logResult(bool result) {
+	std::cout << result << "\n";
 }
 
 int main(int argc, char** argv) {
@@ -26,31 +30,33 @@ int main(int argc, char** argv) {
 	VertexInput fixedVertexInput;
 	RenderingData renderingData;
 	ImageInput imageInput;
-	imageInput.load("texture/vibrant-watercolor-flow-texture-background_1017-19544.jpg");
+	logResult(imageInput.load("texture/vibrant-watercolor-flow-texture-background_1017-19544.jpg"));
 
-	vulkanEnv.createInstance(APP_TITLE);
-	vulkanEnv.createSurface();
-	vulkanEnv.createPhysicalDevice();
-	vulkanEnv.createDevice();
-	vulkanEnv.createSwapchain();
-	vulkanEnv.createSwapchainImageView();
-	vulkanEnv.createRenderPass();
-	vulkanEnv.createDescriptorSetLayout();
-	vulkanEnv.createGraphicsPipelineLayout();
-	vulkanEnv.createGraphicsPipeline();
-	vulkanEnv.createFrameBuffer();
-	vulkanEnv.setupFence();
-	vulkanEnv.createCommandPool();
-	vulkanEnv.createTextureImage(imageInput, false);
-	vulkanEnv.createTextureImageView();
-	vulkanEnv.createTextureSampler();
-	vulkanEnv.createVertexBufferIndice({ &fixedVertexInput });
-	vulkanEnv.createUniformBuffer();
-	vulkanEnv.createDescriptorPool();
-	vulkanEnv.createDescriptorSet();
-	vulkanEnv.allocateSwapchainCommandBuffer();
-	vulkanEnv.setupCommandBuffer();
-	vulkanEnv.createFrameSyncObject();
+	logResult(vulkanEnv.createInstance(APP_TITLE));
+	logResult(vulkanEnv.createSurface());
+	logResult(vulkanEnv.createPhysicalDevice());
+	logResult(vulkanEnv.createDevice());
+	logResult(vulkanEnv.createSwapchain());
+	logResult(vulkanEnv.createSwapchainImageView());
+	logResult(vulkanEnv.createRenderPass());
+	logResult(vulkanEnv.createDescriptorSetLayout());
+	logResult(vulkanEnv.createGraphicsPipelineLayout());
+	logResult(vulkanEnv.createGraphicsPipeline());
+	logResult(vulkanEnv.createFrameBuffer());
+	logResult(vulkanEnv.setupFence());
+	logResult(vulkanEnv.createCommandPool());
+	logResult(vulkanEnv.createTextureImage(imageInput, false));
+	logResult(vulkanEnv.createTextureImageView());
+	logResult(vulkanEnv.createTextureSampler());
+	logResult(vulkanEnv.createVertexBufferIndice({ &fixedVertexInput }));
+	logResult(vulkanEnv.createUniformBuffer());
+	logResult(vulkanEnv.createDescriptorPool());
+	logResult(vulkanEnv.createDescriptorSet());
+	logResult(vulkanEnv.allocateSwapchainCommandBuffer());
+	logResult(vulkanEnv.setupCommandBuffer());
+	logResult(vulkanEnv.createFrameSyncObject());
+
+	std::cout << std::endl;
 
 	glfwSetWindowUserPointer(window, &vulkanEnv);
 	glfwSetFramebufferSizeCallback(window, onFramebufferResize);

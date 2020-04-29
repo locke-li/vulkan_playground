@@ -202,7 +202,7 @@ bool VulkanEnv::queueFamilyValid(const VkPhysicalDevice device) {
 	for (const auto& queue : properties) {
 		if (queue.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
 			queueFamily.graphics = i;
-			std::cout << "execure queue family " << i << std::endl;
+			std::cout << "execute queue family " << i << std::endl;
 			result = true;
 			break;
 		}
@@ -762,6 +762,7 @@ bool VulkanEnv::createTextureImageView() {
 		}
 		imageSet.view.push_back(view);
 	}
+	return true;
 }
 
 bool VulkanEnv::createTextureSampler() {
@@ -1061,7 +1062,7 @@ bool VulkanEnv::allocateCommandBuffer(uint32_t count, VkCommandBuffer* cmd) {
 
 bool VulkanEnv::allocateSwapchainCommandBuffer() {
 	commandBuffer.resize(swapchainFramebuffer.size());
-	return allocateCommandBuffer(static_cast<uint32_t>(commandBuffer.size()), commandBuffer.data()) == VK_SUCCESS;
+	return allocateCommandBuffer(static_cast<uint32_t>(commandBuffer.size()), commandBuffer.data());
 }
 
 bool VulkanEnv::beginCommand(VkCommandBuffer& cmd, VkCommandBufferUsageFlags flag) {
