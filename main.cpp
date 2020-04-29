@@ -26,57 +26,26 @@ int main(int argc, char** argv) {
 	VertexInput fixedVertexInput;
 	RenderingData renderingData;
 
-	if (!vulkanEnv.createInstance(APP_TITLE)) {
-		return 2;
-	}
-	if (!vulkanEnv.createSurface()) {
-		return 3;
-	}
-	if (!vulkanEnv.createPhysicalDevice()) {
-		return 4;
-	}
-	if (!vulkanEnv.createDevice()) {
-		return 5;
-	}
-	if (!vulkanEnv.createSwapchain()) {
-		return 6;
-	}
-	if (!vulkanEnv.createImageView()) {
-		return 7;
-	}
-	if (!vulkanEnv.createRenderPass()) {
-		return 8;
-	}
-	if (!vulkanEnv.createGraphicsPipelineLayout()) {
-		return 9;
-	}
-	if (!vulkanEnv.createGraphicsPipeline()) {
-		return 10;
-	}
-	if (!vulkanEnv.createFrameBuffer()) {
-		return 11;
-	}
-	if (!vulkanEnv.createCommandPool()) {
-		return 12;
-	}
-	if (!vulkanEnv.setupBufferCopy()) {
-		return 13;
-	}
-	if (!vulkanEnv.createVertexBufferIndice({&fixedVertexInput})) {
-		return 14;
-	}
-	if (!vulkanEnv.createUniformBuffer()) {
-		return 15;
-	}
-	if (!vulkanEnv.allocateCommandBuffer()) {
-		return 16;
-	}
-	if (!vulkanEnv.setupCommandBuffer()) {
-		return 17;
-	}
-	if (!vulkanEnv.createFrameSyncObject()) {
-		return 18;
-	}
+	vulkanEnv.createInstance(APP_TITLE);
+	vulkanEnv.createSurface();
+	vulkanEnv.createPhysicalDevice();
+	vulkanEnv.createDevice();
+	vulkanEnv.createSwapchain();
+	vulkanEnv.createImageView();
+	vulkanEnv.createRenderPass();
+	vulkanEnv.createDescriptorSetLayout();
+	vulkanEnv.createGraphicsPipelineLayout();
+	vulkanEnv.createGraphicsPipeline();
+	vulkanEnv.createFrameBuffer();
+	vulkanEnv.createCommandPool();
+	vulkanEnv.setupBufferCopy();
+	vulkanEnv.createVertexBufferIndice({ &fixedVertexInput });
+	vulkanEnv.createUniformBuffer();
+	vulkanEnv.createDescriptorPool();
+	vulkanEnv.createDescriptorSet();
+	vulkanEnv.allocateCommandBuffer();
+	vulkanEnv.setupCommandBuffer();
+	vulkanEnv.createFrameSyncObject();
 
 	glfwSetWindowUserPointer(window, &vulkanEnv);
 	glfwSetFramebufferSizeCallback(window, onFramebufferResize);

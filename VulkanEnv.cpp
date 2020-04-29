@@ -410,8 +410,8 @@ bool VulkanEnv::createGraphicsPipelineLayout() {
 	info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	info.flags = 0;
 	info.pNext = nullptr;
-	info.setLayoutCount = 0;
-	info.pSetLayouts = nullptr;
+	info.setLayoutCount = 1;
+	info.pSetLayouts = &descriptorSetLayout;
 	info.pushConstantRangeCount = 0;
 	info.pPushConstantRanges = nullptr;
 
@@ -793,6 +793,58 @@ bool VulkanEnv::createUniformBuffer() {
 	return true;
 }
 
+bool VulkanEnv::createDescriptorPool() {
+	VkDescriptorPoolSize poolSize;
+	poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	poolSize.descriptorCount = static_cast<uint32_t>(uniformBuffer.size());
+
+	VkDescriptorPoolCreateInfo info;
+	info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	info.flags = 0;
+	info.pNext = nullptr;
+	info.poolSizeCount = 1;
+	info.pPoolSizes = &poolSize;
+	info.maxSets = static_cast<uint32_t>(uniformBuffer.size());
+
+	return vkCreateDescriptorPool(device, &info, nullptr, &descriptorPool) == VK_SUCCESS;
+}
+
+bool VulkanEnv::createDescriptorSet() {
+	std::vector<VkDescriptorSetLayout> layout(uniformBuffer.size(), descriptorSetLayout);
+	VkDescriptorSetAllocateInfo info;
+	info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	info.pNext = nullptr;
+	info.descriptorPool = descriptorPool;
+	info.descriptorSetCount = static_cast<uint32_t>(layout.size());
+	info.pSetLayouts = layout.data();
+
+	descriptorSet.resize(static_cast<uint32_t>(layout.size()));
+	if (vkAllocateDescriptorSets(device, &info, descriptorSet.data()) != VK_SUCCESS) {
+		return false;
+	}
+	for (auto i = 0; i < uniformBuffer.size(); ++i) {
+		VkDescriptorBufferInfo bufferInfo;
+		bufferInfo.buffer = uniformBuffer[i];
+		bufferInfo.offset = 0;
+		bufferInfo.range = sizeof(uniformBuffer[i]);
+
+		VkWriteDescriptorSet write;
+		write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		write.pNext = nullptr;
+		write.dstSet = descriptorSet[i];
+		write.dstBinding = 0;
+		write.dstArrayElement = 0;
+		write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		write.descriptorCount = 1;
+		write.pBufferInfo = &bufferInfo;
+		write.pImageInfo = nullptr;
+		write.pTexelBufferView = nullptr;
+
+		vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
+	}
+	return true;
+}
+
 bool VulkanEnv::createCommandPool() {
 	VkCommandPoolCreateInfo info;
 	info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -843,6 +895,7 @@ bool VulkanEnv::setupCommandBuffer() {
 		vkCmdBeginRenderPass(cmd, &renderPassBegin, VK_SUBPASS_CONTENTS_INLINE);
 		vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 		vkCmdSetViewport(cmd, 0, 1, &viewport);
+		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipelineLayout, 0, 1, &descriptorSet[i], 0, nullptr);
 		vkCmdBindVertexBuffers(cmd, 0, static_cast<uint32_t>(vertexBuffer.buffer.size()), vertexBuffer.buffer.data(), vertexBuffer.offset.data());
 		for (auto i = 0; i < indexBuffer.offset.size(); ++i) {
 			vkCmdBindIndexBuffer(cmd, indexBuffer.buffer, indexBuffer.offset[i], VK_INDEX_TYPE_UINT16);
@@ -918,6 +971,7 @@ void VulkanEnv::destroySwapchain() {
 		vkDestroyBuffer(device, uniformBuffer[i], nullptr);
 		vkFreeMemory(device, uniformBufferMemory[i], nullptr);
 	}
+	vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 	vkDestroySwapchainKHR(device, swapchain, nullptr);
 }
 
@@ -943,14 +997,19 @@ bool VulkanEnv::recreateSwapchain() {
 		createGraphicsPipeline() &&
 		createFrameBuffer() &&
 		createUniformBuffer() &&
+		createDescriptorPool() &&
+		createDescriptorSet() &&
 		allocateCommandBuffer() &&
 		setupCommandBuffer();
-
 	return result;
 }
 
 void VulkanEnv::updateUniformBuffer(const RenderingData& renderingData, const uint32_t imageIndex) {
-	//TODO WIP
+	const auto& uniform = renderingData.getUniform();
+	void* buffer;
+	vkMapMemory(device, uniformBufferMemory[imageIndex], 0, sizeof(uniform), 0, &buffer);
+	memcpy(buffer, &uniform, sizeof(uniform));
+	vkUnmapMemory(device, uniformBufferMemory[imageIndex]);
 }
 
 bool VulkanEnv::drawFrame(const RenderingData& renderingData) {

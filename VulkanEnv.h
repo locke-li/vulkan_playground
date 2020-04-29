@@ -56,8 +56,10 @@ private:
 	std::vector<VkFramebuffer> swapchainFramebuffer;
 	std::vector<VkBuffer> uniformBuffer;
 	std::vector<VkDeviceMemory> uniformBufferMemory;
-	VkRenderPass renderPass;
+	std::vector<VkDescriptorSet> descriptorSet;
 	VkDescriptorSetLayout descriptorSetLayout;
+	VkDescriptorPool descriptorPool;
+	VkRenderPass renderPass;
 	VkPipelineLayout graphicsPipelineLayout;
 	VkPipeline graphicsPipeline;
 	VkCommandPool commandPool;
@@ -104,6 +106,8 @@ public:
 	bool setupBufferCopy();
 	bool createVertexBufferIndice(const std::vector<VertexInput*>& input);
 	bool createUniformBuffer();
+	bool createDescriptorPool();
+	bool createDescriptorSet();
 	bool createCommandPool();
 	bool allocateCommandBuffer();
 	bool setupCommandBuffer();
