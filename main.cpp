@@ -27,8 +27,9 @@ int main(int argc, char** argv) {
 	VulkanEnv vulkanEnv;
 	vulkanEnv.setWindow(window);
 	vulkanEnv.setMaxFrameInFlight(2);
-	VertexInput fixedVertexInput;
+	VertexInput vertexInput;
 	RenderingData renderingData;
+
 	ImageInput imageInput;
 	logResult(imageInput.load("texture/vibrant-watercolor-flow-texture-background_1017-19544.jpg"));
 
@@ -48,7 +49,7 @@ int main(int argc, char** argv) {
 	logResult(vulkanEnv.createTextureImage(imageInput, false));
 	logResult(vulkanEnv.createTextureImageView());
 	logResult(vulkanEnv.createTextureSampler());
-	logResult(vulkanEnv.createVertexBufferIndice({ &fixedVertexInput }));
+	logResult(vulkanEnv.createVertexBufferIndice({ &vertexInput }));
 	logResult(vulkanEnv.createUniformBuffer());
 	logResult(vulkanEnv.createDescriptorPool());
 	logResult(vulkanEnv.createDescriptorSet());

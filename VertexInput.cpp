@@ -24,7 +24,7 @@ std::vector<VkVertexInputAttributeDescription> VertexInput::getAttributeDescript
 	attributeTexCoord.binding = 0;
 	attributeTexCoord.location = 2;
 	attributeTexCoord.format = VK_FORMAT_R32G32_SFLOAT;//vec2
-	attributeColor.offset = offsetof(Vertex, texCoord);
+	attributeTexCoord.offset = offsetof(Vertex, texCoord);
 	return attribute;
 }
 

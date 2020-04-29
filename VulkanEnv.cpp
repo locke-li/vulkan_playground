@@ -917,7 +917,9 @@ bool VulkanEnv::createVertexBufferIndice(const std::vector<VertexInput*>& input)
 		return false;
 	}
 
-	if (submitCommand(copyCmd, 2, graphicsQueue, fenceVertexIndexCopy));
+	if (!submitCommand(copyCmd, 2, graphicsQueue, fenceVertexIndexCopy)) {
+		return false;
+	}
 	if (vkWaitForFences(device, 1, &fenceVertexIndexCopy, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
 		return false;
 	}
@@ -1119,7 +1121,7 @@ bool VulkanEnv::setupCommandBuffer() {
 		vkCmdBindVertexBuffers(cmd, 0, static_cast<uint32_t>(vertexBuffer.buffer.size()), vertexBuffer.buffer.data(), vertexBuffer.offset.data());
 		for (auto i = 0; i < indexBuffer.offset.size(); ++i) {
 			vkCmdBindIndexBuffer(cmd, indexBuffer.buffer, indexBuffer.offset[i], VK_INDEX_TYPE_UINT16);
-			vkCmdDrawIndexed(cmd, indexBuffer.input[i]->indexCount(), 1, 0, vertexBuffer.offset[i], 0);
+			vkCmdDrawIndexed(cmd, indexBuffer.input[i]->indexCount(), 1, 0, 0, 0);
 		}
 		vkCmdEndRenderPass(cmd);
 
@@ -1205,7 +1207,7 @@ void VulkanEnv::destroySwapchain() {
 bool VulkanEnv::recreateSwapchain() {
 	int width, height;
 	glfwGetFramebufferSize(window, &width, &height);
-	if (width == 0 || height == 0) {//minimized and/or invisible
+	while (width == 0 || height == 0) {//minimized and/or invisible
 		glfwGetFramebufferSize(window, &width, &height);
 		glfwWaitEvents();
 	}
