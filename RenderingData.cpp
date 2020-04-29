@@ -13,8 +13,8 @@ void RenderingData::updateUniform(const uint32_t width, const uint32_t height) {
 	auto duration = std::chrono::duration<float, std::chrono::seconds::period>(time - startTime).count();
 
 	uniformData.model = glm::rotate(glm::mat4(1.0f), duration * glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	uniformData.view = glm::lookAt(glm::vec3(0.0f, -2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	uniformData.proj = glm::perspective(glm::radians(45.0f), width / (float)height, 0.05f, 10.0f);
+	uniformData.view = glm::lookAt(glm::vec3(0.0f, -1.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	uniformData.proj = glm::perspective(glm::radians(60.0f), width / (float)height, 0.05f, 10.0f);
 	//uniformData.proj[1][1] *= -1;//flip y
 }
 

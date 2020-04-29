@@ -3,6 +3,7 @@
 #include "GLFW/glfw3.h"
 #include "VertexInput.h"
 #include "RenderingData.h"
+#include "ImageInput.h"
 #include <vector>
 
 struct QueueFamily {
@@ -27,7 +28,6 @@ struct VertexBuffer {
 	std::vector<VkDeviceMemory> memory;
 	std::vector<VertexInput*> input;
 	std::vector<VkDeviceSize> offset;
-	VkFence fenceCopy;
 };
 
 struct IndexBuffer {
@@ -35,7 +35,11 @@ struct IndexBuffer {
 	VkDeviceMemory memory;
 	std::vector<VertexInput*> input;
 	std::vector<VkDeviceSize> offset;
-	VkFence fenceCopy;
+};
+
+struct ImageSet {
+	std::vector<VkImage> image;
+	std::vector<VkDeviceMemory> memory;
 };
 
 class VulkanEnv
@@ -66,6 +70,7 @@ private:
 	std::vector<VkCommandBuffer> commandBuffer;
 	VertexBuffer vertexBuffer;
 	IndexBuffer indexBuffer;
+	ImageSet imageSet;
 
 	int maxFrameInFlight;
 	std::vector<InFlightFrame> inFlightFrame;
@@ -76,13 +81,21 @@ private:
 	SwapChainSupport swapChainSupport;
 
 	bool frameBufferResized;
+	VkFence fenceVertexIndexCopy;
+	VkFence fenceImageCopy;
 
 	VkViewport viewport;
 private:
 	bool queueFamilyValid(const VkPhysicalDevice device);
 	bool findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags flags, uint32_t* typeIndex);
 	bool createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memTypeFlag, VkBuffer& buffer, VkDeviceMemory& memory);
-	void copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size, VkFence fence, VkCommandBuffer cmd);
+	bool createStagingBuffer(VkDeviceSize size, VkBuffer& buffer, VkDeviceMemory& memory);
+	bool copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size, VkCommandBuffer cmd);
+	bool transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLyaout, VkImageLayout newLayout, VkCommandBuffer cmd);
+	bool copyImage(VkBuffer src, VkImage dst, uint32_t width, uint32_t height, VkCommandBuffer cmd);
+	bool allocateCommandBuffer(uint32_t count, VkCommandBuffer* cmd);
+	bool beginCommand(VkCommandBuffer& cmd, VkCommandBufferUsageFlags flag);
+	bool submitCommand(VkCommandBuffer* cmd, uint32_t count, VkQueue queue, VkFence fence);
 	void destroySwapchain();
 public:
 	void setWindow(GLFWwindow *window) noexcept; 
@@ -103,13 +116,14 @@ public:
 	bool createGraphicsPipelineLayout();
 	bool createGraphicsPipeline();
 	bool createFrameBuffer();
-	bool setupBufferCopy();
+	bool createTextureImage(ImageInput& input, bool perserveInput);
+	bool setupFence();
 	bool createVertexBufferIndice(const std::vector<VertexInput*>& input);
 	bool createUniformBuffer();
 	bool createDescriptorPool();
 	bool createDescriptorSet();
 	bool createCommandPool();
-	bool allocateCommandBuffer();
+	bool allocateSwapchainCommandBuffer();
 	bool setupCommandBuffer();
 	bool createFrameSyncObject();
 	void destroy();

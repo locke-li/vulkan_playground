@@ -99,7 +99,7 @@ VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities, GLFWwi
 	if (capabilities.currentExtent.width == UINT32_MAX) {//flexible window?, select extent nearest to window size
 		int width, height;
 		glfwGetFramebufferSize(window, &width, &height);
-		
+
 		return VkExtent2D{
 			std::max(capabilities.minImageExtent.width, std::min(static_cast<uint32_t>(width), capabilities.maxImageExtent.width)),
 			std::max(capabilities.minImageExtent.height, std::min(static_cast<uint32_t>(height), capabilities.maxImageExtent.height))
@@ -443,7 +443,7 @@ bool VulkanEnv::createGraphicsPipeline() {
 	fragStage.module = fragShader;
 	fragStage.pName = "main";
 	fragStage.pSpecializationInfo = nullptr;
-	VkPipelineShaderStageCreateInfo shaderStageInfo[] = {vertStage, fragStage};
+	VkPipelineShaderStageCreateInfo shaderStageInfo[] = { vertStage, fragStage };
 
 	auto vertexBinding = VertexInput::getBindingDescription();
 	auto vertexAttribute = VertexInput::getAttributeDescription();
@@ -565,12 +565,12 @@ bool VulkanEnv::createGraphicsPipeline() {
 	pipelineInfo.basePipelineIndex = -1;
 
 	if (vkCreateGraphicsPipelines(
-			device, 
-			VK_NULL_HANDLE, 
-			1, 
-			&pipelineInfo, 
-			nullptr, 
-			&graphicsPipeline) != VK_SUCCESS) {
+		device,
+		VK_NULL_HANDLE,
+		1,
+		&pipelineInfo,
+		nullptr,
+		&graphicsPipeline) != VK_SUCCESS) {
 		return false;
 	}
 
@@ -599,21 +599,164 @@ bool VulkanEnv::createFrameBuffer() {
 			return false;
 		}
 	}
-
 	return true;
 }
 
-bool VulkanEnv::setupBufferCopy() {
+bool VulkanEnv::createTextureImage(ImageInput& input, bool perserveInput) {
+	if (!input.isValid()) {
+		return false;
+	}
+	auto size = input.calculateSize();
+	VkBuffer stagingBuffer;
+	VkDeviceMemory stagingBufferMemory;
+	if (!createStagingBuffer(size, stagingBuffer, stagingBufferMemory)) {
+		return false;
+	}
+
+	void* buffer;
+	vkMapMemory(device, stagingBufferMemory, 0, size, 0, &buffer);
+	memcpy(buffer, input.pixel(), size);
+	vkUnmapMemory(device, stagingBufferMemory);
+
+	VkImage image;
+	VkImageCreateInfo info;
+	info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	info.flags = 0;
+	info.pNext = nullptr;
+	info.imageType = VK_IMAGE_TYPE_2D;
+	info.extent.width = input.getWidth();
+	info.extent.height = input.getHeight();
+	info.extent.depth = 1;
+	info.mipLevels = 1;
+	info.arrayLayers = 1;
+	info.format = VK_FORMAT_R8G8B8A8_SRGB;
+	if (perserveInput) {
+		info.tiling = VK_IMAGE_TILING_LINEAR;
+		info.initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
+	}
+	else {
+		input.release();
+		info.tiling = VK_IMAGE_TILING_OPTIMAL;
+		info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	}
+	info.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+	info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	info.samples = VK_SAMPLE_COUNT_1_BIT;
+	if (vkCreateImage(device, &info, nullptr, &image) != VK_SUCCESS) {
+		return false;
+	}
+
+	VkDeviceMemory imageMemory;
+	VkMemoryRequirements memRequirement;
+	vkGetImageMemoryRequirements(device, image, &memRequirement);
+	VkMemoryAllocateInfo memInfo;
+	memInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	memInfo.pNext = nullptr;
+	memInfo.allocationSize = memRequirement.size;
+	if (!findMemoryType(memRequirement.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &memInfo.memoryTypeIndex) ||
+		vkAllocateMemory(device, &memInfo, nullptr, &imageMemory) != VK_SUCCESS) {
+		return false;
+	}
+
+	if (vkBindImageMemory(device, image, imageMemory, 0) != VK_SUCCESS) {
+		return false;
+	}
+
+	VkCommandBuffer cmd[2];
+	allocateCommandBuffer(2, cmd);
+	transitionImageLayout(image, info.format, info.initialLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, cmd[0]);
+	copyImage(stagingBuffer, image, input.getWidth(), input.getHeight(), cmd[1]);
+
+	submitCommand(cmd, 2, graphicsQueue, fenceImageCopy);
+	vkWaitForFences(device, 1, &fenceImageCopy, VK_TRUE, UINT64_MAX);
+
+	vkDestroyBuffer(device, stagingBuffer, nullptr);
+	vkFreeMemory(device, stagingBufferMemory, nullptr);
+
+	imageSet.image.push_back(image);
+	imageSet.memory.push_back(imageMemory);
+	return true;
+}
+
+bool VulkanEnv::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, VkCommandBuffer cmd) {
+	if (!beginCommand(cmd, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)) {
+		return false;
+	}
+	VkImageMemoryBarrier barrier;
+	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	barrier.pNext = nullptr;
+	barrier.oldLayout = oldLayout;
+	barrier.newLayout = newLayout;
+	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.image = image;
+	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	barrier.subresourceRange.baseMipLevel = 0;
+	barrier.subresourceRange.levelCount = 1;
+	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.layerCount = 1;
+
+	VkPipelineStageFlags srcStage;
+	VkPipelineStageFlags dstStage;
+	if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+		barrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		srcStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		dstStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+	}
+	else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+		srcStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+		dstStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+	}
+	else {
+		//TODO transition combinations
+		return false;
+	}
+
+	vkCmdPipelineBarrier(cmd, 
+		srcStage,
+		dstStage,
+		0,
+		0, nullptr,
+		0, nullptr,
+		1, &barrier);
+
+	return vkEndCommandBuffer(cmd) == VK_SUCCESS;
+}
+
+bool VulkanEnv::copyImage(VkBuffer src, VkImage dst, uint32_t width, uint32_t height, VkCommandBuffer cmd) {
+	if (!beginCommand(cmd, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)) {
+		return false;
+	}
+
+	VkBufferImageCopy copy;
+	copy.bufferOffset = 0;
+	copy.bufferRowLength = 0;
+	copy.bufferImageHeight = 0;
+	copy.imageOffset = { 0, 0, 0 };
+	copy.imageExtent = { width, height, 1 };
+	copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	copy.imageSubresource.mipLevel = 0;
+	copy.imageSubresource.baseArrayLayer = 0;
+	copy.imageSubresource.layerCount = 1;
+	vkCmdCopyBufferToImage(cmd, src, dst, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
+
+	return vkEndCommandBuffer(cmd) == VK_SUCCESS;
+}
+
+bool VulkanEnv::setupFence() {
 	VkFenceCreateInfo fenceInfo;
 	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 	fenceInfo.flags = 0;
 	fenceInfo.pNext = nullptr;
-	return vkCreateFence(device, &fenceInfo, nullptr, &vertexBuffer.fenceCopy) == VK_SUCCESS &&
-			vkCreateFence(device, &fenceInfo, nullptr, &indexBuffer.fenceCopy) == VK_SUCCESS;
+	return vkCreateFence(device, &fenceInfo, nullptr, &fenceVertexIndexCopy) == VK_SUCCESS &&
+		vkCreateFence(device, &fenceInfo, nullptr, &fenceImageCopy) == VK_SUCCESS;
 }
 
-bool VulkanEnv::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memTypeFlag, 
-		VkBuffer& buffer, VkDeviceMemory& memory) {
+bool VulkanEnv::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memTypeFlag,
+	VkBuffer& buffer, VkDeviceMemory& memory) {
 	VkBufferCreateInfo info;
 	info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	info.flags = 0;
@@ -640,23 +783,22 @@ bool VulkanEnv::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemo
 		return false;
 	}
 
-	if (vkAllocateMemory(device, &allocInfo, nullptr, &memory) != VK_SUCCESS) {
-		return false;
-	}
-	if (vkBindBufferMemory(device, buffer, memory, 0) != VK_SUCCESS) {
-		return false;
-	}
-
-	return true;
+	return vkAllocateMemory(device, &allocInfo, nullptr, &memory) == VK_SUCCESS &&
+		vkBindBufferMemory(device, buffer, memory, 0) == VK_SUCCESS;
 }
 
-void VulkanEnv::copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size, VkFence fence, VkCommandBuffer cmd) {
-	VkCommandBufferBeginInfo cmdBegin;
-	cmdBegin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	cmdBegin.pNext = nullptr;
-	cmdBegin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-	cmdBegin.pInheritanceInfo = nullptr;
-	vkBeginCommandBuffer(cmd, &cmdBegin);
+bool VulkanEnv::createStagingBuffer(VkDeviceSize size, VkBuffer& buffer, VkDeviceMemory& memory) {
+	return createBuffer(size,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		buffer,
+		memory);
+}
+
+bool VulkanEnv::copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size, VkCommandBuffer cmd) {
+	if (!beginCommand(cmd, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)) {
+		return false;
+	}
 
 	VkBufferCopy copy;
 	copy.srcOffset = 0;
@@ -664,20 +806,7 @@ void VulkanEnv::copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size, VkFenc
 	copy.size = size;
 	vkCmdCopyBuffer(cmd, src, dst, 1, &copy);
 
-	vkEndCommandBuffer(cmd);
-
-	VkSubmitInfo submitInfo;
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submitInfo.pNext = nullptr;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &cmd;
-	submitInfo.waitSemaphoreCount = 0;
-	submitInfo.pWaitSemaphores = nullptr;
-	submitInfo.pWaitDstStageMask = 0;
-	submitInfo.signalSemaphoreCount = 0;
-	submitInfo.pSignalSemaphores = nullptr;
-
-	vkQueueSubmit(graphicsQueue, 1, &submitInfo, fence);
+	return vkEndCommandBuffer(cmd) == VK_SUCCESS;
 }
 
 bool VulkanEnv::createVertexBufferIndice(const std::vector<VertexInput*>& input) {
@@ -693,18 +822,13 @@ bool VulkanEnv::createVertexBufferIndice(const std::vector<VertexInput*>& input)
 	//TODO merge memory block alloc
 	VkBuffer stagingVBuffer;
 	VkDeviceMemory stagingVBufferMemory;
-	createBuffer(vSize,
-		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-		stagingVBuffer,
-		stagingVBufferMemory);
+	auto vBufferSuccess = createStagingBuffer(vSize, stagingVBuffer, stagingVBufferMemory);
 	VkBuffer stagingIBuffer;
 	VkDeviceMemory stagingIBufferMemory;
-	createBuffer(vSize,
-		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-		stagingIBuffer,
-		stagingIBufferMemory);
+	auto iBufferSuccess = createStagingBuffer(vSize, stagingIBuffer, stagingIBufferMemory);
+	if(!vBufferSuccess || !iBufferSuccess) {
+		return false;
+	}
 
 	for (auto i = 0; i < input.size(); ++i) {
 		const auto& vertexInput = input[i];
@@ -720,32 +844,36 @@ bool VulkanEnv::createVertexBufferIndice(const std::vector<VertexInput*>& input)
 
 	VkBuffer vBuffer;
 	VkDeviceMemory vMemory;
-	createBuffer(vSize,
+	vBufferSuccess = createBuffer(vSize,
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 		vBuffer,
 		vMemory);
 	VkBuffer iBuffer;
 	VkDeviceMemory iMemory;
-	createBuffer(iSize,
+	iBufferSuccess = createBuffer(iSize,
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 		iBuffer,
 		iMemory);
+	if (!vBufferSuccess || !iBufferSuccess) {
+		return false;
+	}
 
 	VkCommandBuffer copyCmd[2];
-	VkCommandBufferAllocateInfo cmdInfo;
-	cmdInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	cmdInfo.pNext = nullptr;
-	cmdInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	cmdInfo.commandPool = commandPool;
-	cmdInfo.commandBufferCount = 2;
-	vkAllocateCommandBuffers(device, &cmdInfo, copyCmd);
+	if (!allocateCommandBuffer(2, copyCmd)) {
+		return false;
+	}
+	vBufferSuccess = copyBuffer(stagingVBuffer, vBuffer, vSize, copyCmd[0]);
+	iBufferSuccess = copyBuffer(stagingIBuffer, iBuffer, iSize, copyCmd[1]);
+	if (!vBufferSuccess || !iBufferSuccess) {
+		return false;
+	}
 
-	copyBuffer(stagingVBuffer, vBuffer, vSize, vertexBuffer.fenceCopy, copyCmd[0]);
-	copyBuffer(stagingIBuffer, iBuffer, iSize, indexBuffer.fenceCopy, copyCmd[1]);
-	VkFence fence[] = { vertexBuffer.fenceCopy, indexBuffer.fenceCopy };
-	vkWaitForFences(device, 2, fence, VK_TRUE, UINT64_MAX);
+	if (submitCommand(copyCmd, 2, graphicsQueue, fenceVertexIndexCopy));
+	if (vkWaitForFences(device, 1, &fenceVertexIndexCopy, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
+		return false;
+	}
 
 	vkFreeCommandBuffers(device, commandPool, 2, copyCmd);
 	vkDestroyBuffer(device, stagingVBuffer, nullptr);
@@ -855,17 +983,42 @@ bool VulkanEnv::createCommandPool() {
 	return vkCreateCommandPool(device, &info, nullptr, &commandPool) == VK_SUCCESS;
 }
 
-bool VulkanEnv::allocateCommandBuffer() {
+bool VulkanEnv::allocateCommandBuffer(uint32_t count, VkCommandBuffer* cmd) {
+	VkCommandBufferAllocateInfo cmdInfo;
+	cmdInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	cmdInfo.pNext = nullptr;
+	cmdInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	cmdInfo.commandPool = commandPool;
+	cmdInfo.commandBufferCount = count;
+	return vkAllocateCommandBuffers(device, &cmdInfo, cmd) == VK_SUCCESS;
+}
+
+bool VulkanEnv::allocateSwapchainCommandBuffer() {
 	commandBuffer.resize(swapchainFramebuffer.size());
+	return allocateCommandBuffer(static_cast<uint32_t>(commandBuffer.size()), commandBuffer.data()) == VK_SUCCESS;
+}
 
-	VkCommandBufferAllocateInfo info;
-	info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+bool VulkanEnv::beginCommand(VkCommandBuffer& cmd, VkCommandBufferUsageFlags flag) {
+	VkCommandBufferBeginInfo info;
+	info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	info.pNext = nullptr;
-	info.commandPool = commandPool;
-	info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	info.commandBufferCount = static_cast<uint32_t>(commandBuffer.size());
+	info.flags = flag;
+	info.pInheritanceInfo = nullptr;
+	return vkBeginCommandBuffer(cmd, &info) == VK_SUCCESS;
+}
 
-	return vkAllocateCommandBuffers(device, &info, commandBuffer.data()) == VK_SUCCESS;
+bool VulkanEnv::submitCommand(VkCommandBuffer* cmd, uint32_t count, VkQueue queue, VkFence fence) {
+	VkSubmitInfo info;
+	info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	info.pNext = nullptr;
+	info.commandBufferCount = count;
+	info.pCommandBuffers = cmd;
+	info.waitSemaphoreCount = 0;
+	info.pWaitSemaphores = nullptr;
+	info.pWaitDstStageMask = 0;
+	info.signalSemaphoreCount = 0;
+	info.pSignalSemaphores = nullptr;
+	return vkQueueSubmit(queue, 1, &info, fence) == VK_SUCCESS;
 }
 
 bool VulkanEnv::setupCommandBuffer() {
@@ -907,7 +1060,6 @@ bool VulkanEnv::setupCommandBuffer() {
 			return false;
 		}
 	}
-
 	return true;
 }
 
@@ -949,8 +1101,12 @@ void VulkanEnv::destroy() {
 	}
 	vkDestroyBuffer(device, indexBuffer.buffer, nullptr);
 	vkFreeMemory(device, indexBuffer.memory, nullptr);
-	vkDestroyFence(device, vertexBuffer.fenceCopy, nullptr);
-	vkDestroyFence(device, indexBuffer.fenceCopy, nullptr);
+	vkDestroyFence(device, fenceVertexIndexCopy, nullptr);
+	for (auto i = 0; i < imageSet.image.size(); ++i) {
+		vkDestroyImage(device, imageSet.image[i], nullptr);
+		vkFreeMemory(device, imageSet.memory[i], nullptr);
+	}
+	vkDestroyFence(device, fenceImageCopy, nullptr);
 	vkDestroyCommandPool(device, commandPool, nullptr);
 	vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
 	vkDestroyDevice(device, nullptr);
@@ -999,7 +1155,7 @@ bool VulkanEnv::recreateSwapchain() {
 		createUniformBuffer() &&
 		createDescriptorPool() &&
 		createDescriptorSet() &&
-		allocateCommandBuffer() &&
+		allocateSwapchainCommandBuffer() &&
 		setupCommandBuffer();
 	return result;
 }
@@ -1029,7 +1185,7 @@ bool VulkanEnv::drawFrame(const RenderingData& renderingData) {
 	submitInfo.pCommandBuffers = &commandBuffer[imageIndex];
 	submitInfo.waitSemaphoreCount = 1;
 	submitInfo.pWaitSemaphores = &frame.semaphoreImageAquired;
-	VkPipelineStageFlags waitStage[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+	VkPipelineStageFlags waitStage[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 	submitInfo.pWaitDstStageMask = waitStage;
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = &frame.semaphoreRenderFinished;

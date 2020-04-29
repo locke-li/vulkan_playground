@@ -71,19 +71,19 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\VulkanSDK\1.2.135.0\Include;C:\_lib\glm\glm;C:\_lib\glfw-3.3.2.bin.WIN64\include;$(IncludePath)</IncludePath>
+    <IncludePath>C:\_lib\stb;C:\VulkanSDK\1.2.135.0\Include;C:\_lib\glm\glm;C:\_lib\glfw-3.3.2.bin.WIN64\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\VulkanSDK\1.2.135.0\Include;C:\_lib\glm\glm;C:\_lib\glfw-3.3.2.bin.WIN64\include;$(IncludePath)</IncludePath>
+    <IncludePath>C:\_lib\stb;C:\VulkanSDK\1.2.135.0\Include;C:\_lib\glm\glm;C:\_lib\glfw-3.3.2.bin.WIN64\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>C:\VulkanSDK\1.2.135.0\Include;C:\_lib\glm\glm;C:\_lib\glfw-3.3.2.bin.WIN64\include;$(IncludePath)</IncludePath>
+    <IncludePath>C:\_lib\stb;C:\VulkanSDK\1.2.135.0\Include;C:\_lib\glm\glm;C:\_lib\glfw-3.3.2.bin.WIN64\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>C:\VulkanSDK\1.2.135.0\Include;C:\_lib\glm\glm;C:\_lib\glfw-3.3.2.bin.WIN64\include;$(IncludePath)</IncludePath>
+    <IncludePath>C:\_lib\stb;C:\VulkanSDK\1.2.135.0\Include;C:\_lib\glm\glm;C:\_lib\glfw-3.3.2.bin.WIN64\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -150,12 +150,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="ImageInput.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="RenderingData.cpp" />
     <ClCompile Include="VertexInput.cpp" />
     <ClCompile Include="VulkanEnv.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ImageInput.h" />
     <ClInclude Include="RenderingData.h" />
     <ClInclude Include="VertexInput.h" />
     <ClInclude Include="VulkanEnv.h" />

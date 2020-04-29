@@ -25,6 +25,8 @@ int main(int argc, char** argv) {
 	vulkanEnv.setMaxFrameInFlight(2);
 	VertexInput fixedVertexInput;
 	RenderingData renderingData;
+	ImageInput imageInput;
+	//imageInput.load();
 
 	vulkanEnv.createInstance(APP_TITLE);
 	vulkanEnv.createSurface();
@@ -37,13 +39,14 @@ int main(int argc, char** argv) {
 	vulkanEnv.createGraphicsPipelineLayout();
 	vulkanEnv.createGraphicsPipeline();
 	vulkanEnv.createFrameBuffer();
+	vulkanEnv.setupFence();
+	vulkanEnv.createTextureImage(imageInput, false);
 	vulkanEnv.createCommandPool();
-	vulkanEnv.setupBufferCopy();
 	vulkanEnv.createVertexBufferIndice({ &fixedVertexInput });
 	vulkanEnv.createUniformBuffer();
 	vulkanEnv.createDescriptorPool();
 	vulkanEnv.createDescriptorSet();
-	vulkanEnv.allocateCommandBuffer();
+	vulkanEnv.allocateSwapchainCommandBuffer();
 	vulkanEnv.setupCommandBuffer();
 	vulkanEnv.createFrameSyncObject();
 
