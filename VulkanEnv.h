@@ -39,6 +39,7 @@ struct IndexBuffer {
 
 struct ImageSet {
 	std::vector<VkImage> image;
+	std::vector<VkImageView> view;
 	std::vector<VkDeviceMemory> memory;
 };
 
@@ -110,13 +111,14 @@ public:
 	bool createDevice();
 	bool createSurface();
 	bool createSwapchain();
-	bool createImageView();
+	bool createSwapchainImageView();
 	bool createRenderPass();
 	bool createDescriptorSetLayout();
 	bool createGraphicsPipelineLayout();
 	bool createGraphicsPipeline();
 	bool createFrameBuffer();
 	bool createTextureImage(ImageInput& input, bool perserveInput);
+	bool createTextureImageView();
 	bool setupFence();
 	bool createVertexBufferIndice(const std::vector<VertexInput*>& input);
 	bool createUniformBuffer();

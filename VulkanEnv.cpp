@@ -119,14 +119,24 @@ bool createShaderModule(const VkDevice device, const std::vector<char>& code, Vk
 	return vkCreateShaderModule(device, &info, nullptr, shaderModule) == VK_SUCCESS;
 }
 
-VkFence CreateFence(VkDevice device, VkFenceCreateFlags flags) {
-	VkFence fence;
-	VkFenceCreateInfo fenceInfo;
-	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-	fenceInfo.flags = flags;
-	fenceInfo.pNext = nullptr;
-	vkCreateFence(device, &fenceInfo, nullptr, &fence);
-	return fence;
+bool createImageView(VkDevice device, VkImage image, VkFormat format, VkImageView& view) {
+	VkImageViewCreateInfo info;
+	info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	info.flags = 0;
+	info.pNext = nullptr;
+	info.image = image;
+	info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	info.format = format;
+	info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+	info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+	info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+	info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+	info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	info.subresourceRange.baseMipLevel = 0;
+	info.subresourceRange.levelCount = 1;
+	info.subresourceRange.baseArrayLayer = 0;
+	info.subresourceRange.layerCount = 1;
+	return vkCreateImageView(device, &info, nullptr, &view) == VK_SUCCESS;
 }
 
 void VulkanEnv::setWindow(GLFWwindow* win) noexcept {
@@ -307,27 +317,10 @@ bool VulkanEnv::createSwapchain() {
 	return true;
 }
 
-bool VulkanEnv::createImageView() {
+bool VulkanEnv::createSwapchainImageView() {
 	swapchainImageView.resize(swapchainImage.size());
 	for (auto i = 0; i < swapchainImage.size(); ++i) {
-		VkImageViewCreateInfo info;
-		info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-		info.pNext = nullptr;
-		info.flags = 0;
-		info.image = swapchainImage[i];
-		info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-		info.format = swapchainFormat.format;
-		info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-		info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-		info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-		info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-		info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		info.subresourceRange.baseMipLevel = 0;
-		info.subresourceRange.levelCount = 1;
-		info.subresourceRange.baseArrayLayer = 0;
-		info.subresourceRange.layerCount = 1;
-
-		if (vkCreateImageView(device, &info, nullptr, &swapchainImageView[i]) != VK_SUCCESS) {
+		if (!createImageView(device, swapchainImage[i], swapchainFormat.format, swapchainImageView[i])) {
 			return false;
 		}
 	}
@@ -642,6 +635,8 @@ bool VulkanEnv::createTextureImage(ImageInput& input, bool perserveInput) {
 	info.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 	info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	info.samples = VK_SAMPLE_COUNT_1_BIT;
+	info.queueFamilyIndexCount = 0;
+	info.pQueueFamilyIndices = nullptr;
 	if (vkCreateImage(device, &info, nullptr, &image) != VK_SUCCESS) {
 		return false;
 	}
@@ -699,7 +694,7 @@ bool VulkanEnv::transitionImageLayout(VkImage image, VkFormat format, VkImageLay
 	VkPipelineStageFlags srcStage;
 	VkPipelineStageFlags dstStage;
 	if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
-		barrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+		barrier.srcAccessMask = 0;
 		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 		srcStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 		dstStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
@@ -744,6 +739,17 @@ bool VulkanEnv::copyImage(VkBuffer src, VkImage dst, uint32_t width, uint32_t he
 	vkCmdCopyBufferToImage(cmd, src, dst, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
 
 	return vkEndCommandBuffer(cmd) == VK_SUCCESS;
+}
+
+bool VulkanEnv::createTextureImageView() {
+	imageSet.view.reserve(imageSet.image.size());
+	for (const auto& image : imageSet.image) {
+		VkImageView view;
+		if (!createImageView(device, image, VK_FORMAT_R8G8B8A8_SRGB, view)) {
+			return false;
+		}
+		imageSet.view.push_back(view);
+	}
 }
 
 bool VulkanEnv::setupFence() {
@@ -1103,6 +1109,7 @@ void VulkanEnv::destroy() {
 	vkFreeMemory(device, indexBuffer.memory, nullptr);
 	vkDestroyFence(device, fenceVertexIndexCopy, nullptr);
 	for (auto i = 0; i < imageSet.image.size(); ++i) {
+		vkDestroyImageView(device, imageSet.view[i], nullptr);
 		vkDestroyImage(device, imageSet.image[i], nullptr);
 		vkFreeMemory(device, imageSet.memory[i], nullptr);
 	}
@@ -1147,7 +1154,7 @@ bool VulkanEnv::recreateSwapchain() {
 
 	bool result =
 		createSwapchain() &&
-		createImageView() &&
+		createSwapchainImageView() &&
 		createRenderPass() &&
 		createGraphicsPipelineLayout() &&
 		createGraphicsPipeline() &&

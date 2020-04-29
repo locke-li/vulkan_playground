@@ -26,22 +26,23 @@ int main(int argc, char** argv) {
 	VertexInput fixedVertexInput;
 	RenderingData renderingData;
 	ImageInput imageInput;
-	//imageInput.load();
+	imageInput.load("texture/vibrant-watercolor-flow-texture-background_1017-19544.jpg");
 
 	vulkanEnv.createInstance(APP_TITLE);
 	vulkanEnv.createSurface();
 	vulkanEnv.createPhysicalDevice();
 	vulkanEnv.createDevice();
 	vulkanEnv.createSwapchain();
-	vulkanEnv.createImageView();
+	vulkanEnv.createSwapchainImageView();
 	vulkanEnv.createRenderPass();
 	vulkanEnv.createDescriptorSetLayout();
 	vulkanEnv.createGraphicsPipelineLayout();
 	vulkanEnv.createGraphicsPipeline();
 	vulkanEnv.createFrameBuffer();
 	vulkanEnv.setupFence();
-	vulkanEnv.createTextureImage(imageInput, false);
 	vulkanEnv.createCommandPool();
+	vulkanEnv.createTextureImage(imageInput, false);
+	vulkanEnv.createTextureImageView();
 	vulkanEnv.createVertexBufferIndice({ &fixedVertexInput });
 	vulkanEnv.createUniformBuffer();
 	vulkanEnv.createDescriptorPool();
