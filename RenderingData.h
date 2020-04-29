@@ -14,5 +14,6 @@ private:
 public:
 	void updateUniform(const uint32_t width, const uint32_t height);
 	const UniformBufferData& getUniform() const;
+	uint32_t getUniformSize() const;
 };
 

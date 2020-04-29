@@ -149,6 +149,10 @@ void VulkanEnv::setMaxFrameInFlight(uint32_t value) noexcept {
 	maxFrameInFlight = value;
 }
 
+void VulkanEnv::setUniformSize(uint32_t size) noexcept {
+	uniformSize = size;
+}
+
 uint32_t VulkanEnv::getWidth() const {
 	return swapchainExtent.width;
 }
@@ -1005,7 +1009,7 @@ bool VulkanEnv::createDescriptorSet() {
 		VkDescriptorBufferInfo bufferInfo;
 		bufferInfo.buffer = uniformBuffer[i];
 		bufferInfo.offset = 0;
-		bufferInfo.range = sizeof(uniformBuffer[i]);
+		bufferInfo.range = uniformSize;
 
 		VkWriteDescriptorSet uniformWrite;
 		uniformWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;

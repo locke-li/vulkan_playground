@@ -81,6 +81,7 @@ private:
 	QueueFamily queueFamily;
 	float queuePriority = 1.0;
 	SwapChainSupport swapChainSupport;
+	uint32_t uniformSize;
 
 	bool frameBufferResized;
 	VkFence fenceVertexIndexCopy;
@@ -102,6 +103,7 @@ private:
 public:
 	void setWindow(GLFWwindow *window) noexcept; 
 	void setMaxFrameInFlight(uint32_t value) noexcept;
+	void setUniformSize(uint32_t size) noexcept;
 	uint32_t getWidth() const;
 	uint32_t getHeight() const;
 	void onFramebufferResize() noexcept;

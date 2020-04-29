@@ -24,11 +24,12 @@ int main(int argc, char** argv) {
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
 	auto* window = glfwCreateWindow(WIDTH, HEIGHT, APP_TITLE, nullptr, nullptr);
+	VertexInput vertexInput;
+	RenderingData renderingData;
 	VulkanEnv vulkanEnv;
 	vulkanEnv.setWindow(window);
 	vulkanEnv.setMaxFrameInFlight(2);
-	VertexInput vertexInput;
-	RenderingData renderingData;
+	vulkanEnv.setUniformSize(renderingData.getUniformSize());
 
 	ImageInput imageInput;
 	logResult(imageInput.load("texture/vibrant-watercolor-flow-texture-background_1017-19544.jpg"));

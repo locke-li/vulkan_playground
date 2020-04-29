@@ -21,3 +21,7 @@ void RenderingData::updateUniform(const uint32_t width, const uint32_t height) {
 const UniformBufferData& RenderingData::getUniform() const {
 	return uniformData;
 }
+
+uint32_t RenderingData::getUniformSize() const {
+	return sizeof(uniformData);
+}
