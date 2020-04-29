@@ -41,6 +41,7 @@ struct ImageSet {
 	std::vector<VkImage> image;
 	std::vector<VkImageView> view;
 	std::vector<VkDeviceMemory> memory;
+	std::vector<VkSampler> sampler;
 };
 
 class VulkanEnv
@@ -119,6 +120,7 @@ public:
 	bool createFrameBuffer();
 	bool createTextureImage(ImageInput& input, bool perserveInput);
 	bool createTextureImageView();
+	bool createTextureSampler();
 	bool setupFence();
 	bool createVertexBufferIndice(const std::vector<VertexInput*>& input);
 	bool createUniformBuffer();

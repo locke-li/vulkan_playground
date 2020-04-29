@@ -35,7 +35,8 @@ bool deviceValid(const VkPhysicalDevice device) {
 	vkGetPhysicalDeviceFeatures(device, &features);
 
 	return properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU &&
-		features.geometryShader;
+		features.geometryShader &&
+		features.samplerAnisotropy;
 }
 
 bool deviceExtensionSupport(const VkPhysicalDevice device) {
@@ -260,6 +261,7 @@ bool VulkanEnv::createDevice() {
 	}
 
 	VkPhysicalDeviceFeatures features{};
+	features.samplerAnisotropy = VK_TRUE;
 
 	VkDeviceCreateInfo info{};
 	info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -752,6 +754,33 @@ bool VulkanEnv::createTextureImageView() {
 	}
 }
 
+bool VulkanEnv::createTextureSampler() {
+	VkSamplerCreateInfo info;
+	info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	info.flags = 0;
+	info.pNext = nullptr;
+	info.magFilter = VK_FILTER_LINEAR;
+	info.minFilter = VK_FILTER_LINEAR;
+	info.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	info.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	info.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	info.anisotropyEnable = VK_TRUE;
+	info.maxAnisotropy = 16;
+	info.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	info.unnormalizedCoordinates = VK_FALSE;
+	info.compareEnable = VK_FALSE;
+	info.compareEnable = VK_COMPARE_OP_ALWAYS;
+	info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	info.mipLodBias = 0.0f;
+	info.minLod = 0.0f;
+	info.maxLod = 0.0f;
+	VkSampler sampler;
+	if (vkCreateSampler(device, &info, nullptr, &sampler) != VK_SUCCESS) {
+		return false;
+	}
+	imageSet.sampler.push_back(sampler);
+}
+
 bool VulkanEnv::setupFence() {
 	VkFenceCreateInfo fenceInfo;
 	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
@@ -1112,6 +1141,9 @@ void VulkanEnv::destroy() {
 		vkDestroyImageView(device, imageSet.view[i], nullptr);
 		vkDestroyImage(device, imageSet.image[i], nullptr);
 		vkFreeMemory(device, imageSet.memory[i], nullptr);
+	}
+	for (const auto& sampler : imageSet.sampler) {
+		vkDestroySampler(device, sampler, nullptr);
 	}
 	vkDestroyFence(device, fenceImageCopy, nullptr);
 	vkDestroyCommandPool(device, commandPool, nullptr);
