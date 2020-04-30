@@ -23,6 +23,13 @@ struct InFlightFrame {
 	VkFence fenceInFlight;
 };
 
+struct DepthBuffer {
+	VkImage image;
+	VkDeviceMemory imageMemory;
+	VkImageView view;
+	VkFormat format;
+};
+
 struct VertexBuffer {
 	std::vector<VkBuffer> buffer;
 	std::vector<VkDeviceMemory> memory;
@@ -77,6 +84,7 @@ private:
 	VertexBuffer vertexBuffer;
 	IndexBuffer indexBuffer;
 	ImageSet imageSet;
+	DepthBuffer depthBuffer;
 
 	int maxFrameInFlight;
 	std::vector<InFlightFrame> inFlightFrame;
@@ -95,9 +103,11 @@ private:
 private:
 	bool queueFamilyValid(const VkPhysicalDevice device);
 	bool findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags flags, uint32_t* typeIndex);
+	bool findDepthFormat(VkFormat* format);
 	bool createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memTypeFlag, VkBuffer& buffer, VkDeviceMemory& memory);
 	bool createStagingBuffer(VkDeviceSize size, VkBuffer& buffer, VkDeviceMemory& memory);
 	bool copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size, VkCommandBuffer cmd);
+	bool createImage(const VkImageCreateInfo& info, VkImage& image, VkDeviceMemory& imageMemory);
 	bool transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLyaout, VkImageLayout newLayout, VkCommandBuffer cmd);
 	bool copyImage(VkBuffer src, VkImage dst, uint32_t width, uint32_t height, VkCommandBuffer cmd);
 	bool allocateCommandBuffer(const VkCommandPool pool, const uint32_t count, VkCommandBuffer* cmd);
@@ -121,6 +131,7 @@ public:
 	bool createSurface();
 	bool createSwapchain();
 	bool createSwapchainImageView();
+	bool createDepthBuffer();
 	bool createRenderPass();
 	bool createDescriptorSetLayout();
 	bool createGraphicsPipelineLayout();

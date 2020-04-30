@@ -78,6 +78,7 @@ int main(int argc, char** argv) {
 	logResult(vulkanEnv.createDevice());
 	logResult(vulkanEnv.createSwapchain());
 	logResult(vulkanEnv.createSwapchainImageView());
+	logResult(vulkanEnv.createDepthBuffer());
 	logResult(vulkanEnv.createRenderPass());
 	logResult(vulkanEnv.createDescriptorSetLayout());
 	logResult(vulkanEnv.createGraphicsPipelineLayout());
