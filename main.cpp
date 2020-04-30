@@ -24,10 +24,48 @@ int main(int argc, char** argv) {
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
 	auto* window = glfwCreateWindow(WIDTH, HEIGHT, APP_TITLE, nullptr, nullptr);
-	VertexInput vertexInput;
+
+	VertexIndexed tetrahedron = {
+		{
+			{{0.0f, -0.577f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
+			{{0.0f, 0.289f, 0.577f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+			{{-0.5f, 0.289f, -0.289f}, {0.0f, 1.0f, 0.0f}, {0.5f, 0.0f}},
+			{{0.5f, 0.289f, -0.289f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}}
+		},
+		{
+			0, 1, 2,
+			0, 2, 3,
+			0, 3, 1,
+			3, 2, 1,
+		}
+	};
+	MeshInput inputTetrahedron(tetrahedron, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f, 1.0f });
+	VertexIndexed cube = {
+		{
+			{{-0.5f, -0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
+			{{0.5f, -0.5f, 0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+			{{0.5f, 0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}, {0.5f, 0.0f}},
+			{{-0.5f, 0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
+			{{-0.5f, -0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
+			{{-0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
+			{{0.5f, 0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.5f, 0.0f}},
+			{{0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+		},
+		{
+			4, 5, 6, 6, 7, 4,//back
+			0, 1, 2, 2, 3, 0,//front
+			4, 0, 3, 3, 5, 4,//left
+			1, 7, 6, 6, 2, 1,//right
+			5, 3, 2, 2, 6, 5,//bottom
+			0, 4, 7, 7, 1, 0,//top
+		}
+	};
+	MeshInput inputCube(cube, { 0.0f, 0.0f, -1.0f }, { 0.0f, 0.0f, 0.0f, 1.0f });
 	RenderingData renderingData;
+	renderingData.updateCamera(60.0f, WIDTH / (float)HEIGHT);//TODO handle resize event
 	VulkanEnv vulkanEnv;
 	vulkanEnv.setWindow(window);
+	vulkanEnv.setRenderingData(renderingData);
 	vulkanEnv.setMaxFrameInFlight(2);
 	vulkanEnv.setUniformSize(renderingData.getUniformSize());
 
@@ -50,13 +88,13 @@ int main(int argc, char** argv) {
 	logResult(vulkanEnv.createTextureImage(imageInput, false));
 	logResult(vulkanEnv.createTextureImageView());
 	logResult(vulkanEnv.createTextureSampler());
-	logResult(vulkanEnv.createVertexBufferIndice({ &vertexInput }));
+	logResult(vulkanEnv.createVertexBufferIndice({ &inputTetrahedron, &inputCube }));
 	logResult(vulkanEnv.createUniformBuffer());
 	logResult(vulkanEnv.createDescriptorPool());
 	logResult(vulkanEnv.createDescriptorSet());
 	logResult(vulkanEnv.allocateSwapchainCommandBuffer());
-	logResult(vulkanEnv.setupCommandBuffer());
 	logResult(vulkanEnv.createFrameSyncObject());
+	logResult(vulkanEnv.updateUniformBuffer());
 
 	std::cout << std::endl;
 
@@ -65,7 +103,8 @@ int main(int argc, char** argv) {
 
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
-		renderingData.updateUniform(vulkanEnv.getWidth(), vulkanEnv.getHeight());
+		inputTetrahedron.animate(90);
+		inputCube.animate(45);
 		vulkanEnv.drawFrame(renderingData);
 	}
 

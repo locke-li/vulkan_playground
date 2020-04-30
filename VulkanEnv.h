@@ -1,7 +1,7 @@
 #pragma once
 #define GLFW_INCLUDE_VULKAN 
 #include "GLFW/glfw3.h"
-#include "VertexInput.h"
+#include "MeshInput.h"
 #include "RenderingData.h"
 #include "ImageInput.h"
 #include <vector>
@@ -26,15 +26,16 @@ struct InFlightFrame {
 struct VertexBuffer {
 	std::vector<VkBuffer> buffer;
 	std::vector<VkDeviceMemory> memory;
-	std::vector<VertexInput*> input;
+	std::vector<MeshInput*> input;
 	std::vector<VkDeviceSize> offset;
 };
 
 struct IndexBuffer {
 	VkBuffer buffer;
 	VkDeviceMemory memory;
-	std::vector<VertexInput*> input;
+	std::vector<MeshInput*> input;
 	std::vector<VkDeviceSize> offset;
+	std::vector<uint32_t> vOffset;
 };
 
 struct ImageSet {
@@ -47,7 +48,9 @@ struct ImageSet {
 class VulkanEnv
 {
 private:
-	GLFWwindow *window;
+	GLFWwindow* window;
+	const RenderingData* renderingData;
+
 	VkInstance instance;
 	VkSurfaceKHR surface;
 	VkPhysicalDevice physicalDevice;
@@ -69,6 +72,7 @@ private:
 	VkPipelineLayout graphicsPipelineLayout;
 	VkPipeline graphicsPipeline;
 	VkCommandPool commandPool;
+	VkCommandPool commandPoolReset;
 	std::vector<VkCommandBuffer> commandBuffer;
 	VertexBuffer vertexBuffer;
 	IndexBuffer indexBuffer;
@@ -96,12 +100,14 @@ private:
 	bool copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size, VkCommandBuffer cmd);
 	bool transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLyaout, VkImageLayout newLayout, VkCommandBuffer cmd);
 	bool copyImage(VkBuffer src, VkImage dst, uint32_t width, uint32_t height, VkCommandBuffer cmd);
-	bool allocateCommandBuffer(uint32_t count, VkCommandBuffer* cmd);
+	bool allocateCommandBuffer(const VkCommandPool pool, const uint32_t count, VkCommandBuffer* cmd);
 	bool beginCommand(VkCommandBuffer& cmd, VkCommandBufferUsageFlags flag);
 	bool submitCommand(VkCommandBuffer* cmd, uint32_t count, VkQueue queue, VkFence fence);
+	bool setupCommandBuffer(uint32_t index);
 	void destroySwapchain();
 public:
-	void setWindow(GLFWwindow *window) noexcept; 
+	void setWindow(GLFWwindow *window) noexcept;
+	void setRenderingData(const RenderingData& data) noexcept;
 	void setMaxFrameInFlight(uint32_t value) noexcept;
 	void setUniformSize(uint32_t size) noexcept;
 	uint32_t getWidth() const;
@@ -124,18 +130,18 @@ public:
 	bool createTextureImageView();
 	bool createTextureSampler();
 	bool setupFence();
-	bool createVertexBufferIndice(const std::vector<VertexInput*>& input);
+	bool createVertexBufferIndice(const std::vector<MeshInput*>& input);
 	bool createUniformBuffer();
 	bool createDescriptorPool();
 	bool createDescriptorSet();
 	bool createCommandPool();
 	bool allocateSwapchainCommandBuffer();
-	bool setupCommandBuffer();
 	bool createFrameSyncObject();
 	void destroy();
 
 	bool recreateSwapchain();
-	void updateUniformBuffer(const RenderingData& renderingData, const uint32_t imageIndex);
+	bool updateUniformBuffer();
+	bool updateUniformBuffer(const uint32_t imageIndex);
 	bool drawFrame(const RenderingData& renderingData);
 };
 

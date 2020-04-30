@@ -21,13 +21,13 @@
     <ClCompile Include="VulkanEnv.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="VertexInput.cpp">
+    <ClCompile Include="ImageInput.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="MeshInput.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="RenderingData.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ImageInput.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -35,13 +35,13 @@
     <ClInclude Include="VulkanEnv.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="VertexInput.h">
+    <ClInclude Include="ImageInput.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MeshInput.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="RenderingData.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ImageInput.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

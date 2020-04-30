@@ -153,13 +153,13 @@
     <ClCompile Include="ImageInput.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="RenderingData.cpp" />
-    <ClCompile Include="VertexInput.cpp" />
+    <ClCompile Include="MeshInput.cpp" />
     <ClCompile Include="VulkanEnv.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ImageInput.h" />
     <ClInclude Include="RenderingData.h" />
-    <ClInclude Include="VertexInput.h" />
+    <ClInclude Include="MeshInput.h" />
     <ClInclude Include="VulkanEnv.h" />
   </ItemGroup>
   <ItemGroup>

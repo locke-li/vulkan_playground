@@ -2,7 +2,6 @@
 #include "glm.hpp"
 
 struct UniformBufferData {
-	alignas(16)glm::mat4 model;
 	alignas(16)glm::mat4 view;
 	alignas(16)glm::mat4 proj;
 };
@@ -12,7 +11,7 @@ class RenderingData
 private:
 	UniformBufferData uniformData;
 public:
-	void updateUniform(const uint32_t width, const uint32_t height);
+	void updateCamera(const float fov, const float aspectRatio);
 	const UniformBufferData& getUniform() const;
 	uint32_t getUniformSize() const;
 };

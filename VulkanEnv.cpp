@@ -145,6 +145,10 @@ void VulkanEnv::setWindow(GLFWwindow* win) noexcept {
 	window = win;
 }
 
+void VulkanEnv::setRenderingData(const RenderingData& data) noexcept {
+	renderingData = &data;
+}
+
 void VulkanEnv::setMaxFrameInFlight(uint32_t value) noexcept {
 	maxFrameInFlight = value;
 }
@@ -414,14 +418,19 @@ bool VulkanEnv::createDescriptorSetLayout() {
 }
 
 bool VulkanEnv::createGraphicsPipelineLayout() {
+	VkPushConstantRange vertexConstant;
+	vertexConstant.offset = 0;
+	vertexConstant.size = MeshInput::getConstantSize();
+	vertexConstant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
 	VkPipelineLayoutCreateInfo info;
 	info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	info.flags = 0;
 	info.pNext = nullptr;
 	info.setLayoutCount = 1;
 	info.pSetLayouts = &descriptorSetLayout;
-	info.pushConstantRangeCount = 0;
-	info.pPushConstantRanges = nullptr;
+	info.pushConstantRangeCount = 1;
+	info.pPushConstantRanges = &vertexConstant;
 
 	return vkCreatePipelineLayout(device, &info, nullptr, &graphicsPipelineLayout) == VK_SUCCESS;
 }
@@ -453,8 +462,8 @@ bool VulkanEnv::createGraphicsPipeline() {
 	fragStage.pSpecializationInfo = nullptr;
 	VkPipelineShaderStageCreateInfo shaderStageInfo[] = { vertStage, fragStage };
 
-	auto vertexBinding = VertexInput::getBindingDescription();
-	auto vertexAttribute = VertexInput::getAttributeDescription();
+	auto vertexBinding = MeshInput::getBindingDescription();
+	auto vertexAttribute = MeshInput::getAttributeDescription();
 
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo;
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -673,7 +682,7 @@ bool VulkanEnv::createTextureImage(ImageInput& input, bool perserveInput) {
 	}
 
 	std::array<VkCommandBuffer, 3> cmd;
-	allocateCommandBuffer(static_cast<uint32_t>(cmd.size()), cmd.data());
+	allocateCommandBuffer(commandPool, static_cast<uint32_t>(cmd.size()), cmd.data());
 	transitionImageLayout(image, info.format, info.initialLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, cmd[0]);
 	copyImage(stagingBuffer, image, input.getWidth(), input.getHeight(), cmd[1]);
 	transitionImageLayout(image, info.format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, cmd[2]);
@@ -860,13 +869,15 @@ bool VulkanEnv::copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size, VkComm
 	return vkEndCommandBuffer(cmd) == VK_SUCCESS;
 }
 
-bool VulkanEnv::createVertexBufferIndice(const std::vector<VertexInput*>& input) {
-	uint32_t vSize = 0, iSize = 0;
+bool VulkanEnv::createVertexBufferIndice(const std::vector<MeshInput*>& input) {
+	uint32_t vCount = 0, vSize = 0, iSize = 0;
 	for (auto i = 0; i < input.size(); ++i) {
 		const auto& vertexInput = input[i];
 		vertexBuffer.offset.push_back(vSize);
-		vSize += vertexInput->vertexSize();
 		indexBuffer.offset.push_back(iSize);
+		indexBuffer.vOffset.push_back(vCount);
+		vSize += vertexInput->vertexSize();
+		vCount += vertexInput->vertexCount();
 		iSize += vertexInput->indexSize();
 	}
 
@@ -912,7 +923,7 @@ bool VulkanEnv::createVertexBufferIndice(const std::vector<VertexInput*>& input)
 	}
 
 	VkCommandBuffer copyCmd[2];
-	if (!allocateCommandBuffer(2, copyCmd)) {
+	if (!allocateCommandBuffer(commandPool, 2, copyCmd)) {
 		return false;
 	}
 	vBufferSuccess = copyBuffer(stagingVBuffer, vBuffer, vSize, copyCmd[0]);
@@ -1053,22 +1064,29 @@ bool VulkanEnv::createCommandPool() {
 	info.pNext = nullptr;
 	info.queueFamilyIndex = queueFamily.graphics;
 
-	return vkCreateCommandPool(device, &info, nullptr, &commandPool) == VK_SUCCESS;
+	VkCommandPoolCreateInfo infoResetable;
+	infoResetable.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	infoResetable.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+	infoResetable.pNext = nullptr;
+	infoResetable.queueFamilyIndex = queueFamily.graphics;
+
+	return vkCreateCommandPool(device, &info, nullptr, &commandPool) == VK_SUCCESS &&
+		vkCreateCommandPool(device, &infoResetable, nullptr, &commandPoolReset) == VK_SUCCESS;
 }
 
-bool VulkanEnv::allocateCommandBuffer(uint32_t count, VkCommandBuffer* cmd) {
+bool VulkanEnv::allocateCommandBuffer(const VkCommandPool pool, const uint32_t count, VkCommandBuffer* cmd) {
 	VkCommandBufferAllocateInfo cmdInfo;
 	cmdInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	cmdInfo.pNext = nullptr;
 	cmdInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	cmdInfo.commandPool = commandPool;
+	cmdInfo.commandPool = pool;
 	cmdInfo.commandBufferCount = count;
 	return vkAllocateCommandBuffers(device, &cmdInfo, cmd) == VK_SUCCESS;
 }
 
 bool VulkanEnv::allocateSwapchainCommandBuffer() {
 	commandBuffer.resize(swapchainFramebuffer.size());
-	return allocateCommandBuffer(static_cast<uint32_t>(commandBuffer.size()), commandBuffer.data());
+	return allocateCommandBuffer(commandPoolReset, static_cast<uint32_t>(commandBuffer.size()), commandBuffer.data());
 }
 
 bool VulkanEnv::beginCommand(VkCommandBuffer& cmd, VkCommandBufferUsageFlags flag) {
@@ -1094,46 +1112,42 @@ bool VulkanEnv::submitCommand(VkCommandBuffer* cmd, uint32_t count, VkQueue queu
 	return vkQueueSubmit(queue, 1, &info, fence) == VK_SUCCESS;
 }
 
-bool VulkanEnv::setupCommandBuffer() {
-	for (auto i = 0; i < commandBuffer.size(); ++i) {
-		VkCommandBufferBeginInfo beginInfo;
-		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		beginInfo.flags = 0;
-		beginInfo.pNext = nullptr;
-		beginInfo.pInheritanceInfo = nullptr;
-
-		auto& cmd = commandBuffer[i];
-		if (vkBeginCommandBuffer(cmd, &beginInfo) != VK_SUCCESS) {
-			return false;
-		}
-
-		VkRenderPassBeginInfo renderPassBegin;
-		renderPassBegin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassBegin.pNext = nullptr;
-		renderPassBegin.framebuffer = swapchainFramebuffer[i];
-		renderPassBegin.renderPass = renderPass;
-		renderPassBegin.renderArea.offset = { 0, 0 };
-		renderPassBegin.renderArea.extent = swapchainExtent;
-		renderPassBegin.clearValueCount = 1;
-		VkClearValue clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
-		renderPassBegin.pClearValues = &clearColor;
-
-		vkCmdBeginRenderPass(cmd, &renderPassBegin, VK_SUBPASS_CONTENTS_INLINE);
-		vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-		vkCmdSetViewport(cmd, 0, 1, &viewport);
-		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipelineLayout, 0, 1, &descriptorSet[i], 0, nullptr);
-		vkCmdBindVertexBuffers(cmd, 0, static_cast<uint32_t>(vertexBuffer.buffer.size()), vertexBuffer.buffer.data(), vertexBuffer.offset.data());
-		for (auto i = 0; i < indexBuffer.offset.size(); ++i) {
-			vkCmdBindIndexBuffer(cmd, indexBuffer.buffer, indexBuffer.offset[i], VK_INDEX_TYPE_UINT16);
-			vkCmdDrawIndexed(cmd, indexBuffer.input[i]->indexCount(), 1, 0, 0, 0);
-		}
-		vkCmdEndRenderPass(cmd);
-
-		if (vkEndCommandBuffer(cmd) != VK_SUCCESS) {
-			return false;
-		}
+bool VulkanEnv::setupCommandBuffer(uint32_t index) {
+	auto& cmd = commandBuffer[index];
+	VkCommandBufferBeginInfo beginInfo;
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.flags = 0;
+	beginInfo.pNext = nullptr;
+	beginInfo.pInheritanceInfo = nullptr;
+	if (vkBeginCommandBuffer(cmd, &beginInfo) != VK_SUCCESS) {
+		return false;
 	}
-	return true;
+
+	VkRenderPassBeginInfo renderPassBegin;
+	renderPassBegin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	renderPassBegin.pNext = nullptr;
+	renderPassBegin.framebuffer = swapchainFramebuffer[index];
+	renderPassBegin.renderPass = renderPass;
+	renderPassBegin.renderArea.offset = { 0, 0 };
+	renderPassBegin.renderArea.extent = swapchainExtent;
+	renderPassBegin.clearValueCount = 1;
+	VkClearValue clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+	renderPassBegin.pClearValues = &clearColor;
+
+	vkCmdBeginRenderPass(cmd, &renderPassBegin, VK_SUBPASS_CONTENTS_INLINE);
+	vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+	vkCmdSetViewport(cmd, 0, 1, &viewport);
+	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipelineLayout, 0, 1, &descriptorSet[index], 0, nullptr);
+	vkCmdBindVertexBuffers(cmd, 0, static_cast<uint32_t>(vertexBuffer.buffer.size()), vertexBuffer.buffer.data(), vertexBuffer.offset.data());
+	for (auto i = 0; i < indexBuffer.offset.size(); ++i) {
+		vkCmdBindIndexBuffer(cmd, indexBuffer.buffer, indexBuffer.offset[i], VK_INDEX_TYPE_UINT16);
+		auto& input = *indexBuffer.input[i];
+		vkCmdPushConstants(cmd, graphicsPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, MeshInput::getConstantSize(), &input.getConstantData());
+		vkCmdDrawIndexed(cmd, input.indexCount(), 1, 0, indexBuffer.vOffset[i], 0);
+	}
+	vkCmdEndRenderPass(cmd);
+
+	return vkEndCommandBuffer(cmd) == VK_SUCCESS;
 }
 
 bool VulkanEnv::createFrameSyncObject() {
@@ -1157,7 +1171,6 @@ bool VulkanEnv::createFrameSyncObject() {
 			return false;
 		}
 	}
-
 	return true;
 }
 
@@ -1185,6 +1198,7 @@ void VulkanEnv::destroy() {
 	}
 	vkDestroyFence(device, fenceImageCopy, nullptr);
 	vkDestroyCommandPool(device, commandPool, nullptr);
+	vkDestroyCommandPool(device, commandPoolReset, nullptr);
 	vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
 	vkDestroyDevice(device, nullptr);
 	vkDestroySurfaceKHR(instance, surface, nullptr);
@@ -1192,7 +1206,6 @@ void VulkanEnv::destroy() {
 }
 
 void VulkanEnv::destroySwapchain() {
-	vkFreeCommandBuffers(device, commandPool, static_cast<uint32_t>(commandBuffer.size()), commandBuffer.data());
 	for (const auto framebuffer : swapchainFramebuffer) {
 		vkDestroyFramebuffer(device, framebuffer, nullptr);
 	}
@@ -1232,17 +1245,26 @@ bool VulkanEnv::recreateSwapchain() {
 		createUniformBuffer() &&
 		createDescriptorPool() &&
 		createDescriptorSet() &&
-		allocateSwapchainCommandBuffer() &&
-		setupCommandBuffer();
+		updateUniformBuffer();
 	return result;
 }
 
-void VulkanEnv::updateUniformBuffer(const RenderingData& renderingData, const uint32_t imageIndex) {
-	const auto& uniform = renderingData.getUniform();
+bool VulkanEnv::updateUniformBuffer() {
+	for (auto i = 0; i < uniformBuffer.size(); ++i) {
+		if (!updateUniformBuffer(i)) {
+			return false;
+		}
+	}
+	return true;
+}
+
+bool VulkanEnv::updateUniformBuffer(const uint32_t imageIndex) {
+	const auto& uniform = renderingData->getUniform();
 	void* buffer;
 	vkMapMemory(device, uniformBufferMemory[imageIndex], 0, sizeof(uniform), 0, &buffer);
 	memcpy(buffer, &uniform, sizeof(uniform));
 	vkUnmapMemory(device, uniformBufferMemory[imageIndex]);
+	return true;
 }
 
 bool VulkanEnv::drawFrame(const RenderingData& renderingData) {
@@ -1253,7 +1275,7 @@ bool VulkanEnv::drawFrame(const RenderingData& renderingData) {
 	vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, frame.semaphoreImageAquired, VK_NULL_HANDLE, &imageIndex);
 	vkWaitForFences(device, 1, &frame.fenceInFlight, VK_TRUE, UINT64_MAX);
 
-	updateUniformBuffer(renderingData, imageIndex);
+	setupCommandBuffer(imageIndex);
 
 	VkSubmitInfo submitInfo;
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
