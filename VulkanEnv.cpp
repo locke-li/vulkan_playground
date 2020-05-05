@@ -141,7 +141,7 @@ bool createShaderModule(const VkDevice device, const std::vector<char>& code, Vk
 	return vkCreateShaderModule(device, &info, nullptr, shaderModule) == VK_SUCCESS;
 }
 
-bool createImageView(VkDevice device, VkImage image, VkFormat format, VkImageAspectFlags aspect, VkImageView& view) {
+bool createImageView(VkDevice device, VkImage image, VkFormat format, VkImageAspectFlags aspect, uint32_t mipLevel, VkImageView& view) {
 	VkImageViewCreateInfo info;
 	info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 	info.flags = 0;
@@ -155,7 +155,7 @@ bool createImageView(VkDevice device, VkImage image, VkFormat format, VkImageAsp
 	info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
 	info.subresourceRange.aspectMask = aspect;
 	info.subresourceRange.baseMipLevel = 0;
-	info.subresourceRange.levelCount = 1;
+	info.subresourceRange.levelCount = mipLevel;
 	info.subresourceRange.baseArrayLayer = 0;
 	info.subresourceRange.layerCount = 1;
 	return vkCreateImageView(device, &info, nullptr, &view) == VK_SUCCESS;
@@ -351,7 +351,7 @@ bool VulkanEnv::createSwapchain() {
 bool VulkanEnv::createSwapchainImageView() {
 	swapchainImageView.resize(swapchainImage.size());
 	for (auto i = 0; i < swapchainImage.size(); ++i) {
-		if (!createImageView(device, swapchainImage[i], swapchainFormat.format, VK_IMAGE_ASPECT_COLOR_BIT, swapchainImageView[i])) {
+		if (!createImageView(device, swapchainImage[i], swapchainFormat.format, VK_IMAGE_ASPECT_COLOR_BIT, 1, swapchainImageView[i])) {
 			return false;
 		}
 	}
@@ -383,7 +383,7 @@ bool VulkanEnv::createDepthBuffer() {
 	if (!createImage(info, depthBuffer.image, depthBuffer.imageMemory)) {
 		return false;
 	}
-	if (!createImageView(device, depthBuffer.image, depthBuffer.format, VK_IMAGE_ASPECT_DEPTH_BIT, depthBuffer.view)) {
+	if (!createImageView(device, depthBuffer.image, depthBuffer.format, VK_IMAGE_ASPECT_DEPTH_BIT, 1, depthBuffer.view)) {
 		return false;
 	}
 	return true;
@@ -730,7 +730,7 @@ bool VulkanEnv::createImage(const VkImageCreateInfo& info, VkImage& image, VkDev
 	return true;
 }
 
-bool VulkanEnv::createTextureImage(ImageInput& input, bool perserveInput) {
+bool VulkanEnv::createTextureImage(ImageInput& input) {
 	if (!input.isValid()) {
 		return false;
 	}
@@ -746,6 +746,7 @@ bool VulkanEnv::createTextureImage(ImageInput& input, bool perserveInput) {
 	memcpy(buffer, input.pixel(), size);
 	vkUnmapMemory(device, stagingBufferMemory);
 
+	ImageOption option = { input.getMipLevel(), VK_FORMAT_R8G8B8A8_SRGB };
 	VkImage image;
 	VkDeviceMemory imageMemory;
 	VkImageCreateInfo info;
@@ -756,10 +757,10 @@ bool VulkanEnv::createTextureImage(ImageInput& input, bool perserveInput) {
 	info.extent.width = input.getWidth();
 	info.extent.height = input.getHeight();
 	info.extent.depth = 1;
-	info.mipLevels = 1;
+	info.mipLevels = option.mipLevel;
 	info.arrayLayers = 1;
-	info.format = VK_FORMAT_R8G8B8A8_SRGB;
-	if (perserveInput) {
+	info.format = option.format;
+	if (input.perserveData()) {
 		info.tiling = VK_IMAGE_TILING_LINEAR;
 		info.initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
 	}
@@ -769,30 +770,43 @@ bool VulkanEnv::createTextureImage(ImageInput& input, bool perserveInput) {
 		info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	}
 	info.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+	if (input.generateMipmap()) {
+		info.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+	}
 	info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	info.samples = VK_SAMPLE_COUNT_1_BIT;
 	info.queueFamilyIndexCount = 0;
 	info.pQueueFamilyIndices = nullptr;
 	createImage(info, image, imageMemory);
+	imageSet.image.push_back(image);
+	imageSet.option.push_back(option);
+	imageSet.memory.push_back(imageMemory);
 
 	std::array<VkCommandBuffer, 3> cmd;
 	allocateCommandBuffer(commandPool, static_cast<uint32_t>(cmd.size()), cmd.data());
-	transitionImageLayout(image, info.format, info.initialLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, cmd[0]);
-	copyImage(stagingBuffer, image, input.getWidth(), input.getHeight(), cmd[1]);
-	transitionImageLayout(image, info.format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, cmd[2]);
+	transitionImageLayout(image, option, info.initialLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, cmd[0]);
+	copyImage(stagingBuffer, image, input.getWidth(), input.getHeight(), 0, cmd[1]);
+	if (input.generateMipmap()) {
+		generateTextureMipmap(image, option, input.getWidth(), input.getHeight(), cmd[2]);
+	}
+	else {
+		transitionImageLayout(image, option, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, cmd[2]);
+	}
 
 	submitCommand(cmd.data(), static_cast<uint32_t>(cmd.size()), graphicsQueue, fenceImageCopy);
 	vkWaitForFences(device, 1, &fenceImageCopy, VK_TRUE, UINT64_MAX);
 
 	vkDestroyBuffer(device, stagingBuffer, nullptr);
 	vkFreeMemory(device, stagingBufferMemory, nullptr);
-
-	imageSet.image.push_back(image);
-	imageSet.memory.push_back(imageMemory);
 	return true;
 }
 
-bool VulkanEnv::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, VkCommandBuffer cmd) {
+bool VulkanEnv::transitionImageLayout(VkImage image, const ImageOption& option, VkImageLayout oldLayout, VkImageLayout newLayout, VkCommandBuffer cmd) {
+	VkFormatProperties properties;
+	vkGetPhysicalDeviceFormatProperties(physicalDevice, option.format, &properties);
+	if ((properties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT) == 0) {
+		return false;
+	}
 	if (!beginCommand(cmd, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)) {
 		return false;
 	}
@@ -806,7 +820,7 @@ bool VulkanEnv::transitionImageLayout(VkImage image, VkFormat format, VkImageLay
 	barrier.image = image;
 	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	barrier.subresourceRange.baseMipLevel = 0;
-	barrier.subresourceRange.levelCount = 1;
+	barrier.subresourceRange.levelCount = option.mipLevel;
 	barrier.subresourceRange.baseArrayLayer = 0;
 	barrier.subresourceRange.layerCount = 1;
 
@@ -846,7 +860,7 @@ bool VulkanEnv::transitionImageLayout(VkImage image, VkFormat format, VkImageLay
 	return vkEndCommandBuffer(cmd) == VK_SUCCESS;
 }
 
-bool VulkanEnv::copyImage(VkBuffer src, VkImage dst, uint32_t width, uint32_t height, VkCommandBuffer cmd) {
+bool VulkanEnv::copyImage(VkBuffer src, VkImage dst, uint32_t width, uint32_t height, uint32_t mipLevel, VkCommandBuffer cmd) {
 	if (!beginCommand(cmd, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)) {
 		return false;
 	}
@@ -858,7 +872,7 @@ bool VulkanEnv::copyImage(VkBuffer src, VkImage dst, uint32_t width, uint32_t he
 	copy.imageOffset = { 0, 0, 0 };
 	copy.imageExtent = { width, height, 1 };
 	copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	copy.imageSubresource.mipLevel = 0;
+	copy.imageSubresource.mipLevel = mipLevel;
 	copy.imageSubresource.baseArrayLayer = 0;
 	copy.imageSubresource.layerCount = 1;
 	vkCmdCopyBufferToImage(cmd, src, dst, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
@@ -866,11 +880,91 @@ bool VulkanEnv::copyImage(VkBuffer src, VkImage dst, uint32_t width, uint32_t he
 	return vkEndCommandBuffer(cmd) == VK_SUCCESS;
 }
 
+bool VulkanEnv::generateTextureMipmap(VkImage image, const ImageOption& option, uint32_t width, uint32_t height, VkCommandBuffer cmd) {
+
+	if (!beginCommand(cmd, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)) {
+		return false;
+	}
+	VkImageMemoryBarrier barrier;
+	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	barrier.pNext = nullptr;
+	barrier.image = image;
+	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.layerCount = 1;
+	barrier.subresourceRange.levelCount = 1;
+
+	int mipWidth = width;
+	int mipHeight = height;
+	for (uint32_t i = 1; i < option.mipLevel; ++i) {
+		barrier.subresourceRange.baseMipLevel = i - 1;
+		barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+		vkCmdPipelineBarrier(cmd,
+			VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+			0,
+			0, nullptr,
+			0, nullptr,
+			1, &barrier);
+
+		VkImageBlit blit;
+		blit.srcOffsets[0] = { 0, 0, 0 };
+		blit.srcOffsets[1] = { mipWidth, mipHeight, 1 };
+		blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		blit.srcSubresource.baseArrayLayer = 0;
+		blit.srcSubresource.layerCount = 1;
+		blit.srcSubresource.mipLevel = i - 1;
+		blit.dstOffsets[0] = { 0, 0, 0 };
+		blit.dstOffsets[1] = {
+			mipWidth > 1 ? mipWidth / 2 : 1,
+			mipHeight > 1 ? mipHeight / 2 : 1,
+			1
+		};
+		blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		blit.dstSubresource.baseArrayLayer = 0;
+		blit.dstSubresource.layerCount = 1;
+		blit.dstSubresource.mipLevel = i;
+		vkCmdBlitImage(cmd, image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_LINEAR);
+
+		barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+		vkCmdPipelineBarrier(cmd,
+			VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+			0,
+			0, nullptr,
+			0, nullptr,
+			1, &barrier);
+
+		if (mipWidth > 1) mipWidth /= 2;
+		if (mipHeight > 1) mipHeight /= 2;
+	}
+	barrier.subresourceRange.baseMipLevel = option.mipLevel - 1;
+	barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+	vkCmdPipelineBarrier(cmd,
+		VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+		0,
+		0, nullptr,
+		0, nullptr,
+		1, &barrier);
+	return vkEndCommandBuffer(cmd) == VK_SUCCESS;
+}
+
 bool VulkanEnv::createTextureImageView() {
 	imageSet.view.reserve(imageSet.image.size());
-	for (const auto& image : imageSet.image) {
+	for (auto i = 0; i < imageSet.image.size(); ++i) {
+		const auto& image = imageSet.image[i];
+		const auto& option = imageSet.option[i];
 		VkImageView view;
-		if (!createImageView(device, image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, view)) {
+		if (!createImageView(device, image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, option.mipLevel, view)) {
 			return false;
 		}
 		imageSet.view.push_back(view);
@@ -897,7 +991,7 @@ bool VulkanEnv::createTextureSampler() {
 	info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
 	info.mipLodBias = 0.0f;
 	info.minLod = 0.0f;
-	info.maxLod = 0.0f;
+	info.maxLod = static_cast<float>(imageSet.option[0].mipLevel);
 	VkSampler sampler;
 	if (vkCreateSampler(device, &info, nullptr, &sampler) != VK_SUCCESS) {
 		return false;

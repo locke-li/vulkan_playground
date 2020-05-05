@@ -45,8 +45,14 @@ struct IndexBuffer {
 	std::vector<uint32_t> vOffset;
 };
 
+struct ImageOption {
+	uint32_t mipLevel;
+	VkFormat format;
+};
+
 struct ImageSet {
 	std::vector<VkImage> image;
+	std::vector<ImageOption> option;
 	std::vector<VkImageView> view;
 	std::vector<VkDeviceMemory> memory;
 	std::vector<VkSampler> sampler;
@@ -108,8 +114,9 @@ private:
 	bool createStagingBuffer(VkDeviceSize size, VkBuffer& buffer, VkDeviceMemory& memory);
 	bool copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size, VkCommandBuffer cmd);
 	bool createImage(const VkImageCreateInfo& info, VkImage& image, VkDeviceMemory& imageMemory);
-	bool transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLyaout, VkImageLayout newLayout, VkCommandBuffer cmd);
-	bool copyImage(VkBuffer src, VkImage dst, uint32_t width, uint32_t height, VkCommandBuffer cmd);
+	bool transitionImageLayout(VkImage image, const ImageOption& option, VkImageLayout oldLyaout, VkImageLayout newLayout, VkCommandBuffer cmd);
+	bool copyImage(VkBuffer src, VkImage dst, uint32_t width, uint32_t height, uint32_t mipLevel, VkCommandBuffer cmd);
+	bool generateTextureMipmap(VkImage image, const ImageOption& option, uint32_t width, uint32_t height, VkCommandBuffer cmd);
 	bool allocateCommandBuffer(const VkCommandPool pool, const uint32_t count, VkCommandBuffer* cmd);
 	bool beginCommand(VkCommandBuffer& cmd, VkCommandBufferUsageFlags flag);
 	bool submitCommand(VkCommandBuffer* cmd, uint32_t count, VkQueue queue, VkFence fence);
@@ -137,7 +144,7 @@ public:
 	bool createGraphicsPipelineLayout();
 	bool createGraphicsPipeline();
 	bool createFrameBuffer();
-	bool createTextureImage(ImageInput& input, bool perserveInput);
+	bool createTextureImage(ImageInput& input);
 	bool createTextureImageView();
 	bool createTextureSampler();
 	bool setupFence();

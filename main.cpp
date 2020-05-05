@@ -69,7 +69,8 @@ int main(int argc, char** argv) {
 	vulkanEnv.setMaxFrameInFlight(2);
 	vulkanEnv.setUniformSize(renderingData.getUniformSize());
 
-	ImageInput imageInput;
+	ImageInput imageInput(false, true);
+	imageInput.setMipLevel(3);
 	logResult(imageInput.load("texture/vibrant-watercolor-flow-texture-background_1017-19544.jpg"));
 
 	logResult(vulkanEnv.createInstance(APP_TITLE));
@@ -86,7 +87,7 @@ int main(int argc, char** argv) {
 	logResult(vulkanEnv.createFrameBuffer());
 	logResult(vulkanEnv.setupFence());
 	logResult(vulkanEnv.createCommandPool());
-	logResult(vulkanEnv.createTextureImage(imageInput, false));
+	logResult(vulkanEnv.createTextureImage(imageInput));
 	logResult(vulkanEnv.createTextureImageView());
 	logResult(vulkanEnv.createTextureSampler());
 	logResult(vulkanEnv.createVertexBufferIndice({ &inputTetrahedron, &inputCube }));
