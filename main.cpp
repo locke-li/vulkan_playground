@@ -2,6 +2,7 @@
 #include "GLFW/glfw3.h"
 #include "VulkanEnv.h"
 #include "RenderingData.h"
+#include "ModelImport.h"
 #include <iostream>
 
 const char* APP_TITLE = "vulkan";

@@ -75,7 +75,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\_lib\stb;C:\VulkanSDK\1.2.135.0\Include;C:\_lib\glm\glm;C:\_lib\glfw-3.3.2.bin.WIN64\include;$(IncludePath)</IncludePath>
+    <IncludePath>C:\_lib\stb;C:\VulkanSDK\1.2.135.0\Include;C:\_lib\glm\glm;C:\_lib\glfw-3.3.2.bin.WIN64\include;C:\_lib\tinyobjloader;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
@@ -152,12 +152,14 @@
   <ItemGroup>
     <ClCompile Include="ImageInput.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="ModelImport.cpp" />
     <ClCompile Include="RenderingData.cpp" />
     <ClCompile Include="MeshInput.cpp" />
     <ClCompile Include="VulkanEnv.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ImageInput.h" />
+    <ClInclude Include="ModelImport.h" />
     <ClInclude Include="RenderingData.h" />
     <ClInclude Include="MeshInput.h" />
     <ClInclude Include="VulkanEnv.h" />

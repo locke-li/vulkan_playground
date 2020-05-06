@@ -1,5 +1,5 @@
 #include "VulkanEnv.h"
-#include <set>
+#include <unordered_set>
 #include <cstdint>
 #include <algorithm>
 #include <iostream>
@@ -289,7 +289,7 @@ bool VulkanEnv::createPhysicalDevice() {
 }
 
 bool VulkanEnv::createDevice() {
-	std::set<uint32_t> uniqueQueueFamily{ queueFamily.graphics, queueFamily.present };
+	std::unordered_set<uint32_t> uniqueQueueFamily{ queueFamily.graphics, queueFamily.present };
 	std::vector<VkDeviceQueueCreateInfo> queueCreate;
 	queueCreate.reserve(uniqueQueueFamily.size());
 

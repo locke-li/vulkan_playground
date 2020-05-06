@@ -6,6 +6,10 @@
 #include <chrono>
 #include <iostream>
 
+bool Vertex::operator==(const Vertex& other) const {
+	return pos == other.pos && texCoord == other.texCoord && color == other.color;
+}
+
 VkVertexInputBindingDescription MeshInput::getBindingDescription() {
 	VkVertexInputBindingDescription binding;
 	binding.binding = 0;//index
