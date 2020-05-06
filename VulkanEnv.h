@@ -79,6 +79,9 @@ private:
 	std::vector<VkBuffer> uniformBuffer;
 	std::vector<VkDeviceMemory> uniformBufferMemory;
 	std::vector<VkDescriptorSet> descriptorSet;
+	VkImage msaaColorImage;
+	VkImageView msaaColorImageView;
+	VkDeviceMemory msaaColorImageMemory;
 	VkDescriptorSetLayout descriptorSetLayout;
 	VkDescriptorPool descriptorPool;
 	VkRenderPass renderPass;
@@ -100,6 +103,8 @@ private:
 	float queuePriority = 1.0;
 	SwapChainSupport swapChainSupport;
 	uint32_t uniformSize;
+	uint32_t targetMsaaSample = 1;
+	VkSampleCountFlagBits msaaSample;
 
 	bool frameBufferResized;
 	VkFence fenceVertexIndexCopy;
@@ -127,6 +132,7 @@ public:
 	void setRenderingData(const RenderingData& data) noexcept;
 	void setMaxFrameInFlight(uint32_t value) noexcept;
 	void setUniformSize(uint32_t size) noexcept;
+	void setMsaaSample(uint32_t count) noexcept;
 	uint32_t getWidth() const;
 	uint32_t getHeight() const;
 	void onFramebufferResize() noexcept;
@@ -138,6 +144,7 @@ public:
 	bool createSurface();
 	bool createSwapchain();
 	bool createSwapchainImageView();
+	bool createMsaaColorBuffer();
 	bool createDepthBuffer();
 	bool createRenderPass();
 	bool createDescriptorSetLayout();

@@ -68,6 +68,7 @@ int main(int argc, char** argv) {
 	vulkanEnv.setRenderingData(renderingData);
 	vulkanEnv.setMaxFrameInFlight(2);
 	vulkanEnv.setUniformSize(renderingData.getUniformSize());
+	vulkanEnv.setMsaaSample(8);
 
 	ImageInput imageInput(false, true);
 	imageInput.setMipLevel(3);
@@ -79,6 +80,7 @@ int main(int argc, char** argv) {
 	logResult(vulkanEnv.createDevice());
 	logResult(vulkanEnv.createSwapchain());
 	logResult(vulkanEnv.createSwapchainImageView());
+	logResult(vulkanEnv.createMsaaColorBuffer());
 	logResult(vulkanEnv.createDepthBuffer());
 	logResult(vulkanEnv.createRenderPass());
 	logResult(vulkanEnv.createDescriptorSetLayout());

@@ -161,6 +161,16 @@ bool createImageView(VkDevice device, VkImage image, VkFormat format, VkImageAsp
 	return vkCreateImageView(device, &info, nullptr, &view) == VK_SUCCESS;
 }
 
+VkSampleCountFlagBits findUsableMsaaSampleCount(VkPhysicalDevice device, uint32_t count) {
+	VkPhysicalDeviceProperties properties;
+	vkGetPhysicalDeviceProperties(device, &properties);
+	VkSampleCountFlags limit = properties.limits.framebufferColorSampleCounts & properties.limits.framebufferDepthSampleCounts;
+	while (count > 1 && (count & limit) == 0) {
+		count /= 2;
+	}
+	return static_cast<VkSampleCountFlagBits>(count);
+}
+
 void VulkanEnv::setWindow(GLFWwindow* win) noexcept {
 	window = win;
 }
@@ -175,6 +185,10 @@ void VulkanEnv::setMaxFrameInFlight(uint32_t value) noexcept {
 
 void VulkanEnv::setUniformSize(uint32_t size) noexcept {
 	uniformSize = size;
+}
+
+void VulkanEnv::setMsaaSample(uint32_t count) noexcept {
+	targetMsaaSample = count;
 }
 
 uint32_t VulkanEnv::getWidth() const {
@@ -266,6 +280,7 @@ bool VulkanEnv::createPhysicalDevice() {
 			!swapChainSupport.formats.empty() &&
 			!swapChainSupport.presentMode.empty()) {
 			physicalDevice = device;
+			msaaSample = findUsableMsaaSampleCount(device, targetMsaaSample);
 			return true;
 		}
 	}
@@ -358,6 +373,38 @@ bool VulkanEnv::createSwapchainImageView() {
 	return true;
 }
 
+bool VulkanEnv::createMsaaColorBuffer() {
+	if (msaaSample == VK_SAMPLE_COUNT_1_BIT) {
+		return true;
+	}
+	VkImageCreateInfo info;
+	info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	info.flags = 0;
+	info.pNext = nullptr;
+	info.imageType = VK_IMAGE_TYPE_2D;
+	info.extent.width = swapchainExtent.width;
+	info.extent.height = swapchainExtent.height;
+	info.extent.depth = 1;
+	info.mipLevels = 1;
+	info.arrayLayers = 1;
+	info.format = swapchainFormat.format;
+	info.tiling = VK_IMAGE_TILING_OPTIMAL;
+	info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+	info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	info.samples = msaaSample;
+	info.queueFamilyIndexCount = 0;
+	info.pQueueFamilyIndices = nullptr;
+
+	if (!createImage(info, msaaColorImage, msaaColorImageMemory)) {
+		return false;
+	}
+	if (!createImageView(device, msaaColorImage, swapchainFormat.format, VK_IMAGE_ASPECT_COLOR_BIT, 1, msaaColorImageView)) {
+		return false;
+	}
+	return true;
+}
+
 bool VulkanEnv::createDepthBuffer() {
 	if (!findDepthFormat(&depthBuffer.format)) {
 		return false;
@@ -377,7 +424,7 @@ bool VulkanEnv::createDepthBuffer() {
 	info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 	info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	info.samples = VK_SAMPLE_COUNT_1_BIT;
+	info.samples = msaaSample;
 	info.queueFamilyIndexCount = 0;
 	info.pQueueFamilyIndices = nullptr;
 	if (!createImage(info, depthBuffer.image, depthBuffer.imageMemory)) {
@@ -402,7 +449,7 @@ bool VulkanEnv::createRenderPass() {
 	VkAttachmentDescription colorAttachment;
 	colorAttachment.flags = 0;
 	colorAttachment.format = swapchainFormat.format;
-	colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	colorAttachment.samples = msaaSample;
 	colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;//don't care what it was previously
 	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -417,7 +464,7 @@ bool VulkanEnv::createRenderPass() {
 	VkAttachmentDescription depthAttachment;
 	depthAttachment.flags = 0;
 	depthAttachment.format = depthBuffer.format;
-	depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	depthAttachment.samples = msaaSample;
 	depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -450,17 +497,46 @@ bool VulkanEnv::createRenderPass() {
 	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
-	std::array<VkAttachmentDescription, 2> attachments = {colorAttachment, depthAttachment};
+	
 	VkRenderPassCreateInfo renderPassInfo;
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 	renderPassInfo.flags = 0;
 	renderPassInfo.pNext = nullptr;
-	renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-	renderPassInfo.pAttachments = attachments.data();
+	//to be filled later
+	//renderPassInfo.attachmentCount
+	//renderPassInfo.pAttachments
 	renderPassInfo.subpassCount = 1;
 	renderPassInfo.pSubpasses = &subpass;
 	renderPassInfo.dependencyCount = 1;
 	renderPassInfo.pDependencies = &dependency;
+
+	if (msaaSample != VK_SAMPLE_COUNT_1_BIT) {
+		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		colorAttachmentRef.attachment = 2;
+		VkAttachmentDescription colorResolve;
+		colorResolve.flags = 0;
+		colorResolve.format = swapchainFormat.format;
+		colorResolve.samples = VK_SAMPLE_COUNT_1_BIT;
+		colorResolve.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		colorResolve.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		colorResolve.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		colorResolve.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		colorResolve.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		colorResolve.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		VkAttachmentReference colorResolveRef;
+		colorResolveRef.attachment = 0;
+		colorResolveRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		subpass.pResolveAttachments = &colorResolveRef;
+
+		VkAttachmentDescription attachments[] = { colorResolve, depthAttachment, colorAttachment };
+		renderPassInfo.attachmentCount = 3;
+		renderPassInfo.pAttachments = attachments;
+	}
+	else {
+		VkAttachmentDescription attachments[] = { colorAttachment, depthAttachment };
+		renderPassInfo.attachmentCount = 2;
+		renderPassInfo.pAttachments = attachments;
+	}
 
 	return vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) == VK_SUCCESS;
 }
@@ -611,7 +687,7 @@ bool VulkanEnv::createGraphicsPipeline() {
 	multisampleInfo.flags = 0;
 	multisampleInfo.pNext = nullptr;
 	multisampleInfo.sampleShadingEnable = VK_FALSE;
-	multisampleInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+	multisampleInfo.rasterizationSamples = msaaSample;
 	multisampleInfo.minSampleShading = 1.0f;
 	multisampleInfo.pSampleMask = nullptr;
 	multisampleInfo.alphaToCoverageEnable = VK_FALSE;
@@ -690,17 +766,24 @@ bool VulkanEnv::createGraphicsPipeline() {
 bool VulkanEnv::createFrameBuffer() {
 	swapchainFramebuffer.resize(swapchainImageView.size());
 	for (auto i = 0; i < swapchainImageView.size(); ++i) {
-		std::array<VkImageView, 2> attachments = { swapchainImageView[i] , depthBuffer.view};
 		VkFramebufferCreateInfo info;
 		info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 		info.flags = 0;
 		info.pNext = nullptr;
 		info.renderPass = renderPass;
-		info.attachmentCount = static_cast<uint32_t>(attachments.size());
-		info.pAttachments = attachments.data();
 		info.width = swapchainExtent.width;
 		info.height = swapchainExtent.height;
 		info.layers = 1;
+		if (msaaSample == VK_SAMPLE_COUNT_1_BIT) {
+			VkImageView attachments[] = { swapchainImageView[i] , depthBuffer.view };
+			info.attachmentCount = 2;
+			info.pAttachments = attachments;
+		}
+		else {
+			VkImageView attachments[] = { swapchainImageView[i] , depthBuffer.view, msaaColorImageView };
+			info.attachmentCount = 3;
+			info.pAttachments = attachments;
+		}
 
 		if (vkCreateFramebuffer(device, &info, nullptr, &swapchainFramebuffer[i]) != VK_SUCCESS) {
 			return false;
@@ -1317,9 +1400,6 @@ bool VulkanEnv::setupCommandBuffer(uint32_t index) {
 		return false;
 	}
 
-	std::array<VkClearValue, 2> clearColor;
-	clearColor[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
-	clearColor[1].depthStencil = { 1.0f, 0 };
 	VkRenderPassBeginInfo renderPassBegin;
 	renderPassBegin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	renderPassBegin.pNext = nullptr;
@@ -1327,8 +1407,21 @@ bool VulkanEnv::setupCommandBuffer(uint32_t index) {
 	renderPassBegin.renderPass = renderPass;
 	renderPassBegin.renderArea.offset = { 0, 0 };
 	renderPassBegin.renderArea.extent = swapchainExtent;
-	renderPassBegin.clearValueCount = static_cast<uint32_t>(clearColor.size());
-	renderPassBegin.pClearValues = clearColor.data();
+	if (msaaSample == VK_SAMPLE_COUNT_1_BIT) {
+		std::array<VkClearValue, 2> clearColor;
+		clearColor[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
+		clearColor[1].depthStencil = { 1.0f, 0 };
+		renderPassBegin.clearValueCount = static_cast<uint32_t>(clearColor.size());
+		renderPassBegin.pClearValues = clearColor.data();
+	}
+	else {
+		std::array<VkClearValue, 3> clearColor;
+		clearColor[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
+		clearColor[1].depthStencil = { 1.0f, 0 };
+		clearColor[2].color = { 0.0f, 0.0f, 0.0f, 1.0f };
+		renderPassBegin.clearValueCount = static_cast<uint32_t>(clearColor.size());
+		renderPassBegin.pClearValues = clearColor.data();
+	}
 
 	vkCmdBeginRenderPass(cmd, &renderPassBegin, VK_SUBPASS_CONTENTS_INLINE);
 	vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
@@ -1411,6 +1504,9 @@ void VulkanEnv::destroySwapchain() {
 	vkDestroyImageView(device, depthBuffer.view, nullptr);
 	vkDestroyImage(device, depthBuffer.image, nullptr);
 	vkFreeMemory(device, depthBuffer.imageMemory, nullptr);
+	vkDestroyImageView(device, msaaColorImageView, nullptr);
+	vkDestroyImage(device, msaaColorImage, nullptr);
+	vkFreeMemory(device, msaaColorImageMemory, nullptr);
 	for (auto i = 0; i < swapchainImageView.size(); ++i) {
 		vkDestroyImageView(device, swapchainImageView[i], nullptr);
 		vkDestroyBuffer(device, uniformBuffer[i], nullptr);
@@ -1437,6 +1533,7 @@ bool VulkanEnv::recreateSwapchain() {
 	bool result =
 		createSwapchain() &&
 		createSwapchainImageView() &&
+		createMsaaColorBuffer() &&
 		createDepthBuffer() &&
 		createRenderPass() &&
 		createGraphicsPipelineLayout() &&
