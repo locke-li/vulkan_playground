@@ -71,7 +71,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\_lib\stb;C:\VulkanSDK\1.2.135.0\Include;C:\_lib\glm\glm;C:\_lib\glfw-3.3.2.bin.WIN64\include;$(IncludePath)</IncludePath>
+    <IncludePath>C:\_lib\stb;C:\VulkanSDK\1.2.135.0\Include;C:\_lib\glm\glm;C:\_lib\glfw-3.3.2.bin.WIN64\include;C:\_lib\tinyobjloader;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
@@ -79,11 +79,11 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>C:\_lib\stb;C:\VulkanSDK\1.2.135.0\Include;C:\_lib\glm\glm;C:\_lib\glfw-3.3.2.bin.WIN64\include;$(IncludePath)</IncludePath>
+    <IncludePath>C:\_lib\stb;C:\VulkanSDK\1.2.135.0\Include;C:\_lib\glm\glm;C:\_lib\glfw-3.3.2.bin.WIN64\include;C:\_lib\tinyobjloader;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>C:\_lib\stb;C:\VulkanSDK\1.2.135.0\Include;C:\_lib\glm\glm;C:\_lib\glfw-3.3.2.bin.WIN64\include;$(IncludePath)</IncludePath>
+    <IncludePath>C:\_lib\stb;C:\VulkanSDK\1.2.135.0\Include;C:\_lib\glm\glm;C:\_lib\glfw-3.3.2.bin.WIN64\include;C:\_lib\tinyobjloader;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

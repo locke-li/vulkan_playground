@@ -4,9 +4,34 @@
 #include "glm.hpp"
 #include "gtc/matrix_transform.hpp"
 
-void RenderingData::updateCamera(const float fov, const float aspectRatio) {
-	uniformData.view = glm::lookAt(glm::vec3(0.0f, -1.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	uniformData.proj = glm::perspective(glm::radians(fov), aspectRatio, 0.05f, 10.0f);
+void RenderingData::updateProjection() {
+	uniformData.proj = glm::perspective(glm::radians(cameraFov), windowAspectRatio, 0.05f, 10.0f);
+}
+
+void RenderingData::updateView() {
+	uniformData.view = glm::lookAt(cameraPos, cameraViewCenter, glm::vec3(0.0f, 1.0f, 0.0f));
+}
+
+void RenderingData::setFov(const float fov) {
+	cameraFov = fov;
+	updateProjection();
+}
+void RenderingData::setAspectRatio(const float ratio) {
+	windowAspectRatio = ratio;
+	updateProjection();
+}
+void RenderingData::setPos(const glm::vec3&& pos) {
+	cameraPos = pos;
+	updateView();
+}
+
+void RenderingData::updateCamera(const float fov, const float aspectRatio, const glm::vec3&& pos, const glm::vec3&& center) {
+	cameraFov = fov;
+	cameraPos = pos;
+	cameraViewCenter = center;
+	windowAspectRatio = aspectRatio;
+	updateView();
+	updateProjection();
 }
 
 const UniformBufferData& RenderingData::getUniform() const {

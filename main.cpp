@@ -9,9 +9,17 @@ const char* APP_TITLE = "vulkan";
 const uint32_t WIDTH = 400;
 const uint32_t HEIGHT = 400;
 
+struct RenderContext {
+	VulkanEnv* vulkanEnv;
+	RenderingData* renderingData;
+};
+
 static void onFramebufferResize(GLFWwindow *window, int width, int height) {
-	auto* vulkanEnv = reinterpret_cast<VulkanEnv*>(glfwGetWindowUserPointer(window));
-	vulkanEnv->onFramebufferResize();
+	auto* renderContext = reinterpret_cast<RenderContext*>(glfwGetWindowUserPointer(window));
+	renderContext->vulkanEnv->onFramebufferResize();
+	if (height > 0) {
+		renderContext->renderingData->setAspectRatio(width / (float)height);
+	}
 }
 
 static void logResult(bool result) {
@@ -63,13 +71,14 @@ int main(int argc, char** argv) {
 	};
 	MeshInput inputCube(cube, { 0.0f, 0.0f, -1.0f }, { 0.0f, 0.0f, 0.0f, 1.0f });
 	RenderingData renderingData;
-	renderingData.updateCamera(60.0f, WIDTH / (float)HEIGHT);//TODO handle resize event
+	renderingData.updateCamera(60.0f, WIDTH / (float)HEIGHT, glm::vec3(0.0f, -1.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f));
 	VulkanEnv vulkanEnv;
 	vulkanEnv.setWindow(window);
 	vulkanEnv.setRenderingData(renderingData);
 	vulkanEnv.setMaxFrameInFlight(2);
 	vulkanEnv.setUniformSize(renderingData.getUniformSize());
 	vulkanEnv.setMsaaSample(8);
+	RenderContext renderContext = { &vulkanEnv, &renderingData };
 
 	ImageInput imageInput(false, true);
 	imageInput.setMipLevel(3);
@@ -103,7 +112,7 @@ int main(int argc, char** argv) {
 
 	std::cout << std::endl;
 
-	glfwSetWindowUserPointer(window, &vulkanEnv);
+	glfwSetWindowUserPointer(window, &renderContext);
 	glfwSetFramebufferSizeCallback(window, onFramebufferResize);
 
 	while (!glfwWindowShouldClose(window)) {
