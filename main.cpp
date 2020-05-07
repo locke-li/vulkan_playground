@@ -4,6 +4,7 @@
 #include "RenderingData.h"
 #include "ModelImport.h"
 #include <iostream>
+#include <chrono>
 
 const char* APP_TITLE = "vulkan";
 const uint32_t WIDTH = 400;
@@ -22,8 +23,12 @@ static void onFramebufferResize(GLFWwindow *window, int width, int height) {
 	}
 }
 
-static void logResult(bool result) {
-	std::cout << result << "\n";
+static void logResult(const char* title, bool result) {
+	static auto startTime = std::chrono::high_resolution_clock::now();
+
+	auto time = std::chrono::high_resolution_clock::now();
+	auto duration = std::chrono::duration<float, std::chrono::milliseconds::period>(time - startTime).count();
+	std::cout << "[" << result << "][" << duration << "]"<< title << "\n";
 }
 
 int main(int argc, char** argv) {
@@ -48,7 +53,7 @@ int main(int argc, char** argv) {
 			3, 2, 1,
 		}
 	};
-	MeshInput inputTetrahedron(tetrahedron, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f, 1.0f });
+	MeshInput inputTetrahedron(std::move(tetrahedron), { 0.0f, 0.0f, -1.0f }, { 0.0f, 0.0f, 0.0f, 1.0f });
 	VertexIndexed cube = {
 		{
 			{{-0.5f, -0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
@@ -69,7 +74,12 @@ int main(int argc, char** argv) {
 			0, 4, 7, 7, 1, 0,//top
 		}
 	};
-	MeshInput inputCube(cube, { 0.0f, 0.0f, -1.0f }, { 0.0f, 0.0f, 0.0f, 1.0f });
+	MeshInput inputCube(std::move(cube), { 0.0f, 0.0f, -2.0f }, { 0.0f, 0.0f, 0.0f, 1.0f });
+	MeshInput inputLoadedModel({ 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f, 1.0f });
+	ModelImport modelImport;
+	//downloaded from https://sketchfab.com/3d-models/u-557-ae10491added470c88e4e21bc8672cd1
+	logResult("model loading", modelImport.load("model/U-557.obj", 32, &inputLoadedModel));
+	inputLoadedModel.animate(0);
 	RenderingData renderingData;
 	renderingData.updateCamera(60.0f, WIDTH / (float)HEIGHT, glm::vec3(0.0f, -1.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f));
 	VulkanEnv vulkanEnv;
@@ -77,38 +87,38 @@ int main(int argc, char** argv) {
 	vulkanEnv.setRenderingData(renderingData);
 	vulkanEnv.setMaxFrameInFlight(2);
 	vulkanEnv.setUniformSize(renderingData.getUniformSize());
-	vulkanEnv.setMsaaSample(8);
+	vulkanEnv.setMsaaSample(1);
 	RenderContext renderContext = { &vulkanEnv, &renderingData };
 
 	ImageInput imageInput(false, true);
 	imageInput.setMipLevel(3);
-	logResult(imageInput.load("texture/vibrant-watercolor-flow-texture-background_1017-19544.jpg"));
+	logResult("texture loading", imageInput.load("texture/vibrant-watercolor-flow-texture-background_1017-19544.jpg"));
 
-	logResult(vulkanEnv.createInstance(APP_TITLE));
-	logResult(vulkanEnv.createSurface());
-	logResult(vulkanEnv.createPhysicalDevice());
-	logResult(vulkanEnv.createDevice());
-	logResult(vulkanEnv.createSwapchain());
-	logResult(vulkanEnv.createSwapchainImageView());
-	logResult(vulkanEnv.createMsaaColorBuffer());
-	logResult(vulkanEnv.createDepthBuffer());
-	logResult(vulkanEnv.createRenderPass());
-	logResult(vulkanEnv.createDescriptorSetLayout());
-	logResult(vulkanEnv.createGraphicsPipelineLayout());
-	logResult(vulkanEnv.createGraphicsPipeline());
-	logResult(vulkanEnv.createFrameBuffer());
-	logResult(vulkanEnv.setupFence());
-	logResult(vulkanEnv.createCommandPool());
-	logResult(vulkanEnv.createTextureImage(imageInput));
-	logResult(vulkanEnv.createTextureImageView());
-	logResult(vulkanEnv.createTextureSampler());
-	logResult(vulkanEnv.createVertexBufferIndice({ &inputTetrahedron, &inputCube }));
-	logResult(vulkanEnv.createUniformBuffer());
-	logResult(vulkanEnv.createDescriptorPool());
-	logResult(vulkanEnv.createDescriptorSet());
-	logResult(vulkanEnv.allocateSwapchainCommandBuffer());
-	logResult(vulkanEnv.createFrameSyncObject());
-	logResult(vulkanEnv.updateUniformBuffer());
+	logResult("create instance", vulkanEnv.createInstance(APP_TITLE));
+	logResult("create surface", vulkanEnv.createSurface());
+	logResult("create physical device", vulkanEnv.createPhysicalDevice());
+	logResult("create logical device", vulkanEnv.createDevice());
+	logResult("create swapchain", vulkanEnv.createSwapchain());
+	logResult("create swapchain imageview", vulkanEnv.createSwapchainImageView());
+	logResult("create msaa color buffer", vulkanEnv.createMsaaColorBuffer());
+	logResult("create depth buffer", vulkanEnv.createDepthBuffer());
+	logResult("create render pass", vulkanEnv.createRenderPass());
+	logResult("create descripto set layout", vulkanEnv.createDescriptorSetLayout());
+	logResult("create graphics pipeline layout", vulkanEnv.createGraphicsPipelineLayout());
+	logResult("create graphics pipeline", vulkanEnv.createGraphicsPipeline());
+	logResult("create frame buffer", vulkanEnv.createFrameBuffer());
+	logResult("setup fence", vulkanEnv.setupFence());
+	logResult("create command pool", vulkanEnv.createCommandPool());
+	logResult("create texture image", vulkanEnv.createTextureImage(imageInput));
+	logResult("create texture image view", vulkanEnv.createTextureImageView());
+	logResult("create texture sampler", vulkanEnv.createTextureSampler());
+	logResult("create vertex/index buffer", vulkanEnv.createVertexBufferIndice({ &inputTetrahedron, &inputCube, &inputLoadedModel }));
+	logResult("create uniform buffer", vulkanEnv.createUniformBuffer());
+	logResult("create descriptor pool", vulkanEnv.createDescriptorPool());
+	logResult("create descriptor set", vulkanEnv.createDescriptorSet());
+	logResult("allocate swapchain command buffer", vulkanEnv.allocateSwapchainCommandBuffer());
+	logResult("create frame sync object", vulkanEnv.createFrameSyncObject());
+	logResult("update uniform buffer", vulkanEnv.updateUniformBuffer());
 
 	std::cout << std::endl;
 

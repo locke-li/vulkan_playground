@@ -45,7 +45,9 @@ public:
 	static std::vector<VkVertexInputAttributeDescription> getAttributeDescription();
 	static uint32_t getConstantSize();
 public:
-	MeshInput(const VertexIndexed& data, const glm::vec3 pos, const glm::vec4 rot);
+	MeshInput(const glm::vec3 pos, const glm::vec4 rot);
+	MeshInput(const VertexIndexed&& data, const glm::vec3 pos, const glm::vec4 rot);
+	void setData(const VertexIndexed&& data) noexcept;
 	void setPosition(glm::vec3 pos) noexcept;
 	const glm::vec3& getPosition() const noexcept;
 	void setRotation(glm::vec4 rot) noexcept;

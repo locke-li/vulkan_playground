@@ -42,11 +42,21 @@ uint32_t MeshInput::getConstantSize() {
 	return sizeof(MeshConstant);
 }
 
-MeshInput::MeshInput(const VertexIndexed& data, const glm::vec3 pos, const glm::vec4 rot)
+MeshInput::MeshInput(const glm::vec3 pos, const glm::vec4 rot)
+	: data({})
+	, position(pos)
+	, rotation(rot)
+{}
+
+MeshInput::MeshInput(const VertexIndexed&& data, const glm::vec3 pos, const glm::vec4 rot)
 	: data(data)
 	, position(pos)
 	, rotation(rot)
 {}
+
+void MeshInput::setData(const VertexIndexed&& dataIn) noexcept {
+	data = dataIn;
+}
 
 void MeshInput::setPosition(glm::vec3 pos) noexcept {
 	position = pos;
@@ -94,15 +104,6 @@ void MeshInput::animate(const float rotationSpeed) {
 
 	const auto&& translation = glm::translate(glm::mat4(1.0f), position);
 	constantData.model = glm::rotate(translation, duration * glm::radians(rotationSpeed), glm::vec3(0.0f, 1.0f, 0.0f));
-
-	/*
-	for (auto i = 0; i < 4; ++i) {
-		for (auto j = 0; j < 4; ++j) {
-			std::cout << constantData.model[i][j] << " ";
-		}
-		std::cout << std::endl;
-	}
-	*/
 }
 
 const MeshConstant& MeshInput::getConstantData() const {
