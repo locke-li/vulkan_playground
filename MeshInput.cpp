@@ -42,16 +42,27 @@ uint32_t MeshInput::getConstantSize() {
 	return sizeof(MeshConstant);
 }
 
-MeshInput::MeshInput(const glm::vec3 pos, const glm::vec4 rot)
-	: data({})
-	, position(pos)
-	, rotation(rot)
+MeshInput::MeshInput()
+	: MeshInput(glm::vec3(0.0), glm::identity<glm::quat>(), glm::vec3(1.0f))
 {}
 
-MeshInput::MeshInput(const VertexIndexed&& data, const glm::vec3 pos, const glm::vec4 rot)
+MeshInput::MeshInput(const glm::vec3& pos)
+	: MeshInput(pos, glm::identity<glm::quat>(), glm::vec3(1.0f))
+{}
+
+MeshInput::MeshInput(const glm::vec3& pos, const glm::quat& rot)
+	: MeshInput(pos, rot, glm::vec3(1.0f))
+{}
+
+MeshInput::MeshInput(const glm::vec3& pos, const glm::quat& rot, const glm::vec3& scale)
+	: MeshInput({}, pos, rot, scale)
+{}
+
+MeshInput::MeshInput(const VertexIndexed&& data, const glm::vec3& pos, const glm::quat& rot, const glm::vec3& scale)
 	: data(data)
 	, position(pos)
 	, rotation(rot)
+	, scale(scale)
 {}
 
 void MeshInput::setData(const VertexIndexed&& dataIn) noexcept {
@@ -64,10 +75,10 @@ void MeshInput::setPosition(glm::vec3 pos) noexcept {
 const glm::vec3& MeshInput::getPosition() const noexcept {
 	return position;
 }
-void MeshInput::setRotation(glm::vec4 rot) noexcept {
+void MeshInput::setRotation(glm::quat rot) noexcept {
 	rotation = rot;
 }
-const glm::vec4& MeshInput::getRotation() const noexcept {
+const glm::quat& MeshInput::getRotation() const noexcept {
 	return rotation;
 }
 
@@ -102,8 +113,11 @@ void MeshInput::animate(const float rotationSpeed) {
 	auto time = std::chrono::high_resolution_clock::now();
 	auto duration = std::chrono::duration<float, std::chrono::seconds::period>(time - startTime).count();
 
-	const auto&& translation = glm::translate(glm::mat4(1.0f), position);
-	constantData.model = glm::rotate(translation, duration * glm::radians(rotationSpeed), glm::vec3(0.0f, 1.0f, 0.0f));
+	const auto&& translated = glm::translate(glm::mat4(1.0f), position);
+	const auto&& rotated = glm::mat4_cast(glm::rotate(rotation, duration * glm::radians(rotationSpeed), glm::vec3(0.0f, 1.0f, 0.0f)));
+	const auto&& scaled = glm::scale(glm::mat4(1.0f), scale);
+	
+	constantData.model = translated * rotated * scaled;
 }
 
 const MeshConstant& MeshInput::getConstantData() const {

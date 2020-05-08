@@ -36,22 +36,26 @@ struct MeshConstant {
 class MeshInput
 {
 private:
-	VertexIndexed data;
+	VertexIndexed data{};
 	glm::vec3 position;
-	glm::vec4 rotation;
-	MeshConstant constantData;
+	glm::quat rotation;
+	glm::vec3 scale;
+	MeshConstant constantData{};
 public:
 	static VkVertexInputBindingDescription getBindingDescription();
 	static std::vector<VkVertexInputAttributeDescription> getAttributeDescription();
 	static uint32_t getConstantSize();
 public:
-	MeshInput(const glm::vec3 pos, const glm::vec4 rot);
-	MeshInput(const VertexIndexed&& data, const glm::vec3 pos, const glm::vec4 rot);
+	MeshInput();
+	MeshInput(const glm::vec3& pos);
+	MeshInput(const glm::vec3& pos, const glm::quat& rot);
+	MeshInput(const glm::vec3& pos, const glm::quat& rot, const glm::vec3& scale);
+	MeshInput(const VertexIndexed&& data, const glm::vec3& pos, const glm::quat& rot, const glm::vec3& scale);
 	void setData(const VertexIndexed&& data) noexcept;
 	void setPosition(glm::vec3 pos) noexcept;
 	const glm::vec3& getPosition() const noexcept;
-	void setRotation(glm::vec4 rot) noexcept;
-	const glm::vec4& getRotation() const noexcept;
+	void setRotation(glm::quat rot) noexcept;
+	const glm::quat& getRotation() const noexcept;
 	uint32_t vertexSize() const;
 	uint32_t vertexCount() const;
 	const Vertex* vertexData() const;
