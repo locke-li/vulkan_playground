@@ -3,6 +3,7 @@
 #include "VulkanEnv.h"
 #include "RenderingData.h"
 #include "ModelImport.h"
+#include "ShaderInput.h"
 #include <iostream>
 #include <chrono>
 
@@ -28,7 +29,7 @@ static void logResult(const char* title, bool result) {
 
 	auto time = std::chrono::high_resolution_clock::now();
 	auto duration = std::chrono::duration<float, std::chrono::milliseconds::period>(time - startTime).count();
-	std::cout << "[" << result << "][" << duration << "]"<< title << "\n";
+	std::cout << "[" << result << "][" << duration << "]" << title << "\n";
 }
 
 int main(int argc, char** argv) {
@@ -75,16 +76,20 @@ int main(int argc, char** argv) {
 		}
 	};
 	MeshInput inputCube{ std::move(cube), { 0.0f, 0.0f, -2.0f }, { 0.0f, 0.0f, 0.0f, 1.0f }, {1.0f, 1.0f, 1.0f} };
-	MeshInput inputLoadedModel{ { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f, 1.0f }, {1.0f, 1.0f, 1.0f} };
+	MeshInput inputLoadedModel{ {}, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f, 1.0f }, {1.0f, 1.0f, 1.0f} };
 	ModelImport modelImport;
 	//downloaded from https://sketchfab.com/3d-models/u-557-ae10491added470c88e4e21bc8672cd1
 	logResult("model loading", modelImport.load("model/U-557.obj", 32, &inputLoadedModel));
 	inputLoadedModel.animate(0);
+
 	RenderingData renderingData;
 	renderingData.updateCamera(60.0f, WIDTH / (float)HEIGHT, glm::vec3(0.0f, -1.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f));
+	ShaderInput shader("shader/vert_simple_triangle.spv", "shader/frag_color.spv");
+	shader.preload();
 	VulkanEnv vulkanEnv;
 	vulkanEnv.setWindow(window);
 	vulkanEnv.setRenderingData(renderingData);
+	vulkanEnv.setShader(shader);
 	vulkanEnv.setMaxFrameInFlight(2);
 	vulkanEnv.setUniformSize(renderingData.getUniformSize());
 	vulkanEnv.setMsaaSample(1);

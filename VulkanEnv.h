@@ -4,6 +4,7 @@
 #include "MeshInput.h"
 #include "RenderingData.h"
 #include "ImageInput.h"
+#include "ShaderInput.h"
 #include <vector>
 
 struct QueueFamily {
@@ -63,6 +64,7 @@ class VulkanEnv
 private:
 	GLFWwindow* window;
 	const RenderingData* renderingData;
+	const ShaderInput* shader;
 
 	VkInstance instance;
 	VkSurfaceKHR surface;
@@ -130,6 +132,7 @@ private:
 public:
 	void setWindow(GLFWwindow *window) noexcept;
 	void setRenderingData(const RenderingData& data) noexcept;
+	void setShader(const ShaderInput& input) noexcept;
 	void setMaxFrameInFlight(uint32_t value) noexcept;
 	void setUniformSize(uint32_t size) noexcept;
 	void setMsaaSample(uint32_t count) noexcept;

@@ -5,9 +5,13 @@
 #include <algorithm>
 
 ImageInput::ImageInput(const bool perserve, const bool mipmap)
-	:perserve(perserve)
-	,mipmap(mipmap)
-	,mipLevel(0)
+	: perserve(perserve)
+	, mipmap(mipmap)
+	, mipLevel(0)
+	, channel(0)
+	, width(0)
+	, height(0)
+	, pixelData(nullptr)
 {}
 
 bool ImageInput::isValid() const {

@@ -5,6 +5,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include "gtx/hash.hpp"
 #include <vector>
+#include <memory>
 
 struct Vertex {
 	glm::vec3 pos;
@@ -36,7 +37,7 @@ struct MeshConstant {
 class MeshInput
 {
 private:
-	VertexIndexed data{};
+	std::unique_ptr<VertexIndexed> data = nullptr;
 	glm::vec3 position;
 	glm::quat rotation;
 	glm::vec3 scale;
@@ -46,16 +47,17 @@ public:
 	static std::vector<VkVertexInputAttributeDescription> getAttributeDescription();
 	static uint32_t getConstantSize();
 public:
-	MeshInput();
-	MeshInput(const glm::vec3& pos);
-	MeshInput(const glm::vec3& pos, const glm::quat& rot);
-	MeshInput(const glm::vec3& pos, const glm::quat& rot, const glm::vec3& scale);
-	MeshInput(const VertexIndexed&& data, const glm::vec3& pos, const glm::quat& rot, const glm::vec3& scale);
+	MeshInput(const VertexIndexed&& data,
+		const glm::vec3& pos = glm::vec3(0.0f),
+		const glm::quat& rot = glm::identity<glm::quat>(),
+		const glm::vec3& scale = glm::vec3(1.0f));
 	void setData(const VertexIndexed&& data) noexcept;
-	void setPosition(glm::vec3 pos) noexcept;
+	void setPosition(const glm::vec3& pos) noexcept;
 	const glm::vec3& getPosition() const noexcept;
-	void setRotation(glm::quat rot) noexcept;
+	void setRotation(const glm::quat& rot) noexcept;
 	const glm::quat& getRotation() const noexcept;
+	void setScale(const glm::vec3& scaleIn) noexcept;
+	const glm::quat& getScale() const noexcept;
 	uint32_t vertexSize() const;
 	uint32_t vertexCount() const;
 	const Vertex* vertexData() const;

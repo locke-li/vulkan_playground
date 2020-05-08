@@ -42,68 +42,58 @@ uint32_t MeshInput::getConstantSize() {
 	return sizeof(MeshConstant);
 }
 
-MeshInput::MeshInput()
-	: MeshInput(glm::vec3(0.0), glm::identity<glm::quat>(), glm::vec3(1.0f))
-{}
-
-MeshInput::MeshInput(const glm::vec3& pos)
-	: MeshInput(pos, glm::identity<glm::quat>(), glm::vec3(1.0f))
-{}
-
-MeshInput::MeshInput(const glm::vec3& pos, const glm::quat& rot)
-	: MeshInput(pos, rot, glm::vec3(1.0f))
-{}
-
-MeshInput::MeshInput(const glm::vec3& pos, const glm::quat& rot, const glm::vec3& scale)
-	: MeshInput({}, pos, rot, scale)
-{}
-
 MeshInput::MeshInput(const VertexIndexed&& data, const glm::vec3& pos, const glm::quat& rot, const glm::vec3& scale)
-	: data(data)
+	: data(std::make_unique<VertexIndexed>(data))
 	, position(pos)
 	, rotation(rot)
 	, scale(scale)
 {}
 
 void MeshInput::setData(const VertexIndexed&& dataIn) noexcept {
-	data = dataIn;
+	data = std::make_unique<VertexIndexed>(dataIn);
 }
 
-void MeshInput::setPosition(glm::vec3 pos) noexcept {
+void MeshInput::setPosition(const glm::vec3& pos) noexcept {
 	position = pos;
 }
 const glm::vec3& MeshInput::getPosition() const noexcept {
 	return position;
 }
-void MeshInput::setRotation(glm::quat rot) noexcept {
+void MeshInput::setRotation(const glm::quat& rot) noexcept {
 	rotation = rot;
 }
 const glm::quat& MeshInput::getRotation() const noexcept {
 	return rotation;
 }
+void MeshInput::setScale(const glm::vec3& scaleIn) noexcept {
+	scale = scaleIn;
+}
+const glm::quat& MeshInput::getScale() const noexcept {
+	return scale;
+}
 
 uint32_t MeshInput::vertexSize() const {
-	return static_cast<uint32_t>(sizeof(data.vertices[0]) * data.vertices.size());//TODO handle possible overflow
+	return static_cast<uint32_t>(sizeof(data->vertices[0]) * data->vertices.size());//TODO handle possible overflow
 }
 
 uint32_t MeshInput::vertexCount() const {
-	return static_cast<uint32_t>(data.vertices.size());
+	return static_cast<uint32_t>(data->vertices.size());
 }
 
 const Vertex* MeshInput::vertexData() const {
-	return data.vertices.data();
+	return data->vertices.data();
 }
 
 uint32_t MeshInput::indexSize() const {
-	return static_cast<uint32_t>(sizeof(data.indices[0]) * data.indices.size());//TODO handle possible overflow
+	return static_cast<uint32_t>(sizeof(data->indices[0]) * data->indices.size());//TODO handle possible overflow
 }
 
 uint32_t MeshInput::indexCount() const {
-	return static_cast<uint32_t>(data.indices.size());
+	return static_cast<uint32_t>(data->indices.size());
 }
 
 const uint16_t* MeshInput::indexData() const {
-	return data.indices.data();
+	return data->indices.data();
 }
 
 void MeshInput::animate(const float rotationSpeed) {

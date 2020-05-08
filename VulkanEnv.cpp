@@ -12,22 +12,6 @@ const std::vector<const char*> validationLayer = {
 const std::vector<const char*> extension = {
 	VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
-const std::string VERT_PATH = "shader/vert_simple_triangle.spv";
-const std::string FRAG_PATH = "shader/frag_color.spv";
-
-std::vector<char> loadFile(const std::string& path) {
-	std::ifstream file(path, std::ios::ate | std::ios::binary);
-	if (!file.is_open()) {
-		return std::vector<char>();
-	}
-
-	auto size = (size_t)file.tellg();
-	std::vector<char> buffer(size);
-	file.seekg(0);
-	file.read(buffer.data(), size);
-	file.close();
-	return buffer;
-}
 
 bool deviceValid(const VkPhysicalDevice device) {
 	VkPhysicalDeviceProperties properties;
@@ -177,6 +161,10 @@ void VulkanEnv::setWindow(GLFWwindow* win) noexcept {
 
 void VulkanEnv::setRenderingData(const RenderingData& data) noexcept {
 	renderingData = &data;
+}
+
+void VulkanEnv::setShader(const ShaderInput& input) noexcept {
+	shader = &input;
 }
 
 void VulkanEnv::setMaxFrameInFlight(uint32_t value) noexcept {
@@ -588,8 +576,8 @@ bool VulkanEnv::createGraphicsPipelineLayout() {
 }
 
 bool VulkanEnv::createGraphicsPipeline() {
-	auto vertCode = loadFile(VERT_PATH);
-	auto fragCode = loadFile(FRAG_PATH);
+	auto vertCode = shader->getVertData();
+	auto fragCode = shader->getFragData();
 
 	VkShaderModule vertShader;
 	createShaderModule(device, vertCode, &vertShader);

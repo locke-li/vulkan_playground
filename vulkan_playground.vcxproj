@@ -155,6 +155,7 @@
     <ClCompile Include="ModelImport.cpp" />
     <ClCompile Include="RenderingData.cpp" />
     <ClCompile Include="MeshInput.cpp" />
+    <ClCompile Include="ShaderInput.cpp" />
     <ClCompile Include="VulkanEnv.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -162,6 +163,7 @@
     <ClInclude Include="ModelImport.h" />
     <ClInclude Include="RenderingData.h" />
     <ClInclude Include="MeshInput.h" />
+    <ClInclude Include="ShaderInput.h" />
     <ClInclude Include="VulkanEnv.h" />
   </ItemGroup>
   <ItemGroup>
