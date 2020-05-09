@@ -56,6 +56,9 @@
     <ClInclude Include="ShaderInput.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="DebugHelper.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="shader\frag_color.glsl">

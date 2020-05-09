@@ -3,6 +3,7 @@
 #define GLM_FORCE_LEFT_HANDED
 #include "glm.hpp"
 #include "gtc/matrix_transform.hpp"
+#include "DebugHelper.hpp"
 #include <chrono>
 #include <iostream>
 

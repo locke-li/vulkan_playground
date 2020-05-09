@@ -159,6 +159,7 @@
     <ClCompile Include="VulkanEnv.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="DebugHelper.hpp" />
     <ClInclude Include="ImageInput.h" />
     <ClInclude Include="ModelImport.h" />
     <ClInclude Include="RenderingData.h" />

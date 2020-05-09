@@ -4,6 +4,7 @@
 #include "RenderingData.h"
 #include "ModelImport.h"
 #include "ShaderInput.h"
+#include "DebugHelper.hpp"
 #include <iostream>
 #include <chrono>
 
