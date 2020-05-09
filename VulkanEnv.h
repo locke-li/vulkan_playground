@@ -97,7 +97,7 @@ private:
 	ImageSet imageSet;
 	DepthBuffer depthBuffer;
 
-	int maxFrameInFlight;
+	uint32_t maxFrameInFlight;
 	std::vector<InFlightFrame> inFlightFrame;
 	uint32_t currentFrame;
 	VkPresentModeKHR preferedPresentMode = VK_PRESENT_MODE_FIFO_KHR;

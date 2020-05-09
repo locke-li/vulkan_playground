@@ -51,7 +51,6 @@ void querySwapChainSupport(const VkPhysicalDevice device, const VkSurfaceKHR sur
 		support->formats.resize(count);
 		vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &count, support->formats.data());
 	}
-
 	vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &count, nullptr);
 	if (count != 0) {
 		support->presentMode.resize(count);
@@ -66,7 +65,6 @@ VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>
 			return formatInfo;
 		}
 	}
-
 	return availableFormats[0];
 }
 
@@ -275,7 +273,6 @@ bool VulkanEnv::createPhysicalDevice() {
 			return true;
 		}
 	}
-
 	return false;
 }
 
@@ -311,10 +308,8 @@ bool VulkanEnv::createDevice() {
 	if (vkCreateDevice(physicalDevice, &info, nullptr, &device) != VK_SUCCESS) {
 		return false;
 	}
-
 	vkGetDeviceQueue(device, queueFamily.graphics, 0, &graphicsQueue);
 	vkGetDeviceQueue(device, queueFamily.present, 0, &presentQueue);
-
 	return true;
 }
 
@@ -323,9 +318,13 @@ bool VulkanEnv::createSwapchain() {
 	swapchainFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
 	auto mode = choosePresentMode(swapChainSupport.presentMode, preferedPresentMode);
 	swapchainExtent = chooseSwapExtent(swapChainSupport.capabilities, window);
-	uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;//one extra as buffer
+	uint32_t imageCount = std::max(swapChainSupport.capabilities.minImageCount, maxFrameInFlight);
 	if (swapChainSupport.capabilities.maxImageCount > 0) {
 		imageCount = std::min(imageCount, swapChainSupport.capabilities.maxImageCount);
+		if (imageCount < maxFrameInFlight) {
+			std::cout << "max frame limited to " << imageCount << "(requested " << maxFrameInFlight << ")" << std::endl;
+			maxFrameInFlight = imageCount;
+		}
 	}
 	std::cout << "swapchain count = " << imageCount;
 	std::cout << "[" << swapChainSupport.capabilities.minImageCount << "|" << swapChainSupport.capabilities.maxImageCount << "]" << std::endl;
@@ -490,7 +489,6 @@ bool VulkanEnv::createRenderPass() {
 	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
-	
 	VkRenderPassCreateInfo renderPassInfo;
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 	renderPassInfo.flags = 0;
@@ -752,7 +750,6 @@ bool VulkanEnv::createGraphicsPipeline() {
 
 	vkDestroyShaderModule(device, vertShader, nullptr);
 	vkDestroyShaderModule(device, fragShader, nullptr);
-
 	return true;
 }
 
@@ -1112,7 +1109,6 @@ bool VulkanEnv::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemo
 	if (!findMemoryType(memRequirement.memoryTypeBits, memTypeFlag, &allocInfo.memoryTypeIndex)) {
 		return false;
 	}
-
 	return vkAllocateMemory(device, &allocInfo, nullptr, &memory) == VK_SUCCESS &&
 		vkBindBufferMemory(device, buffer, memory, 0) == VK_SUCCESS;
 }
@@ -1251,7 +1247,6 @@ bool VulkanEnv::createUniformBuffer() {
 			return false;
 		}
 	}
-
 	return true;
 }
 
@@ -1520,7 +1515,6 @@ bool VulkanEnv::recreateSwapchain() {
 	//TODO exchange swapchain on the fly with VkSwapchainCreateInfoKHR.oldSwapchain
 	vkDeviceWaitIdle(device);
 	destroySwapchain();
-
 	querySwapChainSupport(physicalDevice, surface, &swapChainSupport);
 
 	bool result =
