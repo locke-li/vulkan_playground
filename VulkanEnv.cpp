@@ -70,13 +70,12 @@ VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>
 	return availableFormats[0];
 }
 
-VkPresentModeKHR choosePresentMode(const std::vector<VkPresentModeKHR>& availableMode) {
+VkPresentModeKHR choosePresentMode(const std::vector<VkPresentModeKHR>& availableMode, VkPresentModeKHR prefered) {
 	for (const auto mode : availableMode) {
-		if (mode == VK_PRESENT_MODE_MAILBOX_KHR) {
+		if (mode == prefered) {
 			return mode;
 		}
 	}
-
 	//guaranteed to be available
 	return VK_PRESENT_MODE_FIFO_KHR;
 }
@@ -167,15 +166,19 @@ void VulkanEnv::setShader(const ShaderInput& input) noexcept {
 	shader = &input;
 }
 
-void VulkanEnv::setMaxFrameInFlight(uint32_t value) noexcept {
+void VulkanEnv::setMaxFrameInFlight(const uint32_t value) noexcept {
 	maxFrameInFlight = value;
 }
 
-void VulkanEnv::setUniformSize(uint32_t size) noexcept {
+void VulkanEnv::setPreferedPresentMode(const VkPresentModeKHR mode) noexcept {
+	preferedPresentMode = mode;
+}
+
+void VulkanEnv::setUniformSize(const uint32_t size) noexcept {
 	uniformSize = size;
 }
 
-void VulkanEnv::setMsaaSample(uint32_t count) noexcept {
+void VulkanEnv::setMsaaSample(const uint32_t count) noexcept {
 	targetMsaaSample = count;
 }
 
@@ -318,12 +321,14 @@ bool VulkanEnv::createDevice() {
 bool VulkanEnv::createSwapchain() {
 	frameBufferResized = false;
 	swapchainFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
-	auto mode = choosePresentMode(swapChainSupport.presentMode);
+	auto mode = choosePresentMode(swapChainSupport.presentMode, preferedPresentMode);
 	swapchainExtent = chooseSwapExtent(swapChainSupport.capabilities, window);
 	uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;//one extra as buffer
 	if (swapChainSupport.capabilities.maxImageCount > 0) {
 		imageCount = std::min(imageCount, swapChainSupport.capabilities.maxImageCount);
 	}
+	std::cout << "swapchain count = " << imageCount;
+	std::cout << "[" << swapChainSupport.capabilities.minImageCount << "|" << swapChainSupport.capabilities.maxImageCount << "]" << std::endl;
 
 	VkSwapchainCreateInfoKHR info{};
 	info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
@@ -1349,8 +1354,8 @@ bool VulkanEnv::allocateCommandBuffer(const VkCommandPool pool, const uint32_t c
 	return vkAllocateCommandBuffers(device, &cmdInfo, cmd) == VK_SUCCESS;
 }
 
-bool VulkanEnv::allocateSwapchainCommandBuffer() {
-	commandBuffer.resize(swapchainFramebuffer.size());
+bool VulkanEnv::allocateFrameCommandBuffer() {
+	commandBuffer.resize(maxFrameInFlight);
 	return allocateCommandBuffer(commandPoolReset, static_cast<uint32_t>(commandBuffer.size()), commandBuffer.data());
 }
 
@@ -1377,7 +1382,7 @@ bool VulkanEnv::submitCommand(VkCommandBuffer* cmd, uint32_t count, VkQueue queu
 	return vkQueueSubmit(queue, 1, &info, fence) == VK_SUCCESS;
 }
 
-bool VulkanEnv::setupCommandBuffer(uint32_t index) {
+bool VulkanEnv::setupCommandBuffer(const uint32_t index, const uint32_t imageIndex) {
 	auto& cmd = commandBuffer[index];
 	VkCommandBufferBeginInfo beginInfo;
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -1391,7 +1396,7 @@ bool VulkanEnv::setupCommandBuffer(uint32_t index) {
 	VkRenderPassBeginInfo renderPassBegin;
 	renderPassBegin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	renderPassBegin.pNext = nullptr;
-	renderPassBegin.framebuffer = swapchainFramebuffer[index];
+	renderPassBegin.framebuffer = swapchainFramebuffer[imageIndex];
 	renderPassBegin.renderPass = renderPass;
 	renderPassBegin.renderArea.offset = { 0, 0 };
 	renderPassBegin.renderArea.extent = swapchainExtent;
@@ -1414,7 +1419,7 @@ bool VulkanEnv::setupCommandBuffer(uint32_t index) {
 	vkCmdBeginRenderPass(cmd, &renderPassBegin, VK_SUBPASS_CONTENTS_INLINE);
 	vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 	vkCmdSetViewport(cmd, 0, 1, &viewport);
-	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipelineLayout, 0, 1, &descriptorSet[index], 0, nullptr);
+	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipelineLayout, 0, 1, &descriptorSet[imageIndex], 0, nullptr);
 	vkCmdBindVertexBuffers(cmd, 0, static_cast<uint32_t>(vertexBuffer.buffer.size()), vertexBuffer.buffer.data(), vertexBuffer.offset.data());
 	for (auto i = 0; i < indexBuffer.offset.size(); ++i) {
 		vkCmdBindIndexBuffer(cmd, indexBuffer.buffer, indexBuffer.offset[i], VK_INDEX_TYPE_UINT16);
@@ -1554,19 +1559,19 @@ bool VulkanEnv::updateUniformBuffer(const uint32_t imageIndex) {
 
 bool VulkanEnv::drawFrame(const RenderingData& renderingData) {
 	auto& frame = inFlightFrame[currentFrame];
-	currentFrame = (currentFrame + 1) % maxFrameInFlight;
 
 	uint32_t imageIndex;
 	vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, frame.semaphoreImageAquired, VK_NULL_HANDLE, &imageIndex);
+	std::cout << "image acquired " << imageIndex << std::endl;
 	vkWaitForFences(device, 1, &frame.fenceInFlight, VK_TRUE, UINT64_MAX);
-
-	setupCommandBuffer(imageIndex);
+	std::cout << "frame fence pass " << currentFrame << std::endl;
+	setupCommandBuffer(currentFrame, imageIndex);
 
 	VkSubmitInfo submitInfo;
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitInfo.pNext = nullptr;
 	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &commandBuffer[imageIndex];
+	submitInfo.pCommandBuffers = &commandBuffer[currentFrame];
 	submitInfo.waitSemaphoreCount = 1;
 	submitInfo.pWaitSemaphores = &frame.semaphoreImageAquired;
 	VkPipelineStageFlags waitStage[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
@@ -1575,7 +1580,7 @@ bool VulkanEnv::drawFrame(const RenderingData& renderingData) {
 	submitInfo.pSignalSemaphores = &frame.semaphoreRenderFinished;
 
 	vkResetFences(device, 1, &frame.fenceInFlight);
-
+	std::cout << "frame submit " << currentFrame << std::endl;
 	if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, frame.fenceInFlight) != VK_SUCCESS) {
 		return false;
 	}
@@ -1591,13 +1596,12 @@ bool VulkanEnv::drawFrame(const RenderingData& renderingData) {
 	presentInfo.pResults = nullptr;
 
 	auto result = vkQueuePresentKHR(presentQueue, &presentInfo);
-
 	if (frameBufferResized || result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
 		recreateSwapchain();
 	}
 	else if (result != VK_SUCCESS) {
 		return false;
 	}
-
+	currentFrame = (currentFrame + 1) % maxFrameInFlight;
 	return true;
 }

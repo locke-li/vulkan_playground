@@ -25,14 +25,6 @@ static void onFramebufferResize(GLFWwindow *window, int width, int height) {
 	}
 }
 
-static void logResult(const char* title, bool result) {
-	static auto startTime = std::chrono::high_resolution_clock::now();
-
-	auto time = std::chrono::high_resolution_clock::now();
-	auto duration = std::chrono::duration<float, std::chrono::milliseconds::period>(time - startTime).count();
-	std::cout << "[" << result << "][" << duration << "]" << title << "\n";
-}
-
 int main(int argc, char** argv) {
 	if (!glfwInit()) {
 		return 1;
@@ -91,7 +83,7 @@ int main(int argc, char** argv) {
 	vulkanEnv.setWindow(window);
 	vulkanEnv.setRenderingData(renderingData);
 	vulkanEnv.setShader(shader);
-	vulkanEnv.setMaxFrameInFlight(2);
+	vulkanEnv.setMaxFrameInFlight(9);
 	vulkanEnv.setUniformSize(renderingData.getUniformSize());
 	vulkanEnv.setMsaaSample(1);
 	RenderContext renderContext = { &vulkanEnv, &renderingData };
@@ -122,7 +114,7 @@ int main(int argc, char** argv) {
 	logResult("create uniform buffer", vulkanEnv.createUniformBuffer());
 	logResult("create descriptor pool", vulkanEnv.createDescriptorPool());
 	logResult("create descriptor set", vulkanEnv.createDescriptorSet());
-	logResult("allocate swapchain command buffer", vulkanEnv.allocateSwapchainCommandBuffer());
+	logResult("allocate swapchain command buffer", vulkanEnv.allocateFrameCommandBuffer());
 	logResult("create frame sync object", vulkanEnv.createFrameSyncObject());
 	logResult("update uniform buffer", vulkanEnv.updateUniformBuffer());
 

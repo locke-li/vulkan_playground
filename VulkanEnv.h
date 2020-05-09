@@ -100,6 +100,7 @@ private:
 	int maxFrameInFlight;
 	std::vector<InFlightFrame> inFlightFrame;
 	uint32_t currentFrame;
+	VkPresentModeKHR preferedPresentMode = VK_PRESENT_MODE_FIFO_KHR;
 
 	QueueFamily queueFamily;
 	float queuePriority = 1.0;
@@ -127,15 +128,16 @@ private:
 	bool allocateCommandBuffer(const VkCommandPool pool, const uint32_t count, VkCommandBuffer* cmd);
 	bool beginCommand(VkCommandBuffer& cmd, VkCommandBufferUsageFlags flag);
 	bool submitCommand(VkCommandBuffer* cmd, uint32_t count, VkQueue queue, VkFence fence);
-	bool setupCommandBuffer(uint32_t index);
+	bool setupCommandBuffer(const uint32_t index, const uint32_t imageIndex);
 	void destroySwapchain();
 public:
 	void setWindow(GLFWwindow *window) noexcept;
 	void setRenderingData(const RenderingData& data) noexcept;
 	void setShader(const ShaderInput& input) noexcept;
-	void setMaxFrameInFlight(uint32_t value) noexcept;
-	void setUniformSize(uint32_t size) noexcept;
-	void setMsaaSample(uint32_t count) noexcept;
+	void setMaxFrameInFlight(const uint32_t value) noexcept;
+	void setPreferedPresentMode(const VkPresentModeKHR mode) noexcept;
+	void setUniformSize(const uint32_t size) noexcept;
+	void setMsaaSample(const uint32_t count) noexcept;
 	uint32_t getWidth() const;
 	uint32_t getHeight() const;
 	void onFramebufferResize() noexcept;
@@ -163,7 +165,7 @@ public:
 	bool createDescriptorPool();
 	bool createDescriptorSet();
 	bool createCommandPool();
-	bool allocateSwapchainCommandBuffer();
+	bool allocateFrameCommandBuffer();
 	bool createFrameSyncObject();
 	void destroy();
 
