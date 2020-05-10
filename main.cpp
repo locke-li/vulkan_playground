@@ -47,7 +47,7 @@ int main(int argc, char** argv) {
 			3, 2, 1,
 		}
 	};
-	MeshInput inputTetrahedron{ std::move(tetrahedron), { 0.0f, 0.0f, -1.0f }, { 0.0f, 0.0f, 0.0f, 1.0f }, {1.0f, 1.0f, 1.0f} };
+	MeshInput inputTetrahedron{ std::move(tetrahedron), { 0.0f, 0.0f, -1.0f }, { 1.0f, 0.0f, 0.0f, 0.0f }, {1.0f, 1.0f, 1.0f} };
 	VertexIndexed cube = {
 		{
 			{{-0.5f, -0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
@@ -68,8 +68,8 @@ int main(int argc, char** argv) {
 			0, 4, 7, 7, 1, 0,//top
 		}
 	};
-	MeshInput inputCube{ std::move(cube), { 0.0f, 0.0f, -2.0f }, { 0.0f, 0.0f, 0.0f, 1.0f }, {1.0f, 1.0f, 1.0f} };
-	MeshInput inputLoadedModel{ {}, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f, 1.0f }, {1.0f, 1.0f, 1.0f} };
+	MeshInput inputCube{ std::move(cube), { 0.0f, 0.0f, -2.0f }, { 1.0f, 0.0f, 0.0f, 0.0f }, {1.0f, 1.0f, 1.0f} };
+	MeshInput inputLoadedModel{ {}, { 0.0f, 0.0f, 0.0f }, { 1.0f, 0.0f, 0.0f, 0.0f }, {1.0f, 1.0f, 1.0f} };
 	ModelImport modelImport;
 	//downloaded from https://sketchfab.com/3d-models/u-557-ae10491added470c88e4e21bc8672cd1
 	logResult("model loading", modelImport.load("model/U-557.obj", 32, &inputLoadedModel));
@@ -83,7 +83,7 @@ int main(int argc, char** argv) {
 	vulkanEnv.setWindow(window);
 	vulkanEnv.setRenderingData(renderingData);
 	vulkanEnv.setShader(shader);
-	vulkanEnv.setMaxFrameInFlight(9);
+	vulkanEnv.setMaxFrameInFlight(3);
 	vulkanEnv.setUniformSize(renderingData.getUniformSize());
 	vulkanEnv.setMsaaSample(1);
 	RenderContext renderContext = { &vulkanEnv, &renderingData };

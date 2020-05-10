@@ -319,11 +319,13 @@ bool VulkanEnv::createSwapchain() {
 	auto mode = choosePresentMode(swapChainSupport.presentMode, preferedPresentMode);
 	swapchainExtent = chooseSwapExtent(swapChainSupport.capabilities, window);
 	uint32_t imageCount = std::max(swapChainSupport.capabilities.minImageCount, maxFrameInFlight);
+	//TODO when do we need more swapchain image than frame in flight?
 	if (swapChainSupport.capabilities.maxImageCount > 0) {
 		imageCount = std::min(imageCount, swapChainSupport.capabilities.maxImageCount);
 		if (imageCount < maxFrameInFlight) {
-			std::cout << "max frame limited to " << imageCount << "(requested " << maxFrameInFlight << ")" << std::endl;
-			maxFrameInFlight = imageCount;
+			std::cout << "requested max frame = " << maxFrameInFlight << ", ";
+			maxFrameInFlight = imageCount == 1 ? imageCount + 1 : imageCount;
+			std::cout << "but limited to " << maxFrameInFlight << std::endl;
 		}
 	}
 	std::cout << "swapchain count = " << imageCount;
@@ -1556,9 +1558,9 @@ bool VulkanEnv::drawFrame(const RenderingData& renderingData) {
 
 	uint32_t imageIndex;
 	vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, frame.semaphoreImageAquired, VK_NULL_HANDLE, &imageIndex);
-	std::cout << "image acquired " << imageIndex << std::endl;
+	//std::cout << "image acquired " << imageIndex << std::endl;
 	vkWaitForFences(device, 1, &frame.fenceInFlight, VK_TRUE, UINT64_MAX);
-	std::cout << "frame fence pass " << currentFrame << std::endl;
+	//std::cout << "frame fence pass " << currentFrame << std::endl;
 	setupCommandBuffer(currentFrame, imageIndex);
 
 	VkSubmitInfo submitInfo;
@@ -1574,7 +1576,7 @@ bool VulkanEnv::drawFrame(const RenderingData& renderingData) {
 	submitInfo.pSignalSemaphores = &frame.semaphoreRenderFinished;
 
 	vkResetFences(device, 1, &frame.fenceInFlight);
-	std::cout << "frame submit " << currentFrame << std::endl;
+	//std::cout << "frame submit " << currentFrame << std::endl;
 	if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, frame.fenceInFlight) != VK_SUCCESS) {
 		return false;
 	}

@@ -105,12 +105,9 @@ void MeshInput::animate(const float rotationSpeed) {
 	auto duration = std::chrono::duration<float, std::chrono::seconds::period>(time - startTime).count();
 
 	const auto&& translated = glm::translate(glm::mat4(1.0f), position);
-	rotation = glm::rotate(rotation, glm::radians(rotationSpeed * 0.01f), glm::vec3(0.0f, 1.0f, 0.0f));
+	rotation = glm::rotate(rotation, glm::radians(-rotationSpeed * 0.01f), glm::vec3(0.0f, -1.0f, 0.0f));
 	const auto&& rotated = glm::mat4_cast(rotation);
 	const auto&& scaled = glm::scale(glm::mat4(1.0f), scale);
-	//log(translated);
-	//log(rotated);
-	//log(scaled);
 	
 	constantData.model = translated * rotated * scaled;
 }

@@ -4,7 +4,15 @@
 #include <unordered_map>
 #include <iostream>
 
-bool ModelImport::load(const char* path, const float scale, MeshInput* mesh) {
+bool stringEndsWith(const std::string& value, const std::string& suffix) {
+	//TODO case insensitive compare
+	if (value.length() >= suffix.length()) {
+		return value.compare(value.length() - suffix.length(), suffix.length(), suffix) == 0;
+	}
+	return false;
+}
+
+bool ModelImport::loadObj(const char* path, const float scale, MeshInput* mesh) const {
 	tinyobj::attrib_t attrib;
 	std::vector<tinyobj::shape_t> shapeList;
 	std::vector<tinyobj::material_t> materialList;
@@ -47,4 +55,22 @@ bool ModelImport::load(const char* path, const float scale, MeshInput* mesh) {
 	std::cout << data.vertices.size() << "|" << data.indices.size() << std::endl;
 	mesh->setData(std::move(data));
 	return true;
+}
+
+bool ModelImport::loadGltf(const char* path, const float scale, MeshInput* mesh) const {
+	//TODO
+	return false;
+}
+
+bool ModelImport::load(const std::string& path, const float scale, MeshInput* mesh) const {
+	bool result = false;
+	//TODO check FourCC?
+	if (stringEndsWith(path, ".obj")) {
+		return loadObj(path.c_str(), scale, mesh);
+	}
+	else if (stringEndsWith(path, ".glft")) {
+		return loadGltf(path.c_str(), scale, mesh);
+	}
+	std::cout << "unknown format" << std::endl;
+	return result;
 }
