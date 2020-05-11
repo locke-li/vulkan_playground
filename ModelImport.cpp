@@ -1,6 +1,8 @@
 #include "ModelImport.h"
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "tiny_obj_loader.h"
+#define TINYGLTF_IMPLEMENTATION
+#include "tiny_gltf.h"
 #include <unordered_map>
 #include <iostream>
 
@@ -58,17 +60,16 @@ bool ModelImport::loadObj(const char* path, const float scale, MeshInput* mesh) 
 }
 
 bool ModelImport::loadGltf(const char* path, const float scale, MeshInput* mesh) const {
-	//TODO
+	
 	return false;
 }
 
 bool ModelImport::load(const std::string& path, const float scale, MeshInput* mesh) const {
 	bool result = false;
-	//TODO check FourCC?
 	if (stringEndsWith(path, ".obj")) {
 		return loadObj(path.c_str(), scale, mesh);
 	}
-	else if (stringEndsWith(path, ".glft")) {
+	else if (stringEndsWith(path, ".glft") || stringEndsWith(path, ".glb")) {
 		return loadGltf(path.c_str(), scale, mesh);
 	}
 	std::cout << "unknown format" << std::endl;
