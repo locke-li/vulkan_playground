@@ -24,7 +24,7 @@ bool stringEndsWith(const std::string& value, const std::string& suffix) {
 	return false;
 }
 
-bool ModelImport::loadObj(const char* path, const float scale, MeshInput* mesh) const {
+bool ModelImport::loadObj(const char* path, const float scale, MeshNode* mesh) const {
 	tinyobj::attrib_t attrib;
 	std::vector<tinyobj::shape_t> shapeList;
 	std::vector<tinyobj::material_t> materialList;
@@ -73,7 +73,7 @@ bool ModelImport::loadObj(const char* path, const float scale, MeshInput* mesh) 
 	return true;
 }
 
-bool ModelImport::loadGltf(const char* path, const float scale, const bool isBinary, MeshInput* mesh) const {
+bool ModelImport::loadGltf(const char* path, const float scale, const bool isBinary, MeshNode* mesh) const {
 	tinygltf::Model model;
 	tinygltf::TinyGLTF loader;//TODO should this be reused?
 	loader.SetImageLoader(LoadImageData, nullptr);
@@ -114,7 +114,7 @@ bool ModelImport::loadGltf(const char* path, const float scale, const bool isBin
 	return true;
 }
 
-bool ModelImport::load(const std::string& path, const float scale, MeshInput* mesh) const {
+bool ModelImport::load(const std::string& path, const float scale, MeshNode* mesh) const {
 	bool result = false;
 	if (stringEndsWith(path, ".obj")) {
 		return loadObj(path.c_str(), scale, mesh);

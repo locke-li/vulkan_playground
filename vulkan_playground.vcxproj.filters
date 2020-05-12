@@ -24,9 +24,6 @@
     <ClCompile Include="ImageInput.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="MeshInput.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="RenderingData.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -45,15 +42,18 @@
     <ClCompile Include="Setting.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="MeshNode.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="MeshInput.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="VulkanEnv.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ImageInput.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="MeshInput.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="RenderingData.h">
@@ -75,6 +75,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Setting.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MeshNode.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MeshInput.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

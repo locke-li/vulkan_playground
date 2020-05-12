@@ -565,7 +565,7 @@ bool VulkanEnv::createDescriptorSetLayout() {
 bool VulkanEnv::createGraphicsPipelineLayout() {
 	VkPushConstantRange vertexConstant;
 	vertexConstant.offset = 0;
-	vertexConstant.size = MeshInput::getConstantSize();
+	vertexConstant.size = MeshNode::getConstantSize();
 	vertexConstant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
 	VkPipelineLayoutCreateInfo info;
@@ -607,8 +607,8 @@ bool VulkanEnv::createGraphicsPipeline() {
 	fragStage.pSpecializationInfo = nullptr;
 	VkPipelineShaderStageCreateInfo shaderStageInfo[] = { vertStage, fragStage };
 
-	auto vertexBinding = MeshInput::getBindingDescription();
-	auto vertexAttribute = MeshInput::getAttributeDescription();
+	auto vertexBinding = MeshNode::getBindingDescription();
+	auto vertexAttribute = MeshNode::getAttributeDescription();
 
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo;
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -1137,7 +1137,7 @@ bool VulkanEnv::copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size, VkComm
 	return vkEndCommandBuffer(cmd) == VK_SUCCESS;
 }
 
-bool VulkanEnv::createVertexBufferIndice(const std::vector<const MeshInput*>& input) {
+bool VulkanEnv::createVertexBufferIndice(const std::vector<const MeshNode*>& input) {
 	uint32_t vCount = 0, vSize = 0, iSize = 0;
 	for (auto i = 0; i < input.size(); ++i) {
 		const auto& vertexInput = input[i];
@@ -1421,7 +1421,7 @@ bool VulkanEnv::setupCommandBuffer(const uint32_t index, const uint32_t imageInd
 	for (auto i = 0; i < indexBuffer.offset.size(); ++i) {
 		vkCmdBindIndexBuffer(cmd, indexBuffer.buffer, indexBuffer.offset[i], VK_INDEX_TYPE_UINT16);
 		auto& input = *indexBuffer.input[i];
-		vkCmdPushConstants(cmd, graphicsPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, MeshInput::getConstantSize(), &input.getConstantData());
+		vkCmdPushConstants(cmd, graphicsPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, MeshNode::getConstantSize(), &input.getConstantData());
 		vkCmdDrawIndexed(cmd, input.indexCount(), 1, 0, indexBuffer.vOffset[i], 0);
 	}
 	vkCmdEndRenderPass(cmd);

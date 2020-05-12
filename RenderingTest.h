@@ -18,7 +18,7 @@ private:
 	RenderingData renderingData;
 	VulkanEnv vulkanEnv;
 	RenderContext renderContext;
-	std::vector<MeshInput> modelList;
+	std::vector<MeshNode> modelList;
 	void prepareModel();
 public:
 	int mainLoop();
