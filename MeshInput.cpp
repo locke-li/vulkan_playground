@@ -44,7 +44,9 @@ MeshInput::MeshInput(const VertexIndexed&& data, const glm::vec3& pos, const glm
 	, position(pos)
 	, rotation(rot)
 	, scale(scale)
-{}
+{
+	updateModelView();
+}
 
 MeshInput::MeshInput(MeshInput&& other) noexcept {
 	data = std::move(other.data);
@@ -111,12 +113,16 @@ void MeshInput::animate(const float rotationSpeed) {
 
 	auto time = std::chrono::high_resolution_clock::now();
 	auto duration = std::chrono::duration<float, std::chrono::seconds::period>(time - startTime).count();
-
-	const auto&& translated = glm::translate(glm::mat4(1.0f), position);
 	rotation = glm::rotate(rotation, glm::radians(-rotationSpeed * 0.01f), glm::vec3(0.0f, -1.0f, 0.0f));
+
+	updateModelView();
+}
+
+void MeshInput::updateModelView() {
+	const auto&& translated = glm::translate(glm::mat4(1.0f), position);
 	const auto&& rotated = glm::mat4_cast(rotation);
 	const auto&& scaled = glm::scale(glm::mat4(1.0f), scale);
-	
+
 	constantData.model = translated * rotated * scaled;
 }
 

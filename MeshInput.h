@@ -67,6 +67,7 @@ public:
 	uint32_t indexCount() const;
 	const uint16_t* indexData() const;
 	void animate(const float rotationSpeed);
+	void updateModelView();
 	const MeshConstant& getConstantData() const;
 };
 

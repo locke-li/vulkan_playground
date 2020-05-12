@@ -58,7 +58,6 @@ void RenderingTest::prepareModel() {
 	ModelImport modelImport;
 	//downloaded from https://sketchfab.com/3d-models/u-557-ae10491added470c88e4e21bc8672cd1
 	logResult("model loading", modelImport.load("model/U-557.glb", 32, &inputLoadedModel));
-	inputLoadedModel.animate(0);
 	modelList.push_back(std::move(inputTetrahedron));
 	modelList.push_back(std::move(inputCube));
 	modelList.push_back(std::move(inputLoadedModel));
