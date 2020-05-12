@@ -8,6 +8,14 @@
 #include <unordered_map>
 #include <iostream>
 
+bool LoadImageData(tinygltf::Image* image, const int image_idx, std::string* err,
+	std::string* warn, int req_width, int req_height,
+	const unsigned char* bytes, int size, void* userData) {
+	std::cout << image_idx << " " << image->name << std::endl;
+	//TODO stub
+	return true;
+}
+
 bool stringEndsWith(const std::string& value, const std::string& suffix) {
 	//TODO case insensitive compare
 	if (value.length() >= suffix.length()) {
@@ -68,6 +76,7 @@ bool ModelImport::loadObj(const char* path, const float scale, MeshInput* mesh) 
 bool ModelImport::loadGltf(const char* path, const float scale, const bool isBinary, MeshInput* mesh) const {
 	tinygltf::Model model;
 	tinygltf::TinyGLTF loader;//TODO should this be reused?
+	loader.SetImageLoader(LoadImageData, nullptr);
 	std::string warning, error;
 	bool loadResult;
 	if (isBinary) {
@@ -93,9 +102,13 @@ bool ModelImport::loadGltf(const char* path, const float scale, const bool isBin
 	}
 	std::cout << "\n";
 	std::cout << "bufferView = " << model.bufferViews.size() << "\n";
+	//DEBUG
+	for (const auto& buffer : model.buffers) {
+		std::cout << "buffer:" << buffer.name << "/" << buffer.data.size() << "\n";
+	}
 	for (const auto& view : model.bufferViews) {
 		const auto& buffer = model.buffers[view.buffer];
-		std::cout << buffer.name << "/" << buffer.data.size() << "\n";
+		std::cout << "view:" << view.name << "/" << view.byteOffset << "+" << view.byteLength << "\n";
 	}
 	std::cout << std::endl;
 	return true;
