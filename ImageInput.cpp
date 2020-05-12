@@ -14,6 +14,10 @@ ImageInput::ImageInput(const bool perserve, const bool mipmap)
 	, pixelData(nullptr)
 {}
 
+ImageInput::~ImageInput() {
+	release();
+}
+
 bool ImageInput::isValid() const {
 	return pixelData != nullptr;
 }
@@ -59,5 +63,6 @@ bool ImageInput::load(const char* path) {
 void ImageInput::release() {
 	if (pixelData != nullptr) {
 		stbi_image_free(pixelData);
+		pixelData = nullptr;
 	}
 }

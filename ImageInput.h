@@ -15,6 +15,7 @@ private:
 	const int BytePerPixel = 4;
 public:
 	ImageInput(const bool perserve, const bool mipmap);
+	~ImageInput();
 	bool isValid() const;
 	int getWidth() const;
 	int getHeight() const;
