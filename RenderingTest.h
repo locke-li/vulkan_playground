@@ -3,6 +3,7 @@
 #include "Setting.h"
 #include "RenderingData.h"
 #include "VulkanEnv.h"
+#include "MeshInput.h"
 #include <vector>
 
 class RenderingTest
@@ -18,7 +19,7 @@ private:
 	RenderingData renderingData;
 	VulkanEnv vulkanEnv;
 	RenderContext renderContext;
-	std::vector<MeshNode> modelList;
+	std::vector<MeshInput> modelList;
 	void prepareModel();
 public:
 	int mainLoop();

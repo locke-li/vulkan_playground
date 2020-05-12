@@ -42,12 +42,14 @@ uint32_t RenderingData::getUniformSize() const {
 	return sizeof(uniformData);
 }
 
-void RenderingData::setRenderListFiltered(const std::vector<MeshNode>& list) {
+void RenderingData::setRenderListFiltered(const std::vector<MeshInput>& list) {
 	renderList.clear();
 	renderList.reserve(list.size());
 	//TODO filter/culling
-	for (const auto& mesh : list) {
-		renderList.push_back(&mesh);
+	for (const auto& input : list) {
+		for (const auto& mesh : input.getMeshList()) {
+			renderList.push_back(&mesh);
+		}
 	}
 }
 

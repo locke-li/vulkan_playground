@@ -1,7 +1,7 @@
 #pragma once
 #define GLFW_INCLUDE_VULKAN 
 #include "GLFW/glfw3.h"
-#include "MeshInput.h"
+#include "MeshNode.h"
 #include "RenderingData.h"
 #include "ImageInput.h"
 #include "ShaderInput.h"

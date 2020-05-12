@@ -2,6 +2,7 @@
 #include "ModelImport.h"
 #include "ShaderInput.h"
 #include "DebugHelper.hpp"
+#include "MeshNode.h"
 #include <iostream>
 #include <chrono>
 
@@ -32,7 +33,8 @@ void RenderingTest::prepareModel() {
 			3, 2, 1,
 		}
 	};
-	MeshNode inputTetrahedron{ std::move(tetrahedron), { 0.0f, 0.0f, -1.0f }, { 1.0f, 0.0f, 0.0f, 0.0f }, {1.0f, 1.0f, 1.0f} };
+	MeshInput inputTetrahedron{ { 0.0f, 0.0f, -1.0f }, { 1.0f, 0.0f, 0.0f, 0.0f }, {1.0f, 1.0f, 1.0f} };
+	inputTetrahedron.addMesh({ std::move(tetrahedron) });
 	VertexIndexed cube = {
 		{
 			{{-0.5f, -0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
@@ -53,11 +55,13 @@ void RenderingTest::prepareModel() {
 			0, 4, 7, 7, 1, 0,//top
 		}
 	};
-	MeshNode inputCube{ std::move(cube), { 0.0f, 0.0f, -2.0f }, { 1.0f, 0.0f, 0.0f, 0.0f }, {1.0f, 1.0f, 1.0f} };
-	MeshNode inputLoadedModel{ {}, { 0.0f, 0.0f, 0.0f }, { 1.0f, 0.0f, 0.0f, 0.0f }, {1.0f, 1.0f, 1.0f} };
+	MeshInput inputCube{ { 0.0f, 0.0f, -2.0f }, { 1.0f, 0.0f, 0.0f, 0.0f }, { 1.0f, 1.0f, 1.0f } };
+	inputCube.addMesh({ std::move(cube) });
+	MeshInput inputLoadedModel{ { 0.0f, 0.0f, 0.0f }, { 1.0f, 0.0f, 0.0f, 0.0f }, {1.0f, 1.0f, 1.0f} };
 	ModelImport modelImport;
 	//downloaded from https://sketchfab.com/3d-models/u-557-ae10491added470c88e4e21bc8672cd1
-	logResult("model loading", modelImport.load("model/U-557.glb", 32, &inputLoadedModel));
+	logResult("model loading", modelImport.load("model/U-557.obj", 32, &inputLoadedModel));
+	//FIX input move after assigned to node.root
 	modelList.push_back(std::move(inputTetrahedron));
 	modelList.push_back(std::move(inputCube));
 	modelList.push_back(std::move(inputLoadedModel));

@@ -1,4 +1,5 @@
 #include "VulkanEnv.h"
+#include "MeshNode.h"
 #include <unordered_set>
 #include <cstdint>
 #include <algorithm>

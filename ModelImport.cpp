@@ -1,4 +1,5 @@
 #include "ModelImport.h"
+#include "MeshNode.h"
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "tiny_obj_loader.h"
 #define TINYGLTF_IMPLEMENTATION
@@ -24,7 +25,7 @@ bool stringEndsWith(const std::string& value, const std::string& suffix) {
 	return false;
 }
 
-bool ModelImport::loadObj(const char* path, const float scale, MeshNode* mesh) const {
+bool ModelImport::loadObj(const char* path, const float scale, MeshInput* mesh) const {
 	tinyobj::attrib_t attrib;
 	std::vector<tinyobj::shape_t> shapeList;
 	std::vector<tinyobj::material_t> materialList;
@@ -39,9 +40,10 @@ bool ModelImport::loadObj(const char* path, const float scale, MeshNode* mesh) c
 	}
 
 	std::unordered_map<Vertex, uint32_t> vertexIndex;
-	VertexIndexed data;
+	mesh->reserve(shapeList.size());
 	for (const auto& shape : shapeList) {
 		std::cout << shape.name << "\n";
+		VertexIndexed data;
 		for (const auto& indexInfo : shape.mesh.indices) {
 			Vertex vertex{};
 			auto index = indexInfo.vertex_index * 3;
@@ -66,14 +68,14 @@ bool ModelImport::loadObj(const char* path, const float scale, MeshNode* mesh) c
 				data.indices.push_back(vertexIndex[vertex]);
 			}
 		}
+		std::cout << data.vertices.size() << "|" << data.indices.size() << std::endl;
+		mesh->addMesh(MeshNode{ std::move(data) });
 	}
-	std::cout << data.vertices.size() << "|" << data.indices.size() << std::endl;
-	mesh->setData(std::move(data));
 	//TODO manage material/texture
 	return true;
 }
 
-bool ModelImport::loadGltf(const char* path, const float scale, const bool isBinary, MeshNode* mesh) const {
+bool ModelImport::loadGltf(const char* path, const float scale, const bool isBinary, MeshInput* mesh) const {
 	tinygltf::Model model;
 	tinygltf::TinyGLTF loader;//TODO should this be reused?
 	loader.SetImageLoader(LoadImageData, nullptr);
@@ -114,7 +116,7 @@ bool ModelImport::loadGltf(const char* path, const float scale, const bool isBin
 	return true;
 }
 
-bool ModelImport::load(const std::string& path, const float scale, MeshNode* mesh) const {
+bool ModelImport::load(const std::string& path, const float scale, MeshInput* mesh) const {
 	bool result = false;
 	if (stringEndsWith(path, ".obj")) {
 		return loadObj(path.c_str(), scale, mesh);

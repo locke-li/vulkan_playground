@@ -1,6 +1,7 @@
 #pragma once
 #include "glm.hpp"
 #include "MeshInput.h"
+#include "MeshNode.h"
 #include <vector>
 
 struct UniformBufferData {
@@ -27,7 +28,7 @@ public:
 	void updateCamera(const float fov, const float aspectRatio, const glm::vec3&& pos, const glm::vec3&& center);
 	const UniformBufferData& getUniform() const;
 	uint32_t getUniformSize() const;
-	void setRenderListFiltered(const std::vector<MeshNode>& list);
+	void setRenderListFiltered(const std::vector<MeshInput>& list);
 	const std::vector<const MeshNode*> getRenderList() const;
 };
 

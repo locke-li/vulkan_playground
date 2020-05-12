@@ -1,10 +1,10 @@
 #include "MeshNode.h"
+#include "MeshInput.h"
+#include "DebugHelper.hpp"
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_LEFT_HANDED
 #include "glm.hpp"
 #include "gtc/matrix_transform.hpp"
-#include "DebugHelper.hpp"
-#include <chrono>
 #include <iostream>
 
 bool Vertex::operator==(const Vertex& other) const {
@@ -40,47 +40,36 @@ std::vector<VkVertexInputAttributeDescription> MeshNode::getAttributeDescription
 }
 
 MeshNode::MeshNode(const VertexIndexed&& data, const glm::vec3& pos, const glm::quat& rot, const glm::vec3& scale)
-	: data(std::make_unique<VertexIndexed>(data))
+	: root(nullptr)
+	, data(std::make_unique<VertexIndexed>(data))
 	, position(pos)
 	, rotation(rot)
 	, scale(scale)
 {
-	updateModelView();
+	updateConstantDataLocal();
 }
 
-MeshNode::MeshNode(MeshNode&& other) noexcept {
-	data = std::move(other.data);
-	position = other.position;
-	rotation = other.rotation;
-	scale = other.scale;
-	constantData = other.constantData;
+MeshNode::MeshNode(MeshNode&& other) noexcept
+	: root(other.root)
+	, data(std::move(other.data))
+	, position(other.position)
+	, rotation(other.rotation)
+	, scale(other.scale)
+	, localModelMatrix(other.localModelMatrix)
+	, constantData(other.constantData)
+{
 }
 
 uint32_t MeshNode::getConstantSize() {
 	return sizeof(MeshConstant);
 }
 
-void MeshNode::setData(const VertexIndexed&& dataIn) noexcept {
-	data = std::make_unique<VertexIndexed>(dataIn);
+void MeshNode::setRoot(const MeshInput* rootIn) noexcept {
+	root = rootIn;
 }
 
-void MeshNode::setPosition(const glm::vec3& pos) noexcept {
-	position = pos;
-}
-const glm::vec3& MeshNode::getPosition() const noexcept {
-	return position;
-}
-void MeshNode::setRotation(const glm::quat& rot) noexcept {
-	rotation = rot;
-}
-const glm::quat& MeshNode::getRotation() const noexcept {
-	return rotation;
-}
-void MeshNode::setScale(const glm::vec3& scaleIn) noexcept {
-	scale = scaleIn;
-}
-const glm::quat& MeshNode::getScale() const noexcept {
-	return scale;
+void MeshNode::setData(const VertexIndexed&& dataIn) noexcept {
+	data = std::make_unique<VertexIndexed>(dataIn);
 }
 
 uint32_t MeshNode::vertexSize() const {
@@ -107,23 +96,22 @@ const uint16_t* MeshNode::indexData() const {
 	return data->indices.data();
 }
 
-void MeshNode::animate(const float rotationSpeed) {
-	//static trick here
-	static auto startTime = std::chrono::high_resolution_clock::now();
-
-	auto time = std::chrono::high_resolution_clock::now();
-	auto duration = std::chrono::duration<float, std::chrono::seconds::period>(time - startTime).count();
-	rotation = glm::rotate(rotation, glm::radians(-rotationSpeed * 0.01f), glm::vec3(0.0f, -1.0f, 0.0f));
-
-	updateModelView();
+void MeshNode::updateConstantData() {
+	if (root != nullptr) {
+		constantData.model = root->getModelMatrix() * localModelMatrix;
+	}
+	else {
+		constantData.model = localModelMatrix;
+	}
+	log(constantData.model);
 }
 
-void MeshNode::updateModelView() {
+void MeshNode::updateConstantDataLocal() {
 	const auto&& translated = glm::translate(glm::mat4(1.0f), position);
 	const auto&& rotated = glm::mat4_cast(rotation);
 	const auto&& scaled = glm::scale(glm::mat4(1.0f), scale);
-
-	constantData.model = translated * rotated * scaled;
+	localModelMatrix = translated * rotated * scaled;
+	updateConstantData();
 }
 
 const MeshConstant& MeshNode::getConstantData() const {
