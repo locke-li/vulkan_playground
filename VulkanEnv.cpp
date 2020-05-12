@@ -1137,7 +1137,7 @@ bool VulkanEnv::copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size, VkComm
 	return vkEndCommandBuffer(cmd) == VK_SUCCESS;
 }
 
-bool VulkanEnv::createVertexBufferIndice(const std::vector<MeshInput*>& input) {
+bool VulkanEnv::createVertexBufferIndice(const std::vector<const MeshInput*>& input) {
 	uint32_t vCount = 0, vSize = 0, iSize = 0;
 	for (auto i = 0; i < input.size(); ++i) {
 		const auto& vertexInput = input[i];
@@ -1442,7 +1442,7 @@ bool VulkanEnv::createFrameSyncObject() {
 	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 	fenceInfo.pNext = nullptr;
 
-	for (auto i = 0; i < maxFrameInFlight; ++i) {
+	for (uint32_t i = 0; i < maxFrameInFlight; ++i) {
 		auto& frame = inFlightFrame[i];
 		if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &frame.semaphoreImageAquired) != VK_SUCCESS ||
 			vkCreateSemaphore(device, &semaphoreInfo, nullptr, &frame.semaphoreRenderFinished) != VK_SUCCESS ||

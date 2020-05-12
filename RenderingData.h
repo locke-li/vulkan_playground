@@ -1,5 +1,7 @@
 #pragma once
 #include "glm.hpp"
+#include "MeshInput.h"
+#include <vector>
 
 struct UniformBufferData {
 	alignas(16)glm::mat4 view;
@@ -14,7 +16,8 @@ private:
 	glm::vec3 cameraPos;
 	glm::vec3 cameraViewCenter;
 	float windowAspectRatio;
-
+	std::vector<const MeshInput*> renderList;
+		
 	void updateProjection();
 	void updateView();
 public:
@@ -24,5 +27,7 @@ public:
 	void updateCamera(const float fov, const float aspectRatio, const glm::vec3&& pos, const glm::vec3&& center);
 	const UniformBufferData& getUniform() const;
 	uint32_t getUniformSize() const;
+	void setRenderListFiltered(const std::vector<MeshInput>& list);
+	const std::vector<const MeshInput*> getRenderList() const;
 };
 

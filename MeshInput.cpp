@@ -39,16 +39,24 @@ std::vector<VkVertexInputAttributeDescription> MeshInput::getAttributeDescriptio
 	return attribute;
 }
 
-uint32_t MeshInput::getConstantSize() {
-	return sizeof(MeshConstant);
-}
-
 MeshInput::MeshInput(const VertexIndexed&& data, const glm::vec3& pos, const glm::quat& rot, const glm::vec3& scale)
 	: data(std::make_unique<VertexIndexed>(data))
 	, position(pos)
 	, rotation(rot)
 	, scale(scale)
 {}
+
+MeshInput::MeshInput(MeshInput&& other) noexcept {
+	data = std::move(other.data);
+	position = other.position;
+	rotation = other.rotation;
+	scale = other.scale;
+	constantData = other.constantData;
+}
+
+uint32_t MeshInput::getConstantSize() {
+	return sizeof(MeshConstant);
+}
 
 void MeshInput::setData(const VertexIndexed&& dataIn) noexcept {
 	data = std::make_unique<VertexIndexed>(dataIn);

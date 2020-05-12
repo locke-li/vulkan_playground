@@ -51,6 +51,8 @@ public:
 		const glm::vec3& pos = glm::vec3(0.0f),
 		const glm::quat& rot = glm::identity<glm::quat>(),
 		const glm::vec3& scale = glm::vec3(1.0f));
+	//MeshInput(const MeshInput& other) noexcept;
+	MeshInput(MeshInput&& other) noexcept;
 	void setData(const VertexIndexed&& data) noexcept;
 	void setPosition(const glm::vec3& pos) noexcept;
 	const glm::vec3& getPosition() const noexcept;

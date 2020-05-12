@@ -41,3 +41,16 @@ const UniformBufferData& RenderingData::getUniform() const {
 uint32_t RenderingData::getUniformSize() const {
 	return sizeof(uniformData);
 }
+
+void RenderingData::setRenderListFiltered(const std::vector<MeshInput>& list) {
+	renderList.clear();
+	renderList.reserve(list.size());
+	//TODO filter/culling
+	for (const auto& mesh : list) {
+		renderList.push_back(&mesh);
+	}
+}
+
+const std::vector<const MeshInput*> RenderingData::getRenderList() const {
+	return renderList;
+}
