@@ -25,7 +25,7 @@ bool stringEndsWith(const std::string& value, const std::string& suffix) {
 	return false;
 }
 
-bool ModelImport::loadObj(const char* path, const float scale, MeshInput* mesh) const {
+bool ModelImport::loadObj(const char* path, const float scale, MeshInput* const mesh) const {
 	tinyobj::attrib_t attrib;
 	std::vector<tinyobj::shape_t> shapeList;
 	std::vector<tinyobj::material_t> materialList;
@@ -41,9 +41,14 @@ bool ModelImport::loadObj(const char* path, const float scale, MeshInput* mesh) 
 
 	std::unordered_map<Vertex, uint32_t> vertexIndex;
 	mesh->reserve(shapeList.size());
+	std::vector<std::vector<uint8_t>> buffer(1);
+	uint32_t bufferOffset = 0;
+	uint32_t bufferSize = 0;
 	for (const auto& shape : shapeList) {
 		std::cout << shape.name << "\n";
-		VertexIndexed data;
+		std::vector<BufferView> view({ {0, bufferOffset, 0, static_cast<uint8_t>(sizeof(uint16_t))} });
+		std::vector<Vertex> vertices;
+		std::vector<uint16_t> indices;
 		for (const auto& indexInfo : shape.mesh.indices) {
 			Vertex vertex{};
 			auto index = indexInfo.vertex_index * 3;
@@ -59,23 +64,27 @@ bool ModelImport::loadObj(const char* path, const float scale, MeshInput* mesh) 
 			};
 
 			if (vertexIndex.count(vertex) == 0) {//unique vertex
-				auto index = static_cast<uint32_t>(data.vertices.size());
+				auto index = static_cast<uint32_t>(vertices.size());
 				vertexIndex[vertex] = index;
-				data.vertices.push_back(vertex);
-				data.indices.push_back(index);
+				vertices.push_back(vertex);
+				indices.push_back(index);
 			}
 			else {
-				data.indices.push_back(vertexIndex[vertex]);
+				indices.push_back(vertexIndex[vertex]);
 			}
 		}
-		std::cout << data.vertices.size() << "|" << data.indices.size() << std::endl;
-		mesh->addMesh(MeshNode{ std::move(data) });
+		std::cout << vertices.size() << "|" << indices.size() << std::endl;
+		mesh->addMesh(MeshNode{ std::move(view) });
 	}
+	buffer[0].resize(bufferSize);
+	auto* data = buffer[0].data();
+	memcpy(data, vertices.data(), );
+	mesh->setBuffer(std::move(buffer));
 	//TODO manage material/texture
 	return true;
 }
 
-bool ModelImport::loadGltf(const char* path, const float scale, const bool isBinary, MeshInput* mesh) const {
+bool ModelImport::loadGltf(const char* path, const float scale, const bool isBinary, MeshInput* const meshOut) const {
 	tinygltf::Model model;
 	tinygltf::TinyGLTF loader;//TODO should this be reused?
 	loader.SetImageLoader(LoadImageData, nullptr);
@@ -97,26 +106,42 @@ bool ModelImport::loadGltf(const char* path, const float scale, const bool isBin
 	std::cout << "scene count = " << model.scenes.size() << " default = " << model.defaultScene << std::endl;
 	auto sceneIndex = model.defaultScene > -1 ? model.defaultScene : 0;
 	tinygltf::Scene scene = model.scenes[sceneIndex];
-	//TODO currently scene structure ignored
+	//TODO currently scene structure ignored, as this is only an int value
 	std::cout << "name = " << scene.name << " node = " << scene.nodes.size() << " |";
 	for (const auto& node : scene.nodes) {
 		std::cout << node << " ";
 	}
 	std::cout << "\n";
-	std::cout << "bufferView = " << model.bufferViews.size() << "\n";
-	//DEBUG
-	for (const auto& buffer : model.buffers) {
-		std::cout << "buffer:" << buffer.name << "/" << buffer.data.size() << "\n";
-	}
+	std::cout << "buffer = " << model.buffers.size() << " bufferView = " << model.bufferViews.size() << "\n";
 	for (const auto& view : model.bufferViews) {
-		const auto& buffer = model.buffers[view.buffer];
-		std::cout << "view:" << view.name << "/" << view.byteOffset << "+" << view.byteLength << "\n";
+		if (view.target == TINYGLTF_TARGET_ELEMENT_ARRAY_BUFFER) {//indices
+			std::cout << "view indices:" << view.name << "/" << view.byteOffset << "+" << view.byteLength << "\n";
+		}
+		else if (view.target == TINYGLTF_TARGET_ARRAY_BUFFER) {//vertices
+			std::cout << "view vertices:" << view.name << "/" << view.byteOffset << "+" << view.byteLength << "\n";
+		}
+		else {
+			std::cout << "view other:" << view.name << "|" << view.target << "/" << view.byteOffset << "+" << view.byteLength << "\n";
+		}
+	}
+	for (const auto& mesh : model.meshes) {
+		std::cout << "mesh:" << mesh.name << "/" << mesh.primitives.size() << ", " << mesh.weights.size() << "\n";
+		if (mesh.primitives.size() == 0) continue;
+		std::vector<BufferView> meshBufferView;
+		meshBufferView.reserve(mesh.primitives.size());
+		for (const auto& prim : mesh.primitives) {
+			if (prim.indices < 0) continue;
+			const auto& accessor = model.accessors[prim.indices];
+			const auto& view = model.bufferViews[accessor.bufferView];
+			meshBufferView.push_back({ view.buffer, accessor.byteOffset, accessor.count, accessor.ByteStride(view) });
+		}
+		meshOut->addMesh(MeshNode{ std::move(meshBufferView) });
 	}
 	std::cout << std::endl;
 	return true;
 }
 
-bool ModelImport::load(const std::string& path, const float scale, MeshInput* mesh) const {
+bool ModelImport::load(const std::string& path, const float scale, MeshInput* const mesh) const {
 	bool result = false;
 	if (stringEndsWith(path, ".obj")) {
 		return loadObj(path.c_str(), scale, mesh);

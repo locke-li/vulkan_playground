@@ -10,6 +10,7 @@ class MeshNode;
 class MeshInput
 {
 private:
+	std::vector<std::vector<uint8_t>> buffer;
 	glm::vec3 position;
 	glm::quat rotation;
 	glm::vec3 scale;
@@ -22,6 +23,8 @@ public:
 		const glm::vec3& scale = glm::vec3(1.0f));
 	MeshInput(const MeshInput& other) = delete;
 	MeshInput(MeshInput&& other) noexcept;
+	void setBuffer(std::vector<std::vector<uint8_t>>&& bufferIn) noexcept;
+	const std::vector<std::vector<uint8_t>>& getBuffer() const noexcept;
 	void setPosition(const glm::vec3& pos) noexcept;
 	const glm::vec3& getPosition() const noexcept;
 	void setRotation(const glm::quat& rot) noexcept;

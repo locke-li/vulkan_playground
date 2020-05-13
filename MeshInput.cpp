@@ -26,6 +26,14 @@ MeshInput::MeshInput(MeshInput&& other) noexcept
 	}
 }
 
+void MeshInput::setBuffer(std::vector<std::vector<uint8_t>>&& bufferIn) noexcept {
+	buffer = bufferIn;
+}
+
+const std::vector<std::vector<uint8_t>>& MeshInput::getBuffer() const noexcept {
+	return buffer;
+}
+
 void MeshInput::setPosition(const glm::vec3& pos) noexcept {
 	position = pos;
 }

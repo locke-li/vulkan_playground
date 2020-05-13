@@ -39,9 +39,9 @@ std::vector<VkVertexInputAttributeDescription> MeshNode::getAttributeDescription
 	return attribute;
 }
 
-MeshNode::MeshNode(const VertexIndexed&& data, const glm::vec3& pos, const glm::quat& rot, const glm::vec3& scale)
+MeshNode::MeshNode(std::vector<BufferView>&& viewIn, const glm::vec3& pos, const glm::quat& rot, const glm::vec3& scale)
 	: root(nullptr)
-	, data(std::make_unique<VertexIndexed>(data))
+	, view(viewIn)
 	, position(pos)
 	, rotation(rot)
 	, scale(scale)
@@ -51,7 +51,7 @@ MeshNode::MeshNode(const VertexIndexed&& data, const glm::vec3& pos, const glm::
 
 MeshNode::MeshNode(MeshNode&& other) noexcept
 	: root(other.root)
-	, data(std::move(other.data))
+	, view(std::move(other.view))
 	, position(std::move(other.position))
 	, rotation(std::move(other.rotation))
 	, scale(std::move(other.scale))
@@ -68,32 +68,12 @@ void MeshNode::setRoot(const MeshInput* rootIn) noexcept {
 	root = rootIn;
 }
 
-void MeshNode::setData(const VertexIndexed&& dataIn) noexcept {
-	data = std::make_unique<VertexIndexed>(dataIn);
+void MeshNode::setView(std::vector<BufferView>&& viewIn) noexcept {
+	view = viewIn;
 }
 
-uint32_t MeshNode::vertexSize() const {
-	return static_cast<uint32_t>(sizeof(data->vertices[0]) * data->vertices.size());//TODO handle possible overflow
-}
-
-uint32_t MeshNode::vertexCount() const {
-	return static_cast<uint32_t>(data->vertices.size());
-}
-
-const Vertex* MeshNode::vertexData() const {
-	return data->vertices.data();
-}
-
-uint32_t MeshNode::indexSize() const {
-	return static_cast<uint32_t>(sizeof(data->indices[0]) * data->indices.size());//TODO handle possible overflow
-}
-
-uint32_t MeshNode::indexCount() const {
-	return static_cast<uint32_t>(data->indices.size());
-}
-
-const uint16_t* MeshNode::indexData() const {
-	return data->indices.data();
+const std::vector<BufferView>& MeshNode::getView() const noexcept {
+	return view;
 }
 
 void MeshNode::updateConstantData() {

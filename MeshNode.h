@@ -27,9 +27,11 @@ namespace std {
 	};
 }
 
-struct VertexIndexed {
-	std::vector<Vertex> vertices;
-	std::vector<uint16_t> indices;
+struct BufferView {
+	int bufferIndex;
+	uint32_t offset;
+	uint32_t size;
+	uint8_t stride;
 };
 
 struct MeshConstant {
@@ -40,7 +42,7 @@ class MeshNode
 {
 private:
 	const MeshInput* root;
-	std::unique_ptr<VertexIndexed> data = nullptr;
+	std::vector<BufferView> view;
 	glm::vec3 position;
 	glm::quat rotation;
 	glm::vec3 scale;
@@ -51,20 +53,15 @@ public:
 	static std::vector<VkVertexInputAttributeDescription> getAttributeDescription();
 	static uint32_t getConstantSize();
 public:
-	MeshNode(const VertexIndexed&& data,
+	MeshNode(std::vector<BufferView>&& viewIn,
 		const glm::vec3& pos = glm::vec3(0.0f),
 		const glm::quat& rot = glm::identity<glm::quat>(),
 		const glm::vec3& scale = glm::vec3(1.0f));
 	MeshNode(const MeshInput& other) = delete;
 	MeshNode(MeshNode&& other) noexcept;
 	void setRoot(const MeshInput* root) noexcept;
-	void setData(const VertexIndexed&& data) noexcept;
-	uint32_t vertexSize() const;
-	uint32_t vertexCount() const;
-	const Vertex* vertexData() const;
-	uint32_t indexSize() const;
-	uint32_t indexCount() const;
-	const uint16_t* indexData() const;
+	void setView(std::vector<BufferView>&& view) noexcept;
+	const std::vector<BufferView>& getView() const noexcept;
 	void updateConstantData();
 	void updateConstantDataAsLocal();
 	const MeshConstant& getConstantData() const;
