@@ -25,6 +25,7 @@ public:
 	MeshInput(MeshInput&& other) noexcept;
 	void setBuffer(std::vector<std::vector<uint8_t>>&& bufferIn) noexcept;
 	const std::vector<std::vector<uint8_t>>& getBuffer() const noexcept;
+	const uint8_t* bufferData(const int index) const;
 	void setPosition(const glm::vec3& pos) noexcept;
 	const glm::vec3& getPosition() const noexcept;
 	void setRotation(const glm::quat& rot) noexcept;

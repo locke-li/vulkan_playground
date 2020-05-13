@@ -29,9 +29,14 @@ namespace std {
 
 struct BufferView {
 	int bufferIndex;
-	uint32_t offset;
-	uint32_t size;
-	uint8_t stride;
+	uint32_t vertexOffset;
+	uint32_t vertexSize;
+	uint32_t vertexStride;
+	uint32_t vertexCount;
+	uint32_t indexOffset;
+	uint32_t indexSize;
+	uint8_t indexStride;
+	uint32_t indexCount;
 };
 
 struct MeshConstant {

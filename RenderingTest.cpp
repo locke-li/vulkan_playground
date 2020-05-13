@@ -19,50 +19,10 @@ void onFramebufferResize(GLFWwindow* window, int width, int height) {
 }
 
 void RenderingTest::prepareModel() {
-	VertexIndexed tetrahedron = {
-		{
-			{{0.0f, -0.577f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
-			{{0.0f, 0.289f, 0.577f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-			{{-0.5f, 0.289f, -0.289f}, {0.0f, 1.0f, 0.0f}, {0.5f, 0.0f}},
-			{{0.5f, 0.289f, -0.289f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}}
-		},
-		{
-			0, 1, 2,
-			0, 2, 3,
-			0, 3, 1,
-			3, 2, 1,
-		}
-	};
-	MeshInput inputTetrahedron{ { 0.0f, 0.0f, -1.0f }, { 1.0f, 0.0f, 0.0f, 0.0f }, {1.0f, 1.0f, 1.0f} };
-	inputTetrahedron.addMesh({ std::move(tetrahedron) });
-	VertexIndexed cube = {
-		{
-			{{-0.5f, -0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
-			{{0.5f, -0.5f, 0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-			{{0.5f, 0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}, {0.5f, 0.0f}},
-			{{-0.5f, 0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
-			{{-0.5f, -0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
-			{{-0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
-			{{0.5f, 0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.5f, 0.0f}},
-			{{0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-		},
-		{
-			4, 5, 6, 6, 7, 4,//back
-			0, 1, 2, 2, 3, 0,//front
-			4, 0, 3, 3, 5, 4,//left
-			1, 7, 6, 6, 2, 1,//right
-			5, 3, 2, 2, 6, 5,//bottom
-			0, 4, 7, 7, 1, 0,//top
-		}
-	};
-	MeshInput inputCube{ { 0.0f, 0.0f, -2.0f }, { 1.0f, 0.0f, 0.0f, 0.0f }, { 1.0f, 1.0f, 1.0f } };
-	inputCube.addMesh({ std::move(cube) });
 	MeshInput inputLoadedModel{ { 0.0f, 0.0f, 0.0f }, { 1.0f, 0.0f, 0.0f, 0.0f }, {1.0f, 1.0f, 1.0f} };
 	ModelImport modelImport;
 	//downloaded from https://sketchfab.com/3d-models/u-557-ae10491added470c88e4e21bc8672cd1
-	logResult("model loading", modelImport.load("model/U-557.glb", 32, &inputLoadedModel));
-	modelList.push_back(std::move(inputTetrahedron));
-	modelList.push_back(std::move(inputCube));
+	logResult("model loading", modelImport.load("model/U-557.obj", 32, &inputLoadedModel));
 	modelList.push_back(std::move(inputLoadedModel));
 }
 
@@ -121,8 +81,8 @@ int RenderingTest::mainLoop() {
 
 	while (!windowLayer.shouldClose()) {
 		windowLayer.handleEvent();
-		modelList[0].animate(90);
-		modelList[1].animate(45);
+		//modelList[0].animate(90);
+		//modelList[1].animate(45);
 		vulkanEnv.drawFrame(renderingData);
 	}
 

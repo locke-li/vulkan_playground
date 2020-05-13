@@ -34,16 +34,17 @@ struct DepthBuffer {
 struct VertexBuffer {
 	std::vector<VkBuffer> buffer;
 	std::vector<VkDeviceMemory> memory;
-	std::vector<const MeshNode*> input;
 	std::vector<VkDeviceSize> offset;
 };
 
 struct IndexBuffer {
 	VkBuffer buffer;
 	VkDeviceMemory memory;
-	std::vector<const MeshNode*> input;
+	std::vector<const BufferView*> input;
 	std::vector<VkDeviceSize> offset;
 	std::vector<uint32_t> vOffset;
+	std::vector<uint32_t> iCount;
+	std::vector<const MeshConstant*> constantData;
 };
 
 struct ImageOption {
@@ -160,7 +161,7 @@ public:
 	bool createTextureImageView();
 	bool createTextureSampler();
 	bool setupFence();
-	bool createVertexBufferIndice(const std::vector<const MeshNode*>& input);
+	bool createVertexBufferIndice(const std::vector<const MeshInput*>& input);
 	bool createUniformBuffer();
 	bool createDescriptorPool();
 	bool createDescriptorSet();

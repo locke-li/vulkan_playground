@@ -47,12 +47,10 @@ void RenderingData::setRenderListFiltered(const std::vector<MeshInput>& list) {
 	renderList.reserve(list.size());
 	//TODO filter/culling
 	for (const auto& input : list) {
-		for (const auto& mesh : input.getMeshList()) {
-			renderList.push_back(&mesh);
-		}
+		renderList.push_back(&input);
 	}
 }
 
-const std::vector<const MeshNode*> RenderingData::getRenderList() const {
+const std::vector<const MeshInput*> RenderingData::getRenderList() const {
 	return renderList;
 }

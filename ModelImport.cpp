@@ -39,14 +39,18 @@ bool ModelImport::loadObj(const char* path, const float scale, MeshInput* const 
 		std::cout << warning << std::endl;
 	}
 
-	std::unordered_map<Vertex, uint32_t> vertexIndex;
 	mesh->reserve(shapeList.size());
+	std::unordered_map<Vertex, uint32_t> vertexIndex;
 	std::vector<std::vector<uint8_t>> buffer(1);
+	std::vector<std::vector<Vertex>> verticesList;
+	std::vector<std::vector<uint16_t>> indicesList;
+	verticesList.reserve(shapeList.size());
+	indicesList.reserve(shapeList.size());
+	auto vertexStride = static_cast<uint32_t>(sizeof(Vertex));
+	auto indexStride = static_cast<uint8_t>(sizeof(uint16_t));
 	uint32_t bufferOffset = 0;
-	uint32_t bufferSize = 0;
 	for (const auto& shape : shapeList) {
 		std::cout << shape.name << "\n";
-		std::vector<BufferView> view({ {0, bufferOffset, 0, static_cast<uint8_t>(sizeof(uint16_t))} });
 		std::vector<Vertex> vertices;
 		std::vector<uint16_t> indices;
 		for (const auto& indexInfo : shape.mesh.indices) {
@@ -74,11 +78,36 @@ bool ModelImport::loadObj(const char* path, const float scale, MeshInput* const 
 			}
 		}
 		std::cout << vertices.size() << "|" << indices.size() << std::endl;
-		mesh->addMesh(MeshNode{ std::move(view) });
+		auto verticesSize = vertices.size() * vertexStride;
+		auto indicesSize = indices.size() * indexStride;
+		bufferOffset += verticesSize + indicesSize;
+		verticesList.push_back(std::move(vertices));
+		indicesList.push_back(std::move(indices));
 	}
-	buffer[0].resize(bufferSize);
+	buffer[0].resize(bufferOffset);
 	auto* data = buffer[0].data();
-	memcpy(data, vertices.data(), );
+	bufferOffset = 0;
+	for (auto i = 0; i < shapeList.size(); ++i) {
+		const auto& vertices = verticesList[i];
+		const auto& indices = indicesList[i];
+		auto verticesSize = static_cast<uint32_t>(vertices.size() * vertexStride);
+		auto indicesSize = static_cast<uint32_t>(indices.size() * indexStride);
+		memcpy(data + bufferOffset, vertices.data(), verticesSize);
+		memcpy(data + bufferOffset + verticesSize, indices.data(), indicesSize);
+		mesh->addMesh(MeshNode{ { {
+				0,
+				bufferOffset,
+				verticesSize,
+				vertexStride,
+				static_cast<uint32_t>(vertices.size()),
+				bufferOffset + verticesSize,
+				indicesSize,
+				indexStride,
+				static_cast<uint32_t>(indices.size())
+			} } });
+		bufferOffset += verticesSize + indicesSize;
+	}
+	
 	mesh->setBuffer(std::move(buffer));
 	//TODO manage material/texture
 	return true;
@@ -133,7 +162,12 @@ bool ModelImport::loadGltf(const char* path, const float scale, const bool isBin
 			if (prim.indices < 0) continue;
 			const auto& accessor = model.accessors[prim.indices];
 			const auto& view = model.bufferViews[accessor.bufferView];
-			meshBufferView.push_back({ view.buffer, accessor.byteOffset, accessor.count, accessor.ByteStride(view) });
+			meshBufferView.push_back({ 
+				view.buffer, 
+				static_cast<uint32_t>(accessor.byteOffset), 
+				static_cast<uint32_t>(accessor.count), 
+				static_cast<uint32_t>(accessor.ByteStride(view)),
+				});
 		}
 		meshOut->addMesh(MeshNode{ std::move(meshBufferView) });
 	}

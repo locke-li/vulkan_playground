@@ -17,7 +17,7 @@ private:
 	glm::vec3 cameraPos;
 	glm::vec3 cameraViewCenter;
 	float windowAspectRatio;
-	std::vector<const MeshNode*> renderList;
+	std::vector<const MeshInput*> renderList;
 		
 	void updateProjection();
 	void updateView();
@@ -29,6 +29,6 @@ public:
 	const UniformBufferData& getUniform() const;
 	uint32_t getUniformSize() const;
 	void setRenderListFiltered(const std::vector<MeshInput>& list);
-	const std::vector<const MeshNode*> getRenderList() const;
+	const std::vector<const MeshInput*> getRenderList() const;
 };
 

@@ -14,7 +14,8 @@ MeshInput::MeshInput(const glm::vec3& pos, const glm::quat& rot, const glm::vec3
 }
 
 MeshInput::MeshInput(MeshInput&& other) noexcept
-	: meshList(std::move(other.meshList))
+	: buffer(std::move(other.buffer))
+	, meshList(std::move(other.meshList))
 	, position(std::move(other.position))
 	, rotation(std::move(other.rotation))
 	, scale(std::move(other.scale))
@@ -32,6 +33,10 @@ void MeshInput::setBuffer(std::vector<std::vector<uint8_t>>&& bufferIn) noexcept
 
 const std::vector<std::vector<uint8_t>>& MeshInput::getBuffer() const noexcept {
 	return buffer;
+}
+
+const uint8_t* MeshInput::bufferData(const int index) const {
+	return buffer[index].data();
 }
 
 void MeshInput::setPosition(const glm::vec3& pos) noexcept {

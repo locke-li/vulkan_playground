@@ -1138,16 +1138,21 @@ bool VulkanEnv::copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size, VkComm
 	return vkEndCommandBuffer(cmd) == VK_SUCCESS;
 }
 
-bool VulkanEnv::createVertexBufferIndice(const std::vector<const MeshNode*>& input) {
+bool VulkanEnv::createVertexBufferIndice(const std::vector<const MeshInput*>& input) {
 	uint32_t vCount = 0, vSize = 0, iSize = 0;
-	for (auto i = 0; i < input.size(); ++i) {
-		const auto& vertexInput = input[i];
-		vertexBuffer.offset.push_back(vSize);
-		indexBuffer.offset.push_back(iSize);
-		indexBuffer.vOffset.push_back(vCount);
-		vSize += vertexInput->vertexSize();
-		vCount += vertexInput->vertexCount();
-		iSize += vertexInput->indexSize();
+	for (const auto& vertexInput : input) {
+		for (const auto& mesh : vertexInput->getMeshList()) {
+			for (const auto& view : mesh.getView()) {
+				vertexBuffer.offset.push_back(vSize);
+				indexBuffer.offset.push_back(iSize);
+				indexBuffer.vOffset.push_back(vCount);
+				indexBuffer.iCount.push_back(view.indexCount);
+				indexBuffer.constantData.push_back(&mesh.getConstantData());
+				vSize += view.vertexSize;
+				vCount += view.vertexCount;
+				iSize += view.indexSize;
+			}
+		}
 	}
 
 	//TODO merge memory block alloc
@@ -1161,16 +1166,23 @@ bool VulkanEnv::createVertexBufferIndice(const std::vector<const MeshNode*>& inp
 		return false;
 	}
 
-	for (auto i = 0; i < input.size(); ++i) {
-		const auto& vertexInput = input[i];
-		void* vData;
-		vkMapMemory(device, stagingVBufferMemory, vertexBuffer.offset[i], vertexInput->vertexSize(), 0, &vData);
-		memcpy(vData, vertexInput->vertexData(), vertexInput->vertexSize());
-		vkUnmapMemory(device, stagingVBufferMemory);
-		void* iData;
-		vkMapMemory(device, stagingIBufferMemory, indexBuffer.offset[i], vertexInput->indexSize(), 0, &iData);
-		memcpy(iData, vertexInput->indexData(), vertexInput->indexSize());
-		vkUnmapMemory(device, stagingIBufferMemory);
+	vSize = 0;
+	iSize = 0;
+	for (const auto& vertexInput : input) {
+		for (const auto& mesh : vertexInput->getMeshList()) {
+			for (const auto& view : mesh.getView()) {
+				void* vData;
+				vkMapMemory(device, stagingVBufferMemory, vSize, view.vertexSize, 0, &vData);
+				memcpy(vData, vertexInput->bufferData(view.bufferIndex) + view.vertexOffset, view.vertexSize);
+				vkUnmapMemory(device, stagingVBufferMemory);
+				void* iData;
+				vkMapMemory(device, stagingIBufferMemory, iSize, view.indexSize, 0, &iData);
+				memcpy(iData, vertexInput->bufferData(view.bufferIndex) + view.indexOffset, view.indexSize);
+				vkUnmapMemory(device, stagingIBufferMemory);
+				vSize += view.vertexSize;
+				iSize += view.indexSize;
+			}
+		}
 	}
 
 	VkBuffer vBuffer;
@@ -1214,10 +1226,8 @@ bool VulkanEnv::createVertexBufferIndice(const std::vector<const MeshNode*>& inp
 	vkDestroyBuffer(device, stagingIBuffer, nullptr);
 	vkFreeMemory(device, stagingIBufferMemory, nullptr);
 
-	vertexBuffer.input = input;
 	vertexBuffer.buffer.push_back(vBuffer);
 	vertexBuffer.memory.push_back(vMemory);
-	indexBuffer.input = input;
 	indexBuffer.buffer = iBuffer;
 	indexBuffer.memory = iMemory;
 	return true;
@@ -1421,9 +1431,8 @@ bool VulkanEnv::setupCommandBuffer(const uint32_t index, const uint32_t imageInd
 	vkCmdBindVertexBuffers(cmd, 0, static_cast<uint32_t>(vertexBuffer.buffer.size()), vertexBuffer.buffer.data(), vertexBuffer.offset.data());
 	for (auto i = 0; i < indexBuffer.offset.size(); ++i) {
 		vkCmdBindIndexBuffer(cmd, indexBuffer.buffer, indexBuffer.offset[i], VK_INDEX_TYPE_UINT16);
-		auto& input = *indexBuffer.input[i];
-		vkCmdPushConstants(cmd, graphicsPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, MeshNode::getConstantSize(), &input.getConstantData());
-		vkCmdDrawIndexed(cmd, input.indexCount(), 1, 0, indexBuffer.vOffset[i], 0);
+		vkCmdPushConstants(cmd, graphicsPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, MeshNode::getConstantSize(), indexBuffer.constantData[i]);
+		vkCmdDrawIndexed(cmd, indexBuffer.iCount[i], 1, 0, indexBuffer.vOffset[i], 0);
 	}
 	vkCmdEndRenderPass(cmd);
 
