@@ -46,17 +46,17 @@ MeshNode::MeshNode(const VertexIndexed&& data, const glm::vec3& pos, const glm::
 	, rotation(rot)
 	, scale(scale)
 {
-	updateConstantDataLocal();
+	updateConstantDataAsLocal();
 }
 
 MeshNode::MeshNode(MeshNode&& other) noexcept
 	: root(other.root)
 	, data(std::move(other.data))
-	, position(other.position)
-	, rotation(other.rotation)
-	, scale(other.scale)
-	, localModelMatrix(other.localModelMatrix)
-	, constantData(other.constantData)
+	, position(std::move(other.position))
+	, rotation(std::move(other.rotation))
+	, scale(std::move(other.scale))
+	, localModelMatrix(std::move(other.localModelMatrix))
+	, constantData(std::move(other.constantData))
 {
 }
 
@@ -103,10 +103,9 @@ void MeshNode::updateConstantData() {
 	else {
 		constantData.model = localModelMatrix;
 	}
-	log(constantData.model);
 }
 
-void MeshNode::updateConstantDataLocal() {
+void MeshNode::updateConstantDataAsLocal() {
 	const auto&& translated = glm::translate(glm::mat4(1.0f), position);
 	const auto&& rotated = glm::mat4_cast(rotation);
 	const auto&& scaled = glm::scale(glm::mat4(1.0f), scale);

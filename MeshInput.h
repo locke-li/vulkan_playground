@@ -20,12 +20,14 @@ public:
 		const glm::vec3& pos = glm::vec3(0.0f),
 		const glm::quat& rot = glm::identity<glm::quat>(),
 		const glm::vec3& scale = glm::vec3(1.0f));
+	MeshInput(const MeshInput& other) = delete;
+	MeshInput(MeshInput&& other) noexcept;
 	void setPosition(const glm::vec3& pos) noexcept;
 	const glm::vec3& getPosition() const noexcept;
 	void setRotation(const glm::quat& rot) noexcept;
 	const glm::quat& getRotation() const noexcept;
 	void setScale(const glm::vec3& scaleIn) noexcept;
-	const glm::quat& getScale() const noexcept;
+	const glm::vec3& getScale() const noexcept;
 	const glm::mat4& getModelMatrix() const;
 	const std::vector<MeshNode>& getMeshList() const;
 	void reserve(size_t size);

@@ -61,7 +61,6 @@ void RenderingTest::prepareModel() {
 	ModelImport modelImport;
 	//downloaded from https://sketchfab.com/3d-models/u-557-ae10491added470c88e4e21bc8672cd1
 	logResult("model loading", modelImport.load("model/U-557.obj", 32, &inputLoadedModel));
-	//FIX input move after assigned to node.root
 	modelList.push_back(std::move(inputTetrahedron));
 	modelList.push_back(std::move(inputCube));
 	modelList.push_back(std::move(inputLoadedModel));
@@ -131,4 +130,6 @@ int RenderingTest::mainLoop() {
 	vulkanEnv.destroy();
 
 	windowLayer.destroy();
+
+	return 0;
 }

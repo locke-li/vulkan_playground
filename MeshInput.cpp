@@ -13,6 +13,19 @@ MeshInput::MeshInput(const glm::vec3& pos, const glm::quat& rot, const glm::vec3
 	updateConstantData();
 }
 
+MeshInput::MeshInput(MeshInput&& other) noexcept
+	: meshList(std::move(other.meshList))
+	, position(std::move(other.position))
+	, rotation(std::move(other.rotation))
+	, scale(std::move(other.scale))
+	, modelMatrix(std::move(other.modelMatrix))
+{
+	//TODO better solution?
+	for (auto& mesh : meshList) {
+		mesh.setRoot(this);
+	}
+}
+
 void MeshInput::setPosition(const glm::vec3& pos) noexcept {
 	position = pos;
 }
@@ -28,7 +41,7 @@ const glm::quat& MeshInput::getRotation() const noexcept {
 void MeshInput::setScale(const glm::vec3& scaleIn) noexcept {
 	scale = scaleIn;
 }
-const glm::quat& MeshInput::getScale() const noexcept {
+const glm::vec3& MeshInput::getScale() const noexcept {
 	return scale;
 }
 

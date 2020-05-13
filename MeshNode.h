@@ -55,7 +55,7 @@ public:
 		const glm::vec3& pos = glm::vec3(0.0f),
 		const glm::quat& rot = glm::identity<glm::quat>(),
 		const glm::vec3& scale = glm::vec3(1.0f));
-	//MeshInput(const MeshInput& other) noexcept;
+	MeshNode(const MeshInput& other) = delete;
 	MeshNode(MeshNode&& other) noexcept;
 	void setRoot(const MeshInput* root) noexcept;
 	void setData(const VertexIndexed&& data) noexcept;
@@ -66,6 +66,6 @@ public:
 	uint32_t indexCount() const;
 	const uint16_t* indexData() const;
 	void updateConstantData();
-	void updateConstantDataLocal();
+	void updateConstantDataAsLocal();
 	const MeshConstant& getConstantData() const;
 };
