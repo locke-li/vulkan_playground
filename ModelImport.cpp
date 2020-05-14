@@ -139,15 +139,15 @@ bool ModelImport::loadGltf(const char* path, const float scale, const bool isBin
 				if (posIter == primitive.attributes.end()) {
 					continue;
 				}
-				uint8_t* texcoord0 = nullptr;
+				float* texcoord0 = nullptr;
 				const auto& accessorPos = model.accessors[posIter->second];
 				const auto& bufferViewPos = model.bufferViews[accessorPos.bufferView];
-				const auto* pos = &model.buffers[bufferViewPos.buffer].data[accessorPos.byteOffset + bufferViewPos.byteOffset];
+				const auto* pos = reinterpret_cast<float*>(&model.buffers[bufferViewPos.buffer].data[accessorPos.byteOffset + bufferViewPos.byteOffset]);
 				const auto& texcoord0Iter = primitive.attributes.find("TEXCOORD_0");
 				if (texcoord0Iter != primitive.attributes.end()) {
 					const auto& accessorTexcoord0 = model.accessors[texcoord0Iter->second];
 					const auto& bufferViewTexcoord0 = model.bufferViews[accessorTexcoord0.bufferView];
-					texcoord0 = &model.buffers[bufferViewTexcoord0.buffer].data[accessorTexcoord0.byteOffset + bufferViewTexcoord0.byteOffset];
+					texcoord0 = reinterpret_cast<float*>(&model.buffers[bufferViewTexcoord0.buffer].data[accessorTexcoord0.byteOffset + bufferViewTexcoord0.byteOffset]);
 				}
 				const auto& accessorIndices = model.accessors[primitive.indices];
 				const auto& bufferViewIndices = model.bufferViews[accessorIndices.bufferView];
@@ -156,12 +156,13 @@ bool ModelImport::loadGltf(const char* path, const float scale, const bool isBin
 				data.vertices.reserve(accessorPos.count);
 				for (auto i = 0; i < accessorPos.count; ++i) {
 					Vertex vertex;
-					vertex.pos = glm::make_vec3(pos + i * sizeof(glm::vec3));
-					vertex.texCoord = glm::make_vec2(texcoord0 + i * sizeof(glm::vec2));
+					vertex.pos = glm::make_vec3(reinterpret_cast<const float*>(pos + i * 3)) / scale;
+					if (texcoord0) {
+						vertex.texCoord = glm::make_vec2(texcoord0 + i * 2);
+					}
 					data.vertices.push_back(std::move(vertex));
 				}
 				
-				//TOFIX index is messed up
 				switch (accessorIndices.componentType)
 				{
 				case TINYGLTF_COMPONENT_TYPE_BYTE: {

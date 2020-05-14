@@ -1177,7 +1177,6 @@ bool VulkanEnv::createVertexBufferIndice(const std::vector<const MeshInput*>& in
 				void* iData;
 				vkMapMemory(device, stagingIBufferMemory, iSize, view.indexSize, 0, &iData);
 				memcpy(iData, vertexInput->bufferData(view.bufferIndex) + view.indexOffset, view.indexSize);
-				std::cout << view.vertexCount << "|" << *(uint16_t*)iData << std::endl;
 				vkUnmapMemory(device, stagingIBufferMemory);
 				vSize += view.vertexSize;
 				iSize += view.indexSize;
