@@ -206,12 +206,6 @@ bool ModelImport::loadGltf(const char* path, const float scale, const bool isBin
 	}
 	meshOut->setMesh(std::move(meshDataList));
 	std::cout << std::endl;
-	std::vector<std::vector<uint8_t>> buffer;
-	buffer.reserve(model.buffers.size());
-	for (const auto& bufferSrc : model.buffers) {
-		buffer.push_back(bufferSrc.data);
-	}
-	meshOut->setBuffer(std::move(buffer));
 	return true;
 }
 
