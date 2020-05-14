@@ -22,7 +22,7 @@ bool WindowLayer::createWindow(const char* title, const int width, const int hei
 }
 
 void WindowLayer::setEventCallback(void* ptr, GLFWframebuffersizefun resizeFun) const {
-	glfwSetWindowUserPointer(window, &ptr);
+	glfwSetWindowUserPointer(window, ptr);
 	glfwSetFramebufferSizeCallback(window, resizeFun);
 }
 

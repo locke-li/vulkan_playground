@@ -78,13 +78,14 @@ int RenderingTest::mainLoop() {
 	renderingData.setRenderListFiltered(modelList);
 	ShaderInput shader("shader/vert_simple_triangle.spv", "shader/frag_color.spv");
 	shader.preload();
-	VulkanEnv vulkanEnv;
 	vulkanEnv.setWindow(windowLayer.getWindow());
 	vulkanEnv.setRenderingData(renderingData);
 	vulkanEnv.setShader(shader);
 	vulkanEnv.setMaxFrameInFlight(graphicsSetting.MaxFrameInFlight);
 	vulkanEnv.setUniformSize(renderingData.getUniformSize());
 	vulkanEnv.setMsaaSample(graphicsSetting.MSAASample);
+	renderContext.vulkanEnv = &vulkanEnv;
+	renderContext.renderingData = &renderingData;
 
 	ImageInput imageInput(false, true);
 	imageInput.setMipLevel(3);
