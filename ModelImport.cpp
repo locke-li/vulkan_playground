@@ -1,5 +1,7 @@
 #include "ModelImport.h"
 #include "MeshNode.h"
+#include "glm.hpp"
+#include "gtc/type_ptr.hpp"
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "tiny_obj_loader.h"
 #define TINYGLTF_IMPLEMENTATION
@@ -25,7 +27,10 @@ bool stringEndsWith(const std::string& value, const std::string& suffix) {
 	return false;
 }
 
-bool ModelImport::loadObj(const char* path, const float scale, MeshInput* const mesh) const {
+///
+/// obj format files are loaded as a single buffer, single bufferView mesh
+///
+bool ModelImport::loadObj(const char* path, const float scale, MeshInput* const meshOut) const {
 	tinyobj::attrib_t attrib;
 	std::vector<tinyobj::shape_t> shapeList;
 	std::vector<tinyobj::material_t> materialList;
@@ -39,20 +44,14 @@ bool ModelImport::loadObj(const char* path, const float scale, MeshInput* const 
 		std::cout << warning << std::endl;
 	}
 
-	mesh->reserve(shapeList.size());
+	meshOut->reserve(shapeList.size());
 	std::unordered_map<Vertex, uint32_t> vertexIndex;
 	std::vector<std::vector<uint8_t>> buffer(1);
-	std::vector<std::vector<Vertex>> verticesList;
-	std::vector<std::vector<uint16_t>> indicesList;
-	verticesList.reserve(shapeList.size());
-	indicesList.reserve(shapeList.size());
-	auto vertexStride = static_cast<uint32_t>(sizeof(Vertex));
-	auto indexStride = static_cast<uint8_t>(sizeof(uint16_t));
-	uint32_t bufferOffset = 0;
+	std::vector<VertexIndexed> dataList;
+	dataList.reserve(shapeList.size());
 	for (const auto& shape : shapeList) {
 		std::cout << shape.name << "\n";
-		std::vector<Vertex> vertices;
-		std::vector<uint16_t> indices;
+		VertexIndexed data;
 		for (const auto& indexInfo : shape.mesh.indices) {
 			Vertex vertex{};
 			auto index = indexInfo.vertex_index * 3;
@@ -66,49 +65,22 @@ bool ModelImport::loadObj(const char* path, const float scale, MeshInput* const 
 				attrib.texcoords[index],
 				1.0f - attrib.texcoords[index + 1],
 			};
+			//TODO other attributes
 
 			if (vertexIndex.count(vertex) == 0) {//unique vertex
-				auto index = static_cast<uint32_t>(vertices.size());
+				auto index = static_cast<uint32_t>(data.vertices.size());
 				vertexIndex[vertex] = index;
-				vertices.push_back(vertex);
-				indices.push_back(index);
+				data.vertices.push_back(vertex);
+				data.indices.push_back(index);
 			}
 			else {
-				indices.push_back(vertexIndex[vertex]);
+				data.indices.push_back(vertexIndex[vertex]);
 			}
 		}
-		std::cout << vertices.size() << "|" << indices.size() << std::endl;
-		auto verticesSize = vertices.size() * vertexStride;
-		auto indicesSize = indices.size() * indexStride;
-		bufferOffset += verticesSize + indicesSize;
-		verticesList.push_back(std::move(vertices));
-		indicesList.push_back(std::move(indices));
+		std::cout << data.vertices.size() << "|" << data.indices.size() << std::endl;
+		dataList.push_back(std::move(data));
 	}
-	buffer[0].resize(bufferOffset);
-	auto* data = buffer[0].data();
-	bufferOffset = 0;
-	for (auto i = 0; i < shapeList.size(); ++i) {
-		const auto& vertices = verticesList[i];
-		const auto& indices = indicesList[i];
-		auto verticesSize = static_cast<uint32_t>(vertices.size() * vertexStride);
-		auto indicesSize = static_cast<uint32_t>(indices.size() * indexStride);
-		memcpy(data + bufferOffset, vertices.data(), verticesSize);
-		memcpy(data + bufferOffset + verticesSize, indices.data(), indicesSize);
-		mesh->addMesh(MeshNode{ { {
-				0,
-				bufferOffset,
-				verticesSize,
-				vertexStride,
-				static_cast<uint32_t>(vertices.size()),
-				bufferOffset + verticesSize,
-				indicesSize,
-				indexStride,
-				static_cast<uint32_t>(indices.size())
-			} } });
-		bufferOffset += verticesSize + indicesSize;
-	}
-	
-	mesh->setBuffer(std::move(buffer));
+	meshOut->setMesh({ std::move(dataList) });
 	//TODO manage material/texture
 	return true;
 }
@@ -135,43 +107,112 @@ bool ModelImport::loadGltf(const char* path, const float scale, const bool isBin
 	std::cout << "scene count = " << model.scenes.size() << " default = " << model.defaultScene << std::endl;
 	auto sceneIndex = model.defaultScene > -1 ? model.defaultScene : 0;
 	tinygltf::Scene scene = model.scenes[sceneIndex];
-	//TODO currently scene structure ignored, as this is only an int value
-	std::cout << "name = " << scene.name << " node = " << scene.nodes.size() << " |";
-	for (const auto& node : scene.nodes) {
-		std::cout << node << " ";
-	}
-	std::cout << "\n";
-	std::cout << "buffer = " << model.buffers.size() << " bufferView = " << model.bufferViews.size() << "\n";
-	for (const auto& view : model.bufferViews) {
-		if (view.target == TINYGLTF_TARGET_ELEMENT_ARRAY_BUFFER) {//indices
-			std::cout << "view indices:" << view.name << "/" << view.byteOffset << "+" << view.byteLength << "\n";
+	std::cout << "name = " << scene.name << " node = " << scene.nodes.size() << "\n";
+	for (const auto& nodeIndex : scene.nodes) {
+		const auto& node = model.nodes[nodeIndex];
+		if (node.translation.size() == 3) {
+			glm::vec3 translation = glm::make_vec3(node.translation.data());
 		}
-		else if (view.target == TINYGLTF_TARGET_ARRAY_BUFFER) {//vertices
-			std::cout << "view vertices:" << view.name << "/" << view.byteOffset << "+" << view.byteLength << "\n";
+		if (node.rotation.size() == 4) {
+			glm::quat rotation = glm::make_quat(node.rotation.data());
 		}
-		else {
-			std::cout << "view other:" << view.name << "|" << view.target << "/" << view.byteOffset << "+" << view.byteLength << "\n";
+		if (node.scale.size() == 3) {
+			glm::vec3 scale = glm::make_vec3(node.scale.data());
 		}
-	}
-	for (const auto& mesh : model.meshes) {
-		std::cout << "mesh:" << mesh.name << "/" << mesh.primitives.size() << ", " << mesh.weights.size() << "\n";
-		if (mesh.primitives.size() == 0) continue;
-		std::vector<BufferView> meshBufferView;
-		meshBufferView.reserve(mesh.primitives.size());
-		for (const auto& prim : mesh.primitives) {
-			if (prim.indices < 0) continue;
-			const auto& accessor = model.accessors[prim.indices];
-			const auto& view = model.bufferViews[accessor.bufferView];
-			meshBufferView.push_back({ 
-				view.buffer, 
-				static_cast<uint32_t>(accessor.byteOffset), 
-				static_cast<uint32_t>(accessor.count), 
-				static_cast<uint32_t>(accessor.ByteStride(view)),
-				});
+		if (node.matrix.size() == 16) {
+			glm::mat4 trs = glm::make_mat4(node.matrix.data());
 		}
-		meshOut->addMesh(MeshNode{ std::move(meshBufferView) });
+		std::cout << nodeIndex << ":" << node.name << " ";
+		std::vector<std::vector<VertexIndexed>> meshDataList;
+		if (node.mesh > -1) {
+			std::cout << "mesh " << node.mesh << " ";
+			const auto& mesh = model.meshes[node.mesh];
+			std::vector<VertexIndexed> dataList;
+			dataList.reserve(mesh.primitives.size());
+			for (const auto& primitive : mesh.primitives) {
+				//TODO support for mesh without indices
+				if (primitive.indices < 0) continue;
+				//glTF seems to pack the same attribute values in a continous bufferview (what about sparse accessor?)
+				//which is not a valid vertex array
+				//thus we need to fill our Vertex array, this comes with the benefit of selectively choosing the vertex attributes to use
+				const auto& posIter = primitive.attributes.find("POSITION");
+				if (posIter == primitive.attributes.end()) {
+					continue;
+				}
+				uint8_t* texcoord0 = nullptr;
+				const auto& accessorPos = model.accessors[posIter->second];
+				const auto& bufferViewPos = model.bufferViews[accessorPos.bufferView];
+				const auto* pos = &model.buffers[bufferViewPos.buffer].data[accessorPos.byteOffset + bufferViewPos.byteOffset];
+				const auto& texcoord0Iter = primitive.attributes.find("TEXCOORD_0");
+				if (texcoord0Iter != primitive.attributes.end()) {
+					const auto& accessorTexcoord0 = model.accessors[texcoord0Iter->second];
+					const auto& bufferViewTexcoord0 = model.bufferViews[accessorTexcoord0.bufferView];
+					texcoord0 = &model.buffers[bufferViewTexcoord0.buffer].data[accessorTexcoord0.byteOffset + bufferViewTexcoord0.byteOffset];
+				}
+				const auto& accessorIndices = model.accessors[primitive.indices];
+				const auto& bufferViewIndices = model.bufferViews[accessorIndices.bufferView];
+				const void* indices = &model.buffers[bufferViewIndices.buffer].data[accessorIndices.byteOffset + bufferViewIndices.byteOffset];
+				VertexIndexed data;
+				data.vertices.reserve(accessorPos.count);
+				for (auto i = 0; i < accessorPos.count; ++i) {
+					Vertex vertex;
+					vertex.pos = glm::make_vec3(pos + i * sizeof(glm::vec3));
+					vertex.texCoord = glm::make_vec2(texcoord0 + i * sizeof(glm::vec2));
+					data.vertices.push_back(std::move(vertex));
+				}
+				
+				//TOFIX index is messed up
+				switch (accessorIndices.componentType)
+				{
+				case TINYGLTF_COMPONENT_TYPE_BYTE: {
+					const auto* indices8 = static_cast<const uint8_t*>(indices);
+					for (auto i = 0; i < accessorIndices.count; ++i) {
+						data.indices.push_back(indices8[i]);
+					}
+				}
+					break;
+				case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT: {
+					data.indices.resize(accessorIndices.count);
+					memcpy(data.indices.data(), indices, accessorIndices.count * sizeof(uint16_t));
+				}
+					break;
+				case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT: {
+					//TODO check if 32bit index is really needed?
+					const auto* indices32 = static_cast<const uint32_t*>(indices);
+					for (auto i = 0; i < accessorIndices.count; ++i) {
+						data.indices.push_back(indices32[i]);
+					}
+				}
+					break;
+				default:
+					std::cout << "unsupported index type: " << accessorIndices.componentType << std::endl;
+					break;
+				}
+				std::cout << data.vertices.size() << "|" << data.indices.size() << "\n";
+				dataList.push_back(std::move(data));
+			}
+			meshDataList.push_back(std::move(dataList));
+		}
+		else if (node.skin > -1) {
+			std::cout << "skin " << node.skin << "\n";
+			//TODO
+		}
+		else if (node.camera > -1) {
+			std::cout << "camera " << node.camera << "\n";
+			//TODO
+		}
+		std::cout << "children:" << node.children.size() << std::endl;
+		//TODO node children
+
+		meshOut->setMesh(std::move(meshDataList));
 	}
 	std::cout << std::endl;
+	std::vector<std::vector<uint8_t>> buffer;
+	buffer.reserve(model.buffers.size());
+	for (const auto& bufferSrc : model.buffers) {
+		buffer.push_back(bufferSrc.data);
+	}
+	meshOut->setBuffer(std::move(buffer));
 	return true;
 }
 

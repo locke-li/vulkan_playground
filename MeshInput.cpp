@@ -14,7 +14,7 @@ MeshInput::MeshInput(const glm::vec3& pos, const glm::quat& rot, const glm::vec3
 }
 
 MeshInput::MeshInput(MeshInput&& other) noexcept
-	: buffer(std::move(other.buffer))
+	: bufferList(std::move(other.bufferList))
 	, meshList(std::move(other.meshList))
 	, position(std::move(other.position))
 	, rotation(std::move(other.rotation))
@@ -28,15 +28,15 @@ MeshInput::MeshInput(MeshInput&& other) noexcept
 }
 
 void MeshInput::setBuffer(std::vector<std::vector<uint8_t>>&& bufferIn) noexcept {
-	buffer = bufferIn;
+	bufferList = bufferIn;
 }
 
 const std::vector<std::vector<uint8_t>>& MeshInput::getBuffer() const noexcept {
-	return buffer;
+	return bufferList;
 }
 
 const uint8_t* MeshInput::bufferData(const int index) const {
-	return buffer[index].data();
+	return bufferList[index].data();
 }
 
 void MeshInput::setPosition(const glm::vec3& pos) noexcept {
@@ -74,6 +74,47 @@ void MeshInput::addMesh(MeshNode&& mesh) {
 	mesh.setRoot(this);
 	mesh.updateConstantData();
 	meshList.push_back(std::move(mesh));
+}
+
+void MeshInput::setMesh(std::vector<std::vector<VertexIndexed>>&& meshDataList) {
+	//we try to keep the number of buffer as low as possible
+	//TODO is there an occasion where multiple data source buffer is needed?
+	std::vector<uint8_t> buffer;
+	size_t offset = 0;
+	auto vertexStride = static_cast<uint32_t>(sizeof(Vertex));
+	auto indexStride = static_cast<uint8_t>(sizeof(uint16_t));
+	for (const auto& meshData : meshDataList) {
+		for (const auto& data : meshData) {
+			auto verticesSize = data.vertices.size() * vertexStride;
+			auto indicesSize = data.indices.size() * indexStride;
+			offset += verticesSize + indicesSize;
+		}
+	}
+	buffer.resize(offset);
+	offset = 0;
+	for (const auto& meshData : meshDataList) {
+		std::vector<BufferView> viewList;
+		viewList.reserve(meshData.size());
+		for (const auto& data : meshData) {
+			BufferView view;
+			view.bufferIndex = 0;
+			view.vertexOffset = offset;
+			view.vertexCount = static_cast<uint32_t>(data.vertices.size());
+			view.vertexStride = sizeof(data.vertices[0]);
+			view.vertexSize = view.vertexCount * view.vertexStride;
+			view.indexOffset = offset + view.vertexSize;
+			view.indexCount = static_cast<uint32_t>(data.indices.size());
+			view.indexStride = sizeof(data.indices[0]);
+			view.indexSize = view.indexCount * view.indexStride;
+			offset += view.vertexSize + view.indexSize;
+			memcpy(buffer.data() + view.vertexOffset, data.vertices.data(), view.vertexSize);
+			memcpy(buffer.data() + view.indexOffset, data.indices.data(), view.indexSize);
+			viewList.push_back(view);
+		}
+		addMesh({ std::move(viewList) });
+	}
+	bufferList.clear();
+	bufferList.push_back(std::move(buffer));
 }
 
 void MeshInput::updateConstantData() {

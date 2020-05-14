@@ -27,13 +27,18 @@ namespace std {
 	};
 }
 
+struct VertexIndexed {
+	std::vector<Vertex> vertices;
+	std::vector<uint16_t> indices;
+};
+
 struct BufferView {
 	int bufferIndex;
-	uint32_t vertexOffset;
+	size_t vertexOffset;
 	uint32_t vertexSize;
 	uint32_t vertexStride;
 	uint32_t vertexCount;
-	uint32_t indexOffset;
+	size_t indexOffset;
 	uint32_t indexSize;
 	uint8_t indexStride;
 	uint32_t indexCount;

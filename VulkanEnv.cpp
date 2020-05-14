@@ -1143,7 +1143,6 @@ bool VulkanEnv::createVertexBufferIndice(const std::vector<const MeshInput*>& in
 	for (const auto& vertexInput : input) {
 		for (const auto& mesh : vertexInput->getMeshList()) {
 			for (const auto& view : mesh.getView()) {
-				vertexBuffer.offset.push_back(vSize);
 				indexBuffer.offset.push_back(iSize);
 				indexBuffer.vOffset.push_back(vCount);
 				indexBuffer.iCount.push_back(view.indexCount);
@@ -1178,6 +1177,7 @@ bool VulkanEnv::createVertexBufferIndice(const std::vector<const MeshInput*>& in
 				void* iData;
 				vkMapMemory(device, stagingIBufferMemory, iSize, view.indexSize, 0, &iData);
 				memcpy(iData, vertexInput->bufferData(view.bufferIndex) + view.indexOffset, view.indexSize);
+				std::cout << view.vertexCount << "|" << *(uint16_t*)iData << std::endl;
 				vkUnmapMemory(device, stagingIBufferMemory);
 				vSize += view.vertexSize;
 				iSize += view.indexSize;
@@ -1227,6 +1227,7 @@ bool VulkanEnv::createVertexBufferIndice(const std::vector<const MeshInput*>& in
 	vkFreeMemory(device, stagingIBufferMemory, nullptr);
 
 	vertexBuffer.buffer.push_back(vBuffer);
+	vertexBuffer.offset.push_back(0);
 	vertexBuffer.memory.push_back(vMemory);
 	indexBuffer.buffer = iBuffer;
 	indexBuffer.memory = iMemory;
@@ -1565,19 +1566,21 @@ bool VulkanEnv::updateUniformBuffer(const uint32_t imageIndex) {
 
 bool VulkanEnv::drawFrame(const RenderingData& renderingData) {
 	auto& frame = inFlightFrame[currentFrame];
+	auto frameIndex = currentFrame;
+	currentFrame = (currentFrame + 1) % maxFrameInFlight;
 
 	uint32_t imageIndex;
-	vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, frame.semaphoreImageAquired, VK_NULL_HANDLE, &imageIndex);
+	auto result1 = vkAcquireNextImageKHR(device, swapchain, 10000, frame.semaphoreImageAquired, VK_NULL_HANDLE, &imageIndex);
 	//std::cout << "image acquired " << imageIndex << std::endl;
 	vkWaitForFences(device, 1, &frame.fenceInFlight, VK_TRUE, UINT64_MAX);
 	//std::cout << "frame fence pass " << currentFrame << std::endl;
-	setupCommandBuffer(currentFrame, imageIndex);
+	setupCommandBuffer(frameIndex, imageIndex);
 
 	VkSubmitInfo submitInfo;
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitInfo.pNext = nullptr;
 	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &commandBuffer[currentFrame];
+	submitInfo.pCommandBuffers = &commandBuffer[frameIndex];
 	submitInfo.waitSemaphoreCount = 1;
 	submitInfo.pWaitSemaphores = &frame.semaphoreImageAquired;
 	VkPipelineStageFlags waitStage[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
@@ -1608,6 +1611,5 @@ bool VulkanEnv::drawFrame(const RenderingData& renderingData) {
 	else if (result != VK_SUCCESS) {
 		return false;
 	}
-	currentFrame = (currentFrame + 1) % maxFrameInFlight;
 	return true;
 }

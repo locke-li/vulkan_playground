@@ -6,11 +6,12 @@
 #include <vector>
 
 class MeshNode;
+struct VertexIndexed;
 
 class MeshInput
 {
 private:
-	std::vector<std::vector<uint8_t>> buffer;
+	std::vector<std::vector<uint8_t>> bufferList;
 	glm::vec3 position;
 	glm::quat rotation;
 	glm::vec3 scale;
@@ -36,6 +37,7 @@ public:
 	const std::vector<MeshNode>& getMeshList() const;
 	void reserve(size_t size);
 	void addMesh(MeshNode&& mesh);
+	void setMesh(std::vector<std::vector<VertexIndexed>>&& meshDataList);
 	void updateConstantData();
 	void animate(const float rotationSpeed);
 };
