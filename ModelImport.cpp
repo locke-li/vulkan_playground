@@ -108,6 +108,7 @@ bool ModelImport::loadGltf(const char* path, const float scale, const bool isBin
 	auto sceneIndex = model.defaultScene > -1 ? model.defaultScene : 0;
 	tinygltf::Scene scene = model.scenes[sceneIndex];
 	std::cout << "name = " << scene.name << " node = " << scene.nodes.size() << "\n";
+	std::vector<std::vector<VertexIndexed>> meshDataList;
 	for (const auto& nodeIndex : scene.nodes) {
 		const auto& node = model.nodes[nodeIndex];
 		if (node.translation.size() == 3) {
@@ -123,7 +124,6 @@ bool ModelImport::loadGltf(const char* path, const float scale, const bool isBin
 			glm::mat4 trs = glm::make_mat4(node.matrix.data());
 		}
 		std::cout << nodeIndex << ":" << node.name << " ";
-		std::vector<std::vector<VertexIndexed>> meshDataList;
 		if (node.mesh > -1) {
 			std::cout << "mesh " << node.mesh << " ";
 			const auto& mesh = model.meshes[node.mesh];
@@ -203,9 +203,8 @@ bool ModelImport::loadGltf(const char* path, const float scale, const bool isBin
 		}
 		std::cout << "children:" << node.children.size() << std::endl;
 		//TODO node children
-
-		meshOut->setMesh(std::move(meshDataList));
 	}
+	meshOut->setMesh(std::move(meshDataList));
 	std::cout << std::endl;
 	std::vector<std::vector<uint8_t>> buffer;
 	buffer.reserve(model.buffers.size());

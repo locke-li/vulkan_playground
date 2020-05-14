@@ -1570,7 +1570,8 @@ bool VulkanEnv::drawFrame(const RenderingData& renderingData) {
 	currentFrame = (currentFrame + 1) % maxFrameInFlight;
 
 	uint32_t imageIndex;
-	auto result1 = vkAcquireNextImageKHR(device, swapchain, 10000, frame.semaphoreImageAquired, VK_NULL_HANDLE, &imageIndex);
+	uint64_t timeout = 1000000000;//ns
+	auto result1 = vkAcquireNextImageKHR(device, swapchain, timeout, frame.semaphoreImageAquired, VK_NULL_HANDLE, &imageIndex);
 	//std::cout << "image acquired " << imageIndex << std::endl;
 	vkWaitForFences(device, 1, &frame.fenceInFlight, VK_TRUE, UINT64_MAX);
 	//std::cout << "frame fence pass " << currentFrame << std::endl;
