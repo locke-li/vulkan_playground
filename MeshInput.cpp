@@ -27,14 +27,6 @@ MeshInput::MeshInput(MeshInput&& other) noexcept
 	}
 }
 
-void MeshInput::setBuffer(std::vector<std::vector<uint8_t>>&& bufferIn) noexcept {
-	bufferList = bufferIn;
-}
-
-const std::vector<std::vector<uint8_t>>& MeshInput::getBuffer() const noexcept {
-	return bufferList;
-}
-
 const uint8_t* MeshInput::bufferData(const int index) const {
 	return bufferList[index].data();
 }

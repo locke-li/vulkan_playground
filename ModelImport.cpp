@@ -132,7 +132,7 @@ bool ModelImport::loadGltf(const char* path, const float scale, const bool isBin
 			for (const auto& primitive : mesh.primitives) {
 				//TODO support for mesh without indices
 				if (primitive.indices < 0) continue;
-				//glTF seems to pack the same attribute values in a continous bufferview (what about sparse accessor?)
+				//glTF seems to pack the same attribute values in a continous bufferview
 				//which is not a valid vertex array
 				//thus we need to fill our Vertex array, this comes with the benefit of selectively choosing the vertex attributes to use
 				const auto& posIter = primitive.attributes.find("POSITION");
