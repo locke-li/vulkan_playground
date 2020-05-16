@@ -41,6 +41,7 @@ std::vector<VkVertexInputAttributeDescription> MeshNode::getAttributeDescription
 
 MeshNode::MeshNode(std::vector<BufferView>&& viewIn, const glm::vec3& pos, const glm::quat& rot, const glm::vec3& scale)
 	: root(nullptr)
+	, children{}
 	, view(viewIn)
 	, position(pos)
 	, rotation(rot)
@@ -51,6 +52,7 @@ MeshNode::MeshNode(std::vector<BufferView>&& viewIn, const glm::vec3& pos, const
 
 MeshNode::MeshNode(MeshNode&& other) noexcept
 	: root(other.root)
+	, children(std::move(other.children))
 	, view(std::move(other.view))
 	, position(std::move(other.position))
 	, rotation(std::move(other.rotation))

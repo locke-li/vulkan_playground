@@ -52,6 +52,7 @@ class MeshNode
 {
 private:
 	const MeshInput* root;
+	std::vector<MeshNode> children;
 	std::vector<BufferView> view;
 	glm::vec3 position;
 	glm::quat rotation;

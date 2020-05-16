@@ -85,6 +85,110 @@ bool ModelImport::loadObj(const char* path, const float scale, MeshInput* const 
 	return true;
 }
 
+bool loadGltfNode(const tinygltf::Model& model, const int nodeIndex, const float scale, std::vector<std::vector<VertexIndexed>>& meshDataList) {
+	const auto& node = model.nodes[nodeIndex];
+	//TODO apply scale here?
+	//TODO set these values
+	if (node.translation.size() == 3) {
+		glm::vec3 translation = glm::make_vec3(node.translation.data());
+	}
+	if (node.rotation.size() == 4) {
+		glm::quat rotation = glm::make_quat(node.rotation.data());
+	}
+	if (node.scale.size() == 3) {
+		glm::vec3 scale = glm::make_vec3(node.scale.data());
+	}
+	if (node.matrix.size() == 16) {
+		glm::mat4 trs = glm::make_mat4(node.matrix.data());
+	}
+	std::cout << nodeIndex << ":" << node.name << " ";
+	if (node.mesh > -1) {
+		std::cout << "mesh " << node.mesh << " ";
+		const auto& mesh = model.meshes[node.mesh];
+		std::vector<VertexIndexed> dataList;
+		dataList.reserve(mesh.primitives.size());
+		for (const auto& primitive : mesh.primitives) {
+			//TODO support for mesh without indices
+			if (primitive.indices < 0) continue;
+			//glTF seems to pack the same attribute values in a continous bufferview
+			//which is not a valid vertex array
+			//thus we need to fill our Vertex array, this comes with the benefit of selectively choosing the vertex attributes to use
+			const auto& posIter = primitive.attributes.find("POSITION");
+			if (posIter == primitive.attributes.end()) {
+				continue;
+			}
+			const float* texcoord0 = nullptr;
+			const auto& accessorPos = model.accessors[posIter->second];
+			const auto& bufferViewPos = model.bufferViews[accessorPos.bufferView];
+			const auto* pos = reinterpret_cast<const float*>(&model.buffers[bufferViewPos.buffer].data[accessorPos.byteOffset + bufferViewPos.byteOffset]);
+			const auto& texcoord0Iter = primitive.attributes.find("TEXCOORD_0");
+			if (texcoord0Iter != primitive.attributes.end()) {
+				const auto& accessorTexcoord0 = model.accessors[texcoord0Iter->second];
+				const auto& bufferViewTexcoord0 = model.bufferViews[accessorTexcoord0.bufferView];
+				texcoord0 = reinterpret_cast<const float*>(&model.buffers[bufferViewTexcoord0.buffer].data[accessorTexcoord0.byteOffset + bufferViewTexcoord0.byteOffset]);
+			}
+			const auto& accessorIndices = model.accessors[primitive.indices];
+			const auto& bufferViewIndices = model.bufferViews[accessorIndices.bufferView];
+			const void* indices = &model.buffers[bufferViewIndices.buffer].data[accessorIndices.byteOffset + bufferViewIndices.byteOffset];
+			VertexIndexed data;
+			data.vertices.reserve(accessorPos.count);
+			for (auto i = 0; i < accessorPos.count; ++i) {
+				Vertex vertex;
+				vertex.pos = glm::make_vec3(reinterpret_cast<const float*>(pos + i * 3)) / scale;
+				if (texcoord0) {
+					vertex.texCoord = glm::make_vec2(texcoord0 + i * 2);
+				}
+				data.vertices.push_back(std::move(vertex));
+			}
+
+			switch (accessorIndices.componentType)
+			{
+			case TINYGLTF_COMPONENT_TYPE_BYTE: {
+				const auto* indices8 = static_cast<const uint8_t*>(indices);
+				for (auto i = 0; i < accessorIndices.count; ++i) {
+					data.indices.push_back(indices8[i]);
+				}
+			}
+				break;
+			case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT: {
+				data.indices.resize(accessorIndices.count);
+				memcpy(data.indices.data(), indices, accessorIndices.count * sizeof(uint16_t));
+			}
+				break;
+			case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT: {
+				//TODO check if 32bit index is really needed?
+				const auto* indices32 = static_cast<const uint32_t*>(indices);
+				for (auto i = 0; i < accessorIndices.count; ++i) {
+					data.indices.push_back(indices32[i]);
+				}
+			}
+				break;
+			default:
+				std::cout << "unsupported index type: " << accessorIndices.componentType << std::endl;
+				break;
+			}
+			std::cout << data.vertices.size() << "|" << data.indices.size() << "\n";
+			dataList.push_back(std::move(data));
+		}
+		meshDataList.push_back(std::move(dataList));
+	}
+	else if (node.skin > -1) {
+		std::cout << "skin " << node.skin << "\n";
+		//TODO
+	}
+	else if (node.camera > -1) {
+		std::cout << "camera " << node.camera << "\n";
+		//TODO
+	}
+	for (const auto childIndex : node.children) {
+		std::cout << nodeIndex << " child:";
+		if (!loadGltfNode(model, childIndex, scale, meshDataList)) {
+			return false;
+		}
+	}
+	return true;
+}
+
 bool ModelImport::loadGltf(const char* path, const float scale, const bool isBinary, MeshInput* const meshOut) const {
 	tinygltf::Model model;
 	tinygltf::TinyGLTF loader;//TODO should this be reused?
@@ -109,101 +213,10 @@ bool ModelImport::loadGltf(const char* path, const float scale, const bool isBin
 	tinygltf::Scene scene = model.scenes[sceneIndex];
 	std::cout << "name = " << scene.name << " node = " << scene.nodes.size() << "\n";
 	std::vector<std::vector<VertexIndexed>> meshDataList;
-	for (const auto& nodeIndex : scene.nodes) {
-		const auto& node = model.nodes[nodeIndex];
-		if (node.translation.size() == 3) {
-			glm::vec3 translation = glm::make_vec3(node.translation.data());
+	for (const auto nodeIndex : scene.nodes) {
+		if (!loadGltfNode(model, nodeIndex, scale, meshDataList)) {
+			return false;
 		}
-		if (node.rotation.size() == 4) {
-			glm::quat rotation = glm::make_quat(node.rotation.data());
-		}
-		if (node.scale.size() == 3) {
-			glm::vec3 scale = glm::make_vec3(node.scale.data());
-		}
-		if (node.matrix.size() == 16) {
-			glm::mat4 trs = glm::make_mat4(node.matrix.data());
-		}
-		std::cout << nodeIndex << ":" << node.name << " ";
-		if (node.mesh > -1) {
-			std::cout << "mesh " << node.mesh << " ";
-			const auto& mesh = model.meshes[node.mesh];
-			std::vector<VertexIndexed> dataList;
-			dataList.reserve(mesh.primitives.size());
-			for (const auto& primitive : mesh.primitives) {
-				//TODO support for mesh without indices
-				if (primitive.indices < 0) continue;
-				//glTF seems to pack the same attribute values in a continous bufferview
-				//which is not a valid vertex array
-				//thus we need to fill our Vertex array, this comes with the benefit of selectively choosing the vertex attributes to use
-				const auto& posIter = primitive.attributes.find("POSITION");
-				if (posIter == primitive.attributes.end()) {
-					continue;
-				}
-				float* texcoord0 = nullptr;
-				const auto& accessorPos = model.accessors[posIter->second];
-				const auto& bufferViewPos = model.bufferViews[accessorPos.bufferView];
-				const auto* pos = reinterpret_cast<float*>(&model.buffers[bufferViewPos.buffer].data[accessorPos.byteOffset + bufferViewPos.byteOffset]);
-				const auto& texcoord0Iter = primitive.attributes.find("TEXCOORD_0");
-				if (texcoord0Iter != primitive.attributes.end()) {
-					const auto& accessorTexcoord0 = model.accessors[texcoord0Iter->second];
-					const auto& bufferViewTexcoord0 = model.bufferViews[accessorTexcoord0.bufferView];
-					texcoord0 = reinterpret_cast<float*>(&model.buffers[bufferViewTexcoord0.buffer].data[accessorTexcoord0.byteOffset + bufferViewTexcoord0.byteOffset]);
-				}
-				const auto& accessorIndices = model.accessors[primitive.indices];
-				const auto& bufferViewIndices = model.bufferViews[accessorIndices.bufferView];
-				const void* indices = &model.buffers[bufferViewIndices.buffer].data[accessorIndices.byteOffset + bufferViewIndices.byteOffset];
-				VertexIndexed data;
-				data.vertices.reserve(accessorPos.count);
-				for (auto i = 0; i < accessorPos.count; ++i) {
-					Vertex vertex;
-					vertex.pos = glm::make_vec3(reinterpret_cast<const float*>(pos + i * 3)) / scale;
-					if (texcoord0) {
-						vertex.texCoord = glm::make_vec2(texcoord0 + i * 2);
-					}
-					data.vertices.push_back(std::move(vertex));
-				}
-				
-				switch (accessorIndices.componentType)
-				{
-				case TINYGLTF_COMPONENT_TYPE_BYTE: {
-					const auto* indices8 = static_cast<const uint8_t*>(indices);
-					for (auto i = 0; i < accessorIndices.count; ++i) {
-						data.indices.push_back(indices8[i]);
-					}
-				}
-					break;
-				case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT: {
-					data.indices.resize(accessorIndices.count);
-					memcpy(data.indices.data(), indices, accessorIndices.count * sizeof(uint16_t));
-				}
-					break;
-				case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT: {
-					//TODO check if 32bit index is really needed?
-					const auto* indices32 = static_cast<const uint32_t*>(indices);
-					for (auto i = 0; i < accessorIndices.count; ++i) {
-						data.indices.push_back(indices32[i]);
-					}
-				}
-					break;
-				default:
-					std::cout << "unsupported index type: " << accessorIndices.componentType << std::endl;
-					break;
-				}
-				std::cout << data.vertices.size() << "|" << data.indices.size() << "\n";
-				dataList.push_back(std::move(data));
-			}
-			meshDataList.push_back(std::move(dataList));
-		}
-		else if (node.skin > -1) {
-			std::cout << "skin " << node.skin << "\n";
-			//TODO
-		}
-		else if (node.camera > -1) {
-			std::cout << "camera " << node.camera << "\n";
-			//TODO
-		}
-		std::cout << "children:" << node.children.size() << std::endl;
-		//TODO node children
 	}
 	meshOut->setMesh(std::move(meshDataList));
 	std::cout << std::endl;
