@@ -57,6 +57,7 @@ void ImageInput::setMipLevel(const int offset) {
 bool ImageInput::load(const char* path) {
 	release();
 	pixelData = stbi_load(path, &width, &height, &channel, STBI_rgb_alpha);
+	//TODO report error
 	return pixelData != nullptr;
 }
 

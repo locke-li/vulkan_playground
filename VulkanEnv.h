@@ -12,10 +12,16 @@ struct QueueFamily {
 	uint32_t present;
 };
 
-struct SwapChainSupport {
+struct SwapchainSupport {
 	VkSurfaceCapabilitiesKHR capabilities;
 	std::vector<VkSurfaceFormatKHR> formats;
 	std::vector<VkPresentModeKHR> presentMode;
+};
+
+struct PhysicalDeviceCandidate {
+	const VkPhysicalDevice& device;
+	SwapchainSupport swapchainSupport;
+	uint32_t score;
 };
 
 struct InFlightFrame {
@@ -69,6 +75,7 @@ private:
 
 	VkInstance instance;
 	VkSurfaceKHR surface;
+	std::vector<PhysicalDeviceCandidate> physicalDeviceCandidate;
 	VkPhysicalDevice physicalDevice;
 	VkDevice device;
 	VkQueue graphicsQueue;
@@ -105,7 +112,7 @@ private:
 
 	QueueFamily queueFamily;
 	float queuePriority = 1.0;
-	SwapChainSupport swapChainSupport;
+	SwapchainSupport swapchainSupport;
 	uint32_t uniformSize;
 	uint32_t targetMsaaSample = 1;
 	VkSampleCountFlagBits msaaSample;
@@ -116,7 +123,7 @@ private:
 
 	VkViewport viewport;
 private:
-	bool queueFamilyValid(const VkPhysicalDevice device);
+	bool queueFamilyValid(const VkPhysicalDevice device, uint32_t& score);
 	bool findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags flags, uint32_t* typeIndex);
 	bool findDepthFormat(VkFormat* format);
 	bool createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memTypeFlag, VkBuffer& buffer, VkDeviceMemory& memory);
@@ -141,6 +148,7 @@ public:
 	void setMsaaSample(const uint32_t count) noexcept;
 	uint32_t getWidth() const;
 	uint32_t getHeight() const;
+	void selectPhysicalDevice(const PhysicalDeviceCandidate& candidate);
 	void onFramebufferResize() noexcept;
 	void waitUntilIdle();
 

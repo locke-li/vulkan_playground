@@ -7,6 +7,12 @@
 #include <fstream>
 #include <array>
 
+enum class PhysicalDeviceScore: uint32_t {
+	DiscreteGPU = 300,
+	IntegratedGPU = 200,
+	VirtualGPU = 100,
+};
+
 const std::vector<const char*> validationLayer = {
 	"VK_LAYER_KHRONOS_validation"
 };
@@ -14,18 +20,29 @@ const std::vector<const char*> extension = {
 	VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
 
-bool deviceValid(const VkPhysicalDevice device) {
+bool deviceValid(const VkPhysicalDevice device, uint32_t& score) {
 	VkPhysicalDeviceProperties properties;
 	VkPhysicalDeviceFeatures features;
 	vkGetPhysicalDeviceProperties(device, &properties);
 	vkGetPhysicalDeviceFeatures(device, &features);
 
-	return properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU &&
-		features.geometryShader &&
+	if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+		score += static_cast<uint32_t>(PhysicalDeviceScore::DiscreteGPU);
+	}
+	else if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) {
+		score += static_cast<uint32_t>(PhysicalDeviceScore::IntegratedGPU);
+	}
+	else if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU) {
+		score += static_cast<uint32_t>(PhysicalDeviceScore::VirtualGPU);
+	}
+	else {
+		return false;
+	}
+	return features.geometryShader &&
 		features.samplerAnisotropy;
 }
 
-bool deviceExtensionSupport(const VkPhysicalDevice device) {
+bool deviceExtensionSupport(const VkPhysicalDevice device, uint32_t& score) {
 	uint32_t count;
 	vkEnumerateDeviceExtensionProperties(device, nullptr, &count, nullptr);
 	if (count == 0) return false;
@@ -41,22 +58,22 @@ bool deviceExtensionSupport(const VkPhysicalDevice device) {
 			}
 		}
 	}
+	score += 1000;
 	return match == extension.size();
 }
 
-void querySwapChainSupport(const VkPhysicalDevice device, const VkSurfaceKHR surface, SwapChainSupport* support) {
+bool querySwapChainSupport(const VkPhysicalDevice device, const VkSurfaceKHR surface, SwapchainSupport* support) {
 	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &support->capabilities);
 	uint32_t count;
 	vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &count, nullptr);
-	if (count != 0) {
-		support->formats.resize(count);
-		vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &count, support->formats.data());
-	}
+	if (count == 0) return false;
+	support->formats.resize(count);
+	vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &count, support->formats.data());
 	vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &count, nullptr);
-	if (count != 0) {
-		support->presentMode.resize(count);
-		vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &count, support->presentMode.data());
-	}
+	if (count == 0) return false;
+	support->presentMode.resize(count);
+	vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &count, support->presentMode.data());
+	return true;
 }
 
 VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) {
@@ -222,7 +239,7 @@ bool VulkanEnv::createSurface() {
 	return glfwCreateWindowSurface(instance, window, nullptr, &surface) == VK_SUCCESS;
 }
 
-bool VulkanEnv::queueFamilyValid(const VkPhysicalDevice device) {
+bool VulkanEnv::queueFamilyValid(const VkPhysicalDevice device, uint32_t& score) {
 	uint32_t count;
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &count, nullptr);
 	if (count == 0) return false;
@@ -252,6 +269,7 @@ bool VulkanEnv::queueFamilyValid(const VkPhysicalDevice device) {
 		}
 		++i;
 	}
+	score += 100;
 	return result;
 }
 
@@ -262,19 +280,35 @@ bool VulkanEnv::createPhysicalDevice() {
 	std::vector<VkPhysicalDevice> deviceList(count);
 	vkEnumeratePhysicalDevices(instance, &count, deviceList.data());
 
+	SwapchainSupport support;
+	uint32_t score;
+	uint32_t maxScore = 0;
+	size_t deviceIndex;
 	for (const auto& device : deviceList) {
-		querySwapChainSupport(device, surface, &swapChainSupport);
-		if (deviceValid(device) &&
-			queueFamilyValid(device) &&
-			deviceExtensionSupport(device) &&
-			!swapChainSupport.formats.empty() &&
-			!swapChainSupport.presentMode.empty()) {
-			physicalDevice = device;
-			msaaSample = findUsableMsaaSampleCount(device, targetMsaaSample);
-			return true;
+		if (!querySwapChainSupport(device, surface, &support)) {
+			continue;
+		}
+		score = 0;
+		if (deviceValid(device, score) &&
+			queueFamilyValid(device, score) &&
+			deviceExtensionSupport(device, score)) {
+			std::cout << "device candidate score=" << score << std::endl;
+			if (score > maxScore) {
+				maxScore = score;
+				deviceIndex = physicalDeviceCandidate.size();
+			}
+			physicalDeviceCandidate.push_back({ device, support, score });
 		}
 	}
+	if (physicalDeviceCandidate.size() == 0) return false;
+	selectPhysicalDevice(physicalDeviceCandidate[deviceIndex]);
 	return false;
+}
+
+void VulkanEnv::selectPhysicalDevice(const PhysicalDeviceCandidate& candidate) {
+	swapchainSupport = candidate.swapchainSupport;
+	physicalDevice = candidate.device;
+	msaaSample = findUsableMsaaSampleCount(candidate.device, targetMsaaSample);
 }
 
 bool VulkanEnv::createDevice() {
@@ -316,13 +350,13 @@ bool VulkanEnv::createDevice() {
 
 bool VulkanEnv::createSwapchain() {
 	frameBufferResized = false;
-	swapchainFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
-	auto mode = choosePresentMode(swapChainSupport.presentMode, preferedPresentMode);
-	swapchainExtent = chooseSwapExtent(swapChainSupport.capabilities, window);
-	uint32_t imageCount = std::max(swapChainSupport.capabilities.minImageCount, maxFrameInFlight);
+	swapchainFormat = chooseSwapSurfaceFormat(swapchainSupport.formats);
+	auto mode = choosePresentMode(swapchainSupport.presentMode, preferedPresentMode);
+	swapchainExtent = chooseSwapExtent(swapchainSupport.capabilities, window);
+	uint32_t imageCount = std::max(swapchainSupport.capabilities.minImageCount, maxFrameInFlight);
 	//TODO when do we need more swapchain image than frame in flight?
-	if (swapChainSupport.capabilities.maxImageCount > 0) {
-		imageCount = std::min(imageCount, swapChainSupport.capabilities.maxImageCount);
+	if (swapchainSupport.capabilities.maxImageCount > 0) {
+		imageCount = std::min(imageCount, swapchainSupport.capabilities.maxImageCount);
 		if (imageCount < maxFrameInFlight) {
 			std::cout << "requested max frame = " << maxFrameInFlight << ", ";
 			maxFrameInFlight = imageCount == 1 ? imageCount + 1 : imageCount;
@@ -330,7 +364,7 @@ bool VulkanEnv::createSwapchain() {
 		}
 	}
 	std::cout << "swapchain count = " << imageCount;
-	std::cout << "[" << swapChainSupport.capabilities.minImageCount << "|" << swapChainSupport.capabilities.maxImageCount << "]" << std::endl;
+	std::cout << "[" << swapchainSupport.capabilities.minImageCount << "|" << swapchainSupport.capabilities.maxImageCount << "]" << std::endl;
 
 	VkSwapchainCreateInfoKHR info{};
 	info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
@@ -341,7 +375,7 @@ bool VulkanEnv::createSwapchain() {
 	info.imageExtent = swapchainExtent;
 	info.imageArrayLayers = 1;
 	info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-	info.preTransform = swapChainSupport.capabilities.currentTransform;//no pre transform
+	info.preTransform = swapchainSupport.capabilities.currentTransform;//no pre transform
 	info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;//alpha blending with other window
 	info.presentMode = mode;
 	info.clipped = VK_TRUE;
@@ -1527,7 +1561,7 @@ bool VulkanEnv::recreateSwapchain() {
 	//TODO exchange swapchain on the fly with VkSwapchainCreateInfoKHR.oldSwapchain
 	vkDeviceWaitIdle(device);
 	destroySwapchain();
-	querySwapChainSupport(physicalDevice, surface, &swapChainSupport);
+	querySwapChainSupport(physicalDevice, surface, &swapchainSupport);
 
 	bool result =
 		createSwapchain() &&
