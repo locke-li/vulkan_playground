@@ -11,6 +11,8 @@ enum class PhysicalDeviceScore: uint32_t {
 	DiscreteGPU = 300,
 	IntegratedGPU = 200,
 	VirtualGPU = 100,
+	ExtensionValid = 1000,
+	QueueFamilyValid = 1000,
 };
 
 const std::vector<const char*> validationLayer = {
@@ -58,7 +60,7 @@ bool deviceExtensionSupport(const VkPhysicalDevice device, uint32_t& score) {
 			}
 		}
 	}
-	score += 1000;
+	score += static_cast<uint32_t>(PhysicalDeviceScore::ExtensionValid);
 	return match == extension.size();
 }
 
@@ -269,7 +271,7 @@ bool VulkanEnv::queueFamilyValid(const VkPhysicalDevice device, uint32_t& score)
 		}
 		++i;
 	}
-	score += 100;
+	score += static_cast<uint32_t>(PhysicalDeviceScore::QueueFamilyValid);;
 	return result;
 }
 

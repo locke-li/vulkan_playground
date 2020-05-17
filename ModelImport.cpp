@@ -182,6 +182,7 @@ bool loadGltfNode(const tinygltf::Model& model, const int nodeIndex, const float
 	}
 	for (const auto childIndex : node.children) {
 		std::cout << nodeIndex << " child:";
+		//TODO nested children
 		if (!loadGltfNode(model, childIndex, scale, meshDataList)) {
 			return false;
 		}
