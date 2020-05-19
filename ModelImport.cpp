@@ -30,7 +30,7 @@ bool stringEndsWith(const std::string& value, const std::string& suffix) {
 ///
 /// obj format files are loaded as a single buffer, single bufferView mesh
 ///
-bool ModelImport::loadObj(const char* path, const float scale, MeshInput* const meshOut) const {
+bool ModelImport::loadObj(const char* path, const float scaling, MeshInput* const meshOut) const {
 	tinyobj::attrib_t attrib;
 	std::vector<tinyobj::shape_t> shapeList;
 	std::vector<tinyobj::material_t> materialList;
@@ -56,9 +56,9 @@ bool ModelImport::loadObj(const char* path, const float scale, MeshInput* const 
 			Vertex vertex{};
 			auto index = indexInfo.vertex_index * 3;
 			vertex.pos = {
-				attrib.vertices[index] / scale,
-				attrib.vertices[index + 1] / scale,
-				attrib.vertices[index + 2] / scale,
+				attrib.vertices[index] / scaling,
+				attrib.vertices[index + 1] / scaling,
+				attrib.vertices[index + 2] / scaling,
 			};
 			index = indexInfo.texcoord_index * 2;
 			vertex.texCoord = {
@@ -134,7 +134,7 @@ bool loadGltfNode(const tinygltf::Model& model, const int nodeIndex, const float
 			data.vertices.reserve(accessorPos.count);
 			for (auto i = 0; i < accessorPos.count; ++i) {
 				Vertex vertex;
-				vertex.pos = glm::make_vec3(reinterpret_cast<const float*>(pos + i * 3)) / scale;
+				vertex.pos = glm::make_vec3(reinterpret_cast<const float*>(pos + i * 3)) / scaling;
 				if (texcoord0) {
 					vertex.texCoord = glm::make_vec2(texcoord0 + i * 2);
 				}
@@ -190,7 +190,7 @@ bool loadGltfNode(const tinygltf::Model& model, const int nodeIndex, const float
 	return true;
 }
 
-bool ModelImport::loadGltf(const char* path, const float scale, const bool isBinary, MeshInput* const meshOut) const {
+bool ModelImport::loadGltf(const char* path, const float scaling, const bool isBinary, MeshInput* const meshOut) const {
 	tinygltf::Model model;
 	tinygltf::TinyGLTF loader;//TODO should this be reused?
 	loader.SetImageLoader(LoadImageData, nullptr);
@@ -215,7 +215,7 @@ bool ModelImport::loadGltf(const char* path, const float scale, const bool isBin
 	std::cout << "name = " << scene.name << " node = " << scene.nodes.size() << "\n";
 	std::vector<std::vector<VertexIndexed>> meshDataList;
 	for (const auto nodeIndex : scene.nodes) {
-		if (!loadGltfNode(model, nodeIndex, scale, meshDataList)) {
+		if (!loadGltfNode(model, nodeIndex, scaling, nullptr, meshDataList)) {
 			return false;
 		}
 	}
