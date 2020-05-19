@@ -1,12 +1,8 @@
 #pragma once
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_LEFT_HANDED
-#include "glm.hpp"
-#include "gtc/quaternion.hpp"
+#include "MeshStruct.h"
 #include <vector>
 
 class MeshNode;
-struct VertexIndexed;
 
 class MeshInput
 {

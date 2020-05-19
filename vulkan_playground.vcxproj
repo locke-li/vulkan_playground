@@ -165,6 +165,7 @@
   <ItemGroup>
     <ClInclude Include="DebugHelper.hpp" />
     <ClInclude Include="MeshInput.h" />
+    <ClInclude Include="MeshStruct.h" />
     <ClInclude Include="Setting.h" />
     <ClInclude Include="ImageInput.h" />
     <ClInclude Include="ModelImport.h" />
