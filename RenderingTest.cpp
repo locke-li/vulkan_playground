@@ -34,7 +34,7 @@ void RenderingTest::prepareModel() {
 		}
 	};
 	MeshInput inputTetrahedron{ { 0.0f, 0.0f, -1.0f }, { 1.0f, 0.0f, 0.0f, 0.0f }, {1.0f, 1.0f, 1.0f} };
-	inputTetrahedron.setMesh({ { std::move(tetrahedron) } });
+	inputTetrahedron.setMesh(std::move(tetrahedron));
 	VertexIndexed cube = {
 		{
 			{{-0.5f, -0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
@@ -56,7 +56,7 @@ void RenderingTest::prepareModel() {
 		}
 	};
 	MeshInput inputCube{ { 0.0f, 0.0f, -2.0f }, { 1.0f, 0.0f, 0.0f, 0.0f }, { 1.0f, 1.0f, 1.0f } };
-	inputCube.setMesh({ { std::move(cube) } });
+	inputCube.setMesh(std::move(cube));
 	MeshInput inputLoadedModel{ { 0.0f, 0.0f, 0.0f }, { 1.0f, 0.0f, 0.0f, 0.0f }, {1.0f, 1.0f, 1.0f} };
 	ModelImport modelImport;
 	//downloaded from https://sketchfab.com/3d-models/u-557-ae10491added470c88e4e21bc8672cd1

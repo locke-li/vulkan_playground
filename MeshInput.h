@@ -13,6 +13,7 @@ private:
 	glm::vec3 scale;
 	glm::mat4 modelMatrix;
 	std::vector<MeshNode> meshList;
+	BufferView createView(const size_t offset, const VertexIndexed& data) const;
 	void addMesh(MeshNode&& mesh);
 public:
 	MeshInput(
@@ -31,7 +32,8 @@ public:
 	const glm::mat4& getModelMatrix() const;
 	const std::vector<MeshNode>& getMeshList() const;
 	void reserve(size_t size);
-	void setMesh(std::vector<std::vector<VertexIndexed>>&& meshDataList);
+	void setMesh(VertexIndexed&& meshData);
+	void setMesh(std::vector<MeshData>&& meshDataList);
 	void updateConstantData();
 	void animate(const float rotationSpeed);
 };

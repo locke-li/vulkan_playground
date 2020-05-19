@@ -68,7 +68,34 @@ void MeshInput::addMesh(MeshNode&& mesh) {
 	meshList.push_back(std::move(mesh));
 }
 
-void MeshInput::setMesh(std::vector<std::vector<VertexIndexed>>&& meshDataList) {
+BufferView MeshInput::createView(const size_t offset, const VertexIndexed& data) const {
+	BufferView view;
+	view.bufferIndex = 0;
+	view.vertexOffset = offset;
+	view.vertexCount = static_cast<uint32_t>(data.vertices.size());
+	view.vertexStride = sizeof(data.vertices[0]);
+	view.vertexSize = view.vertexCount * view.vertexStride;
+	view.indexOffset = offset + view.vertexSize;
+	view.indexCount = static_cast<uint32_t>(data.indices.size());
+	view.indexStride = sizeof(data.indices[0]);
+	view.indexSize = view.indexCount * view.indexStride;
+	return view;
+}
+
+void MeshInput::setMesh(VertexIndexed&& meshData) {
+	std::vector<uint8_t> buffer;
+	auto verticesSize = meshData.vertices.size() * static_cast<uint32_t>(sizeof(Vertex));
+	auto indicesSize = meshData.indices.size() * static_cast<uint8_t>(sizeof(uint16_t));
+	buffer.resize(verticesSize + indicesSize);
+	BufferView view = createView(0, meshData);
+	memcpy(buffer.data() + view.vertexOffset, meshData.vertices.data(), view.vertexSize);
+	memcpy(buffer.data() + view.indexOffset, meshData.indices.data(), view.indexSize);
+	addMesh({ { std::move(view) }, nullptr, MatrixInput::identity() });
+	bufferList.clear();
+	bufferList.push_back(std::move(buffer));
+}
+
+void MeshInput::setMesh(std::vector<MeshData>&& meshDataList) {
 	//we try to keep the number of buffer as low as possible
 	//TODO is there an occasion where multiple data source buffer is needed?
 	std::vector<uint8_t> buffer;
@@ -76,7 +103,7 @@ void MeshInput::setMesh(std::vector<std::vector<VertexIndexed>>&& meshDataList) 
 	auto vertexStride = static_cast<uint32_t>(sizeof(Vertex));
 	auto indexStride = static_cast<uint8_t>(sizeof(uint16_t));
 	for (const auto& meshData : meshDataList) {
-		for (const auto& data : meshData) {
+		for (const auto& data : meshData.data) {
 			auto verticesSize = data.vertices.size() * vertexStride;
 			auto indicesSize = data.indices.size() * indexStride;
 			offset += verticesSize + indicesSize;
@@ -86,24 +113,16 @@ void MeshInput::setMesh(std::vector<std::vector<VertexIndexed>>&& meshDataList) 
 	offset = 0;
 	for (const auto& meshData : meshDataList) {
 		std::vector<BufferView> viewList;
-		viewList.reserve(meshData.size());
-		for (const auto& data : meshData) {
-			BufferView view;
-			view.bufferIndex = 0;
-			view.vertexOffset = offset;
-			view.vertexCount = static_cast<uint32_t>(data.vertices.size());
-			view.vertexStride = sizeof(data.vertices[0]);
-			view.vertexSize = view.vertexCount * view.vertexStride;
-			view.indexOffset = offset + view.vertexSize;
-			view.indexCount = static_cast<uint32_t>(data.indices.size());
-			view.indexStride = sizeof(data.indices[0]);
-			view.indexSize = view.indexCount * view.indexStride;
+		viewList.reserve(meshData.data.size());
+		for (const auto& data : meshData.data) {
+			BufferView view = createView(offset, data);
 			offset += view.vertexSize + view.indexSize;
 			memcpy(buffer.data() + view.vertexOffset, data.vertices.data(), view.vertexSize);
 			memcpy(buffer.data() + view.indexOffset, data.indices.data(), view.indexSize);
-			viewList.push_back(view);
+			viewList.push_back(std::move(view));
 		}
-		addMesh({ std::move(viewList) });
+		const auto* parent = meshData.parentIndex > 0 && meshData.parentIndex< meshList.size() ? &meshList[meshData.parentIndex] : nullptr;
+		addMesh({ std::move(viewList), parent, meshData.matrix });
 	}
 	bufferList.clear();
 	bufferList.push_back(std::move(buffer));

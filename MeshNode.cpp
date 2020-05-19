@@ -39,27 +39,16 @@ std::vector<VkVertexInputAttributeDescription> MeshNode::getAttributeDescription
 	return attribute;
 }
 
-MeshNode::MeshNode(std::vector<BufferView>&& viewIn, const glm::vec3& pos, const glm::quat& rot, const glm::vec3& scale)
+MeshNode::MeshNode(std::vector<BufferView>&& viewIn, const MeshNode* parentIn, const MatrixInput& matrix)
 	: root(nullptr)
-	, children{}
+	, parent(parentIn)
 	, view(viewIn)
-	, position(pos)
-	, rotation(rot)
-	, scale(scale)
+	, position(matrix.translation)
+	, rotation(matrix.rotation)
+	, scale(matrix.scale)
 {
+	//TODO use matrix.matrix
 	updateConstantDataAsLocal();
-}
-
-MeshNode::MeshNode(MeshNode&& other) noexcept
-	: root(other.root)
-	, children(std::move(other.children))
-	, view(std::move(other.view))
-	, position(std::move(other.position))
-	, rotation(std::move(other.rotation))
-	, scale(std::move(other.scale))
-	, localModelMatrix(std::move(other.localModelMatrix))
-	, constantData(std::move(other.constantData))
-{
 }
 
 uint32_t MeshNode::getConstantSize() {
@@ -68,6 +57,10 @@ uint32_t MeshNode::getConstantSize() {
 
 void MeshNode::setRoot(const MeshInput* rootIn) noexcept {
 	root = rootIn;
+}
+
+void MeshNode::setParent(const MeshNode* parentIn) noexcept {
+	parent = parentIn;
 }
 
 void MeshNode::setView(std::vector<BufferView>&& viewIn) noexcept {
@@ -79,11 +72,12 @@ const std::vector<BufferView>& MeshNode::getView() const noexcept {
 }
 
 void MeshNode::updateConstantData() {
-	if (root != nullptr) {
-		constantData.model = root->getModelMatrix() * localModelMatrix;
+	constantData.model = localModelMatrix;
+	if (parent != nullptr) {
+		constantData.model = parent->localModelMatrix * constantData.model;
 	}
-	else {
-		constantData.model = localModelMatrix;
+	if (root != nullptr) {
+		constantData.model = root->getModelMatrix() * constantData.model;
 	}
 }
 

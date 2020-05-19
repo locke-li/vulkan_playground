@@ -11,7 +11,7 @@ class MeshNode
 {
 private:
 	const MeshInput* root;
-	std::vector<MeshNode> children;
+	const MeshNode* parent;
 	std::vector<BufferView> view;
 	glm::vec3 position;
 	glm::quat rotation;
@@ -24,12 +24,17 @@ public:
 	static uint32_t getConstantSize();
 public:
 	MeshNode(std::vector<BufferView>&& viewIn,
-		const glm::vec3& pos = glm::vec3(0.0f),
-		const glm::quat& rot = glm::identity<glm::quat>(),
-		const glm::vec3& scale = glm::vec3(1.0f));
-	MeshNode(const MeshInput& other) = delete;
-	MeshNode(MeshNode&& other) noexcept;
+		const MeshNode* parentIn,
+		const MatrixInput& matrix = {
+			glm::vec3(0.0f),
+			glm::identity<glm::quat>(),
+			glm::vec3(1.0f)
+		}
+	);
+	MeshNode(const MeshInput&) = delete;
+	MeshNode(MeshNode&&) = default;
 	void setRoot(const MeshInput* root) noexcept;
+	void setParent(const MeshNode* parent) noexcept;
 	void setView(std::vector<BufferView>&& view) noexcept;
 	const std::vector<BufferView>& getView() const noexcept;
 	void updateConstantData();

@@ -47,8 +47,9 @@ bool ModelImport::loadObj(const char* path, const float scaling, MeshInput* cons
 	meshOut->reserve(shapeList.size());
 	std::unordered_map<Vertex, uint32_t> vertexIndex;
 	std::vector<std::vector<uint8_t>> buffer(1);
-	std::vector<VertexIndexed> dataList;
-	dataList.reserve(shapeList.size());
+	MeshData meshData;
+	meshData.data.reserve(shapeList.size());
+	meshData.parentIndex = -1;
 	for (const auto& shape : shapeList) {
 		std::cout << shape.name << "\n";
 		VertexIndexed data;
@@ -78,41 +79,57 @@ bool ModelImport::loadObj(const char* path, const float scaling, MeshInput* cons
 			}
 		}
 		std::cout << data.vertices.size() << "|" << data.indices.size() << std::endl;
-		dataList.push_back(std::move(data));
+		meshData.data.push_back(std::move(data));
 	}
-	meshOut->setMesh({ std::move(dataList) });
+	meshOut->setMesh({ std::move(meshData) });
 	//TODO manage material/texture
 	return true;
 }
 
-bool loadGltfNode(const tinygltf::Model& model, const int nodeIndex, const float scale, std::vector<std::vector<VertexIndexed>>& meshDataList) {
+bool loadGltfNode(const tinygltf::Model& model, const int nodeIndex, const float scaling, const int* parentIndex, std::vector<MeshData>& meshDataList) {
 	const auto& node = model.nodes[nodeIndex];
 	//TODO apply scale here?
-	//TODO set these values
+	glm::vec3* translation{ nullptr };
+	glm::quat* rotation{ nullptr };
+	glm::vec3* scale{ nullptr };
+	glm::mat4* trs{ nullptr };
 	if (node.translation.size() == 3) {
-		glm::vec3 translation = glm::make_vec3(node.translation.data());
+		translation = &glm::vec3{ glm::make_vec3(node.translation.data()) };
 	}
 	if (node.rotation.size() == 4) {
-		glm::quat rotation = glm::make_quat(node.rotation.data());
+		rotation = &glm::quat{ glm::make_quat(node.rotation.data()) };
 	}
 	if (node.scale.size() == 3) {
-		glm::vec3 scale = glm::make_vec3(node.scale.data());
+		scale = &glm::vec3{ glm::make_vec3(node.scale.data()) };
 	}
 	if (node.matrix.size() == 16) {
-		glm::mat4 trs = glm::make_mat4(node.matrix.data());
+		//TODO should we decompose this?
+		trs = &glm::mat4{ glm::make_mat4(node.matrix.data()) };
+	}
+	else {
+		//TODO calculate TRS matrix
 	}
 	std::cout << nodeIndex << ":" << node.name << " ";
 	if (node.mesh > -1) {
 		std::cout << "mesh " << node.mesh << " ";
 		const auto& mesh = model.meshes[node.mesh];
-		std::vector<VertexIndexed> dataList;
-		dataList.reserve(mesh.primitives.size());
+		MeshData meshData;
+		meshData.data.reserve(mesh.primitives.size());
+		meshData.matrix = MatrixInput::identity();
+		//TODO these value seems to have been incorperated into the vertex data
+		/*{
+				translation ? *translation : glm::vec3(0.0f),
+				rotation ? *rotation : glm::identity<glm::quat>(),
+				scale ? *scale : glm::vec3(1.0f),
+				trs ? *trs : glm::mat4{}
+		};*/
+		meshData.parentIndex = parentIndex ? *parentIndex : -1;
 		for (const auto& primitive : mesh.primitives) {
 			//TODO support for mesh without indices
 			if (primitive.indices < 0) continue;
 			//glTF seems to pack the same attribute values in a continous bufferview
 			//which is not a valid vertex array
-			//thus we need to fill our Vertex array, this comes with the benefit of selectively choosing the vertex attributes to use
+			//thus we need to fill our Vertex array, this comes with the benefit of selectively choosing the vertex attributes/types to use
 			const auto& posIter = primitive.attributes.find("POSITION");
 			if (posIter == primitive.attributes.end()) {
 				continue;
@@ -168,9 +185,9 @@ bool loadGltfNode(const tinygltf::Model& model, const int nodeIndex, const float
 				break;
 			}
 			std::cout << data.vertices.size() << "|" << data.indices.size() << "\n";
-			dataList.push_back(std::move(data));
+			meshData.data.push_back(std::move(data));
 		}
-		meshDataList.push_back(std::move(dataList));
+		meshDataList.push_back(std::move(meshData));
 	}
 	else if (node.skin > -1) {
 		std::cout << "skin " << node.skin << "\n";
@@ -180,10 +197,11 @@ bool loadGltfNode(const tinygltf::Model& model, const int nodeIndex, const float
 		std::cout << "camera " << node.camera << "\n";
 		//TODO
 	}
+	int currentIndex = static_cast<int>(meshDataList.size());
 	for (const auto childIndex : node.children) {
 		std::cout << nodeIndex << " child:";
-		//TODO nested children
-		if (!loadGltfNode(model, childIndex, scale, meshDataList)) {
+		//children flattened
+		if (!loadGltfNode(model, childIndex, scaling, &currentIndex, meshDataList)) {
 			return false;
 		}
 	}
@@ -213,7 +231,7 @@ bool ModelImport::loadGltf(const char* path, const float scaling, const bool isB
 	auto sceneIndex = model.defaultScene > -1 ? model.defaultScene : 0;
 	tinygltf::Scene scene = model.scenes[sceneIndex];
 	std::cout << "name = " << scene.name << " node = " << scene.nodes.size() << "\n";
-	std::vector<std::vector<VertexIndexed>> meshDataList;
+	std::vector<MeshData> meshDataList;
 	for (const auto nodeIndex : scene.nodes) {
 		if (!loadGltfNode(model, nodeIndex, scaling, nullptr, meshDataList)) {
 			return false;
