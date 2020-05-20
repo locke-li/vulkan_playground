@@ -1,12 +1,12 @@
 #include "ShaderInput.h"
 #include <fstream>
 
-ShaderInput::ShaderInput(const char* vertexPath, const char* fragmentPath)
+ShaderInput::ShaderInput(const std::string& vertexPath, const std::string& fragmentPath)
 	: vertPath(vertexPath)
 	, fragPath(fragmentPath)
 {}
 
-std::vector<char> ShaderInput::loadFile(const char* path) const {
+std::vector<char> ShaderInput::loadFile(const std::string& path) const {
 	std::ifstream file(path, std::ios::ate | std::ios::binary);
 	if (!file.is_open()) {
 		return std::vector<char>();
@@ -37,10 +37,10 @@ void ShaderInput::preloadFrag() {
 }
 
 void ShaderInput::preload() {
-	if (vertPath != nullptr) {
+	if (!vertPath.empty()) {
 		preloadVert();
 	}
-	if (fragPath != nullptr) {
+	if (!fragPath.empty()) {
 		preloadFrag();
 	}
 }

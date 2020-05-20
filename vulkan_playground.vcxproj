@@ -186,6 +186,7 @@
     <None Include="shader\vert_simple_triangle.glsl">
       <FileType>Text</FileType>
     </None>
+    <None Include="_input" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -304,7 +304,7 @@ bool VulkanEnv::createPhysicalDevice() {
 	}
 	if (physicalDeviceCandidate.size() == 0) return false;
 	selectPhysicalDevice(physicalDeviceCandidate[deviceIndex]);
-	return false;
+	return true;
 }
 
 void VulkanEnv::selectPhysicalDevice(const PhysicalDeviceCandidate& candidate) {

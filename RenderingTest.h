@@ -5,6 +5,14 @@
 #include "VulkanEnv.h"
 #include "MeshInput.h"
 #include <vector>
+#include <string>
+
+struct TestInput {
+	std::string modelPath;
+	std::string texturePath;
+	std::string vertexShaderPath;
+	std::string fragmentShaderPath;
+};
 
 class RenderingTest
 {
@@ -20,7 +28,8 @@ private:
 	VulkanEnv vulkanEnv;
 	RenderContext renderContext;
 	std::vector<MeshInput> modelList;
-	void prepareModel();
+	void prepareModel(const TestInput&);
+	bool readInput(TestInput& inputOut) const;
 public:
 	int mainLoop();
 };

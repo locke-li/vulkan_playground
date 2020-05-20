@@ -54,9 +54,9 @@ void ImageInput::setMipLevel(const int offset) {
 	mipLevel = static_cast<uint32_t>(std::floor(std::max(1.0, std::log2(std::max(width, height)) - offset)));
 }
 
-bool ImageInput::load(const char* path) {
+bool ImageInput::load(const std::string& path) {
 	release();
-	pixelData = stbi_load(path, &width, &height, &channel, STBI_rgb_alpha);
+	pixelData = stbi_load(path.c_str(), &width, &height, &channel, STBI_rgb_alpha);
 	//TODO report error
 	return pixelData != nullptr;
 }

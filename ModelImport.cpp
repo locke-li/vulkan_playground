@@ -50,6 +50,7 @@ bool ModelImport::loadObj(const char* path, const float scaling, MeshInput* cons
 	MeshData meshData;
 	meshData.data.reserve(shapeList.size());
 	meshData.parentIndex = -1;
+	meshData.matrix = MatrixInput::identity();
 	for (const auto& shape : shapeList) {
 		std::cout << shape.name << "\n";
 		VertexIndexed data;
@@ -208,17 +209,17 @@ bool loadGltfNode(const tinygltf::Model& model, const int nodeIndex, const float
 	return true;
 }
 
-bool ModelImport::loadGltf(const char* path, const float scaling, const bool isBinary, MeshInput* const meshOut) const {
+bool ModelImport::loadGltf(const std::string& path, const float scaling, const bool isBinary, MeshInput* const meshOut) const {
 	tinygltf::Model model;
 	tinygltf::TinyGLTF loader;//TODO should this be reused?
 	loader.SetImageLoader(LoadImageData, nullptr);
 	std::string warning, error;
 	bool loadResult;
 	if (isBinary) {
-		loadResult = loader.LoadBinaryFromFile(&model, &warning, &error, path);
+		loadResult = loader.LoadBinaryFromFile(&model, &error, &warning, path);
 	}
 	else {
-		loadResult = loader.LoadASCIIFromFile(&model, &warning, &error, path);
+		loadResult = loader.LoadASCIIFromFile(&model, &error, &warning, path);
 	}
 	if (loadResult == false) {
 		std::cout << warning << "\n----\n" << error << std::endl;
@@ -247,11 +248,11 @@ bool ModelImport::load(const std::string& path, const float scale, MeshInput* co
 	if (stringEndsWith(path, ".obj")) {
 		return loadObj(path.c_str(), scale, mesh);
 	}
-	else if (stringEndsWith(path, ".glft")) {
-		return loadGltf(path.c_str(), scale, false, mesh);
+	else if (stringEndsWith(path, ".gltf")) {
+		return loadGltf(path, scale, false, mesh);
 	}
 	else if (stringEndsWith(path, ".glb")) {
-		return loadGltf(path.c_str(), scale, true, mesh);
+		return loadGltf(path, scale, true, mesh);
 	}
 	std::cout << "unknown format" << std::endl;
 	return result;

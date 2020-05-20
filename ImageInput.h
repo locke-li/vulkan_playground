@@ -1,6 +1,7 @@
 #pragma once
 #include "stb_image.h"
 #include <cstdint>
+#include <string>
 
 class ImageInput
 {
@@ -25,7 +26,7 @@ public:
 	uint32_t calculateSize() const;
 	const stbi_uc* pixel() const noexcept;
 	void setMipLevel(const int offset);
-	bool load(const char* path);
+	bool load(const std::string& path);
 	void release();
 };
 

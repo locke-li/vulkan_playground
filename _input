@@ -1,0 +1,6 @@
+#downloaded from https://sketchfab.com/3d-models/u-557-ae10491added470c88e4e21bc8672cd1
+model=model/U-577_obj/U-557.obj
+texture=texture/vibrant-watercolor-flow-texture-background_1017-19544.jpg
+
+vertex_shader=shader/vert_simple_triangle.spv
+fragment_shader=shader/frag_color.spv
