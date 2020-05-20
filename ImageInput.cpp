@@ -12,6 +12,7 @@ ImageInput::ImageInput(const bool perserve, const bool mipmap)
 	, width(0)
 	, height(0)
 	, pixelData(nullptr)
+	, byteSize(-1)
 {}
 
 ImageInput::~ImageInput() {
@@ -38,16 +39,16 @@ bool ImageInput::perserveData() const {
 	return perserve;
 }
 
-bool ImageInput::generateMipmap() const {
+bool ImageInput::shouldGenerateMipmap() const {
 	return mipmap;
 }
 
-uint32_t ImageInput::calculateSize() const {
-	return width * height * BytePerPixel;
+uint32_t ImageInput::getByteSize() const {
+	return byteSize;
 }
 
 const uint8_t* ImageInput::pixel() const noexcept {
-	return pixelData;
+	return pixelData.get();
 }
 
 void ImageInput::setMipLevel(const int offset) {
@@ -55,19 +56,21 @@ void ImageInput::setMipLevel(const int offset) {
 }
 
 bool ImageInput::load(const std::string& path) {
-	release();
-	pixelData = stbi_load(path.c_str(), &width, &height, &channel, STBI_rgb_alpha);
+	pixelData = std::unique_ptr<uint8_t>{ stbi_load(path.c_str(), &width, &height, &channel, STBI_rgb_alpha) };
+	byteSize = width * height * BytePerPixel;
 	//TODO report error
 	return pixelData != nullptr;
 }
 
-void ImageInput::setData(uint8_t* data) noexcept {
-	pixelData = data;
+void ImageInput::setData(const uint8_t* data, const int size, const int widthIn, const int heightIn) noexcept {
+	pixelData = std::unique_ptr<uint8_t>(new uint8_t[size]);
+	width = widthIn;
+	height = heightIn;
+	//TODO channel
+	byteSize = size;
+	memcpy(pixelData.get(), data, size);
 }
 
 void ImageInput::release() {
-	if (pixelData != nullptr) {
-		stbi_image_free(pixelData);
-		pixelData = nullptr;
-	}
+	pixelData = nullptr;
 }

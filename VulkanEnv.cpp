@@ -846,7 +846,7 @@ bool VulkanEnv::createTextureImage(ImageInput& input) {
 	if (!input.isValid()) {
 		return false;
 	}
-	auto size = input.calculateSize();
+	auto size = input.getByteSize();
 	VkBuffer stagingBuffer;
 	VkDeviceMemory stagingBufferMemory;
 	if (!createStagingBuffer(size, stagingBuffer, stagingBufferMemory)) {
@@ -882,7 +882,7 @@ bool VulkanEnv::createTextureImage(ImageInput& input) {
 		info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	}
 	info.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-	if (input.generateMipmap()) {
+	if (input.shouldGenerateMipmap()) {
 		info.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 	}
 	info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
@@ -898,7 +898,7 @@ bool VulkanEnv::createTextureImage(ImageInput& input) {
 	allocateCommandBuffer(commandPool, static_cast<uint32_t>(cmd.size()), cmd.data());
 	transitionImageLayout(image, option, info.initialLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, cmd[0]);
 	copyImage(stagingBuffer, image, input.getWidth(), input.getHeight(), 0, cmd[1]);
-	if (input.generateMipmap()) {
+	if (input.shouldGenerateMipmap()) {
 		generateTextureMipmap(image, option, input.getWidth(), input.getHeight(), cmd[2]);
 	}
 	else {

@@ -32,16 +32,16 @@ bool RenderingTest::readInput(TestInput& inputOut) const {
 		std::string key = line.substr(0, delimIndex);
 		++delimIndex;
 		if (key == "model") {
-			inputOut.modelPath = line.substr(delimIndex);
+			inputOut.modelPath = std::move(line.substr(delimIndex));
 		}
 		else if (key == "texture") {
-			inputOut.texturePath = line.substr(delimIndex);
+			inputOut.texturePath = std::move(line.substr(delimIndex));
 		}
 		else if (key == "vertex_shader") {
-			inputOut.vertexShaderPath = line.substr(delimIndex);
+			inputOut.vertexShaderPath = std::move(line.substr(delimIndex));
 		}
 		else if (key == "fragment_shader") {
-			inputOut.fragmentShaderPath = line.substr(delimIndex);
+			inputOut.fragmentShaderPath = std::move(line.substr(delimIndex));
 		}
 		//silent ignore unrecognized
 		std::cout << line << std::endl;

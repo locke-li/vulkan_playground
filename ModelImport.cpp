@@ -1,6 +1,6 @@
 #include "ModelImport.h"
 #include "MeshNode.h"
-#include "ImageInput.h";
+#include "ImageInput.h"
 #include "glm.hpp"
 #include "gtc/type_ptr.hpp"
 #define TINYOBJLOADER_IMPLEMENTATION
@@ -13,7 +13,9 @@
 #include <iostream>
 
 struct LoadingGltfData {
-	std::vector<ImageInput> image;
+	const float scaling;
+	std::vector<ImageInput>& const image;
+	std::vector<MeshData>& const mesh;
 };
 
 //this function processes image data embeded in glb/gltf files,
@@ -21,9 +23,20 @@ struct LoadingGltfData {
 bool LoadImageData(tinygltf::Image* image, const int image_idx, std::string* err,
 	std::string* warn, int req_width, int req_height,
 	const unsigned char* bytes, int size, void* userData) {
-	std::cout << image_idx << " " << image->name << std::endl;
+	std::cout << image_idx << " " << image->name << "|" << size << std::endl;
+	if (!warn->empty()) {
+		std::cout << *warn << std::endl;
+	}
+	if (!err->empty()) {
+		std::cout << *err << std::endl;
+		return false;
+	}
 	auto* data = static_cast<LoadingGltfData*>(userData);
-	//TODO stub
+	ImageInput imageInput(true, true);
+	imageInput.setData(bytes, size, req_width, req_height);
+	//TODO can we be sure image_idx is sequencial?
+	assert(image_idx == data->image.size(), "Non sequencial image_idx");
+	data->image.push_back(std::move(imageInput));
 	return true;
 }
 
@@ -38,7 +51,7 @@ bool stringEndsWith(const std::string& value, const std::string& suffix) {
 ///
 /// obj format files are loaded as a single buffer, single bufferView mesh
 ///
-bool ModelImport::loadObj(const char* path, const float scaling, MeshInput* const meshOut) const {
+bool ModelImport::loadObj(const char* path, const float scaling, MeshInput& const meshOut) const {
 	tinyobj::attrib_t attrib;
 	std::vector<tinyobj::shape_t> shapeList;
 	std::vector<tinyobj::material_t> materialList;
@@ -52,7 +65,7 @@ bool ModelImport::loadObj(const char* path, const float scaling, MeshInput* cons
 		std::cout << warning << std::endl;
 	}
 
-	meshOut->reserve(shapeList.size());
+	meshOut.reserve(shapeList.size());
 	std::unordered_map<Vertex, uint32_t> vertexIndex;
 	std::vector<std::vector<uint8_t>> buffer(1);
 	MeshData meshData;
@@ -90,12 +103,12 @@ bool ModelImport::loadObj(const char* path, const float scaling, MeshInput* cons
 		std::cout << data.vertices.size() << "|" << data.indices.size() << std::endl;
 		meshData.data.push_back(std::move(data));
 	}
-	meshOut->setMesh({ std::move(meshData) });
+	meshOut.setMesh({ std::move(meshData) });
 	//TODO manage material/texture
 	return true;
 }
 
-bool loadGltfNodeMesh(const tinygltf::Model& model, const tinygltf::Node& node, MatrixInput&& matrix, const float scaling, const int* parentIndex, std::vector<MeshData>& meshDataList) {
+bool loadGltfNodeMesh(const tinygltf::Model& model, const tinygltf::Node& node, MatrixInput&& matrix, const int* parentIndex, LoadingGltfData& loadingData) {
 	const auto& mesh = model.meshes[node.mesh];
 	MeshData meshData;
 	meshData.data.reserve(mesh.primitives.size());
@@ -128,7 +141,7 @@ bool loadGltfNodeMesh(const tinygltf::Model& model, const tinygltf::Node& node, 
 		data.vertices.reserve(accessorPos.count);
 		for (auto i = 0; i < accessorPos.count; ++i) {
 			Vertex vertex;
-			vertex.pos = glm::make_vec3(reinterpret_cast<const float*>(pos + i * 3)) / scaling;
+			vertex.pos = glm::make_vec3(reinterpret_cast<const float*>(pos + i * 3)) / loadingData.scaling;
 			if (texcoord0) {
 				vertex.texCoord = glm::make_vec2(texcoord0 + i * 2);
 			}
@@ -161,18 +174,18 @@ bool loadGltfNodeMesh(const tinygltf::Model& model, const tinygltf::Node& node, 
 			std::cout << "unsupported index type: " << accessorIndices.componentType << std::endl;
 			break;
 		}
-		std::cout << data.vertices.size() << "|" << data.indices.size() << "\n";
+		std::cout << data.vertices.size() << "|" << data.indices.size() << "   ";
 		if (primitive.material > -1) {
 			const auto& mat = model.materials[primitive.material];
-			std::cout << mat.name << std::endl;
+			std::cout << mat.name << "\n";
 		}
 		meshData.data.push_back(std::move(data));
 	}
-	meshDataList.push_back(std::move(meshData));
+	loadingData.mesh.push_back(std::move(meshData));
 	return true;
 }
 
-bool loadGltfNode(const tinygltf::Model& model, const int nodeIndex, const float scaling, const int* parentIndex, std::vector<MeshData>& meshDataList) {
+bool loadGltfNode(const tinygltf::Model& model, const int nodeIndex, const int* parentIndex, LoadingGltfData& loadingData) {
 	const auto& node = model.nodes[nodeIndex];
 	glm::vec3* translation{ nullptr };
 	glm::quat* rotation{ nullptr };
@@ -195,7 +208,7 @@ bool loadGltfNode(const tinygltf::Model& model, const int nodeIndex, const float
 		//TODO calculate TRS matrix
 	}
 	MatrixInput&& matrix = {
-		translation ? *translation / scaling : glm::vec3(0.0f),
+		translation ? *translation / loadingData.scaling : glm::vec3(0.0f),
 		rotation ? *rotation : glm::identity<glm::quat>(),
 		scale ? *scale : glm::vec3(1.0f),
 		trs ? *trs : glm::mat4{}
@@ -203,8 +216,8 @@ bool loadGltfNode(const tinygltf::Model& model, const int nodeIndex, const float
 	std::cout << nodeIndex << ":" << node.name << " ";
 	if (node.mesh > -1) {
 		//TODO point to existing mesh data
-		std::cout << "mesh " << node.mesh << " ";
-		loadGltfNodeMesh(model, node, std::move(matrix), scaling, parentIndex, meshDataList);
+		std::cout << node.mesh << "|";
+		loadGltfNodeMesh(model, node, std::move(matrix), parentIndex, loadingData);
 	}
 	else if (node.skin > -1) {
 		std::cout << "skin " << node.skin << "\n";
@@ -214,22 +227,24 @@ bool loadGltfNode(const tinygltf::Model& model, const int nodeIndex, const float
 		std::cout << "camera " << node.camera << "\n";
 		//TODO
 	}
-	int currentIndex = static_cast<int>(meshDataList.size() - 1);
+	int currentIndex = static_cast<int>(loadingData.mesh.size() - 1);
 	for (const auto childIndex : node.children) {
 		std::cout << nodeIndex << " child:";
 		//children flattened
-		if (!loadGltfNode(model, childIndex, scaling, &currentIndex, meshDataList)) {
+		if (!loadGltfNode(model, childIndex, &currentIndex, loadingData)) {
 			return false;
 		}
 	}
 	return true;
 }
 
-bool ModelImport::loadGltf(const std::string& path, const float scaling, const bool isBinary, MeshInput* const meshOut) const {
+bool ModelImport::loadGltf(const std::string& path, const float scaling, const bool isBinary, MeshInput& const meshOut) const {
 	tinygltf::Model model;
 	tinygltf::TinyGLTF loader;//TODO should this be reused?
-	LoadingGltfData data;
-	loader.SetImageLoader(LoadImageData, &data);
+	std::vector<MeshData> meshDataList;
+	std::vector<ImageInput> imageDataList;
+	LoadingGltfData loadingData{ scaling, imageDataList, meshDataList };
+	loader.SetImageLoader(LoadImageData, &loadingData);
 	std::string warning, error;
 	bool loadResult;
 	if (isBinary) {
@@ -249,18 +264,18 @@ bool ModelImport::loadGltf(const std::string& path, const float scaling, const b
 	auto sceneIndex = model.defaultScene > -1 ? model.defaultScene : 0;
 	tinygltf::Scene scene = model.scenes[sceneIndex];
 	std::cout << "name = " << scene.name << " node = " << scene.nodes.size() << "\n";
-	std::vector<MeshData> meshDataList;
+	
 	for (const auto nodeIndex : scene.nodes) {
-		if (!loadGltfNode(model, nodeIndex, scaling, nullptr, meshDataList)) {
+		if (!loadGltfNode(model, nodeIndex, nullptr, loadingData)) {
 			return false;
 		}
 	}
-	meshOut->setMesh(std::move(meshDataList));
+	meshOut.setMesh(std::move(meshDataList));
 	std::cout << std::endl;
 	return true;
 }
 
-bool ModelImport::load(const std::string& path, const float scale, MeshInput* const mesh) const {
+bool ModelImport::load(const std::string& path, const float scale, MeshInput& const mesh) const {
 	bool result = false;
 	if (stringEndsWith(path, ".obj")) {
 		return loadObj(path.c_str(), scale, mesh);
