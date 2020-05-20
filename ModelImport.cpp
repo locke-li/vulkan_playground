@@ -1,5 +1,6 @@
 #include "ModelImport.h"
 #include "MeshNode.h"
+#include "ImageInput.h";
 #include "glm.hpp"
 #include "gtc/type_ptr.hpp"
 #define TINYOBJLOADER_IMPLEMENTATION
@@ -11,12 +12,17 @@
 #include <unordered_map>
 #include <iostream>
 
+struct LoadingGltfData {
+	std::vector<ImageInput> image;
+};
+
 //this function processes image data embeded in glb/gltf files,
 //which are loaded during model loading
 bool LoadImageData(tinygltf::Image* image, const int image_idx, std::string* err,
 	std::string* warn, int req_width, int req_height,
 	const unsigned char* bytes, int size, void* userData) {
 	std::cout << image_idx << " " << image->name << std::endl;
+	auto* data = static_cast<LoadingGltfData*>(userData);
 	//TODO stub
 	return true;
 }
@@ -156,6 +162,10 @@ bool loadGltfNodeMesh(const tinygltf::Model& model, const tinygltf::Node& node, 
 			break;
 		}
 		std::cout << data.vertices.size() << "|" << data.indices.size() << "\n";
+		if (primitive.material > -1) {
+			const auto& mat = model.materials[primitive.material];
+			std::cout << mat.name << std::endl;
+		}
 		meshData.data.push_back(std::move(data));
 	}
 	meshDataList.push_back(std::move(meshData));
@@ -218,7 +228,8 @@ bool loadGltfNode(const tinygltf::Model& model, const int nodeIndex, const float
 bool ModelImport::loadGltf(const std::string& path, const float scaling, const bool isBinary, MeshInput* const meshOut) const {
 	tinygltf::Model model;
 	tinygltf::TinyGLTF loader;//TODO should this be reused?
-	loader.SetImageLoader(LoadImageData, nullptr);
+	LoadingGltfData data;
+	loader.SetImageLoader(LoadImageData, &data);
 	std::string warning, error;
 	bool loadResult;
 	if (isBinary) {

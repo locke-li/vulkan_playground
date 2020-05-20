@@ -6,7 +6,7 @@
 class ImageInput
 {
 private:
-	stbi_uc* pixelData;
+	uint8_t* pixelData;
 	int width;
 	int height;
 	int channel;
@@ -24,9 +24,10 @@ public:
 	bool perserveData() const;
 	bool generateMipmap() const;
 	uint32_t calculateSize() const;
-	const stbi_uc* pixel() const noexcept;
+	const uint8_t* pixel() const noexcept;
 	void setMipLevel(const int offset);
 	bool load(const std::string& path);
+	void setData(uint8_t* pixelData) noexcept;
 	void release();
 };
 

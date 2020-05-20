@@ -46,7 +46,7 @@ uint32_t ImageInput::calculateSize() const {
 	return width * height * BytePerPixel;
 }
 
-const stbi_uc* ImageInput::pixel() const noexcept {
+const uint8_t* ImageInput::pixel() const noexcept {
 	return pixelData;
 }
 
@@ -59,6 +59,10 @@ bool ImageInput::load(const std::string& path) {
 	pixelData = stbi_load(path.c_str(), &width, &height, &channel, STBI_rgb_alpha);
 	//TODO report error
 	return pixelData != nullptr;
+}
+
+void ImageInput::setData(uint8_t* data) noexcept {
+	pixelData = data;
 }
 
 void ImageInput::release() {
