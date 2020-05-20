@@ -271,7 +271,7 @@ bool VulkanEnv::queueFamilyValid(const VkPhysicalDevice device, uint32_t& score)
 		}
 		++i;
 	}
-	score += static_cast<uint32_t>(PhysicalDeviceScore::QueueFamilyValid);;
+	score += static_cast<uint32_t>(PhysicalDeviceScore::QueueFamilyValid);
 	return result;
 }
 
@@ -1160,20 +1160,6 @@ bool VulkanEnv::createStagingBuffer(VkDeviceSize size, VkBuffer& buffer, VkDevic
 		memory);
 }
 
-bool VulkanEnv::copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size, VkCommandBuffer cmd) {
-	if (!beginCommand(cmd, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)) {
-		return false;
-	}
-
-	VkBufferCopy copy;
-	copy.srcOffset = 0;
-	copy.dstOffset = 0;
-	copy.size = size;
-	vkCmdCopyBuffer(cmd, src, dst, 1, &copy);
-
-	return vkEndCommandBuffer(cmd) == VK_SUCCESS;
-}
-
 bool VulkanEnv::createVertexBufferIndice(const std::vector<const MeshInput*>& input) {
 	uint32_t vCount = 0, vSize = 0, iSize = 0;
 	for (const auto& vertexInput : input) {
@@ -1238,24 +1224,37 @@ bool VulkanEnv::createVertexBufferIndice(const std::vector<const MeshInput*>& in
 		return false;
 	}
 
-	VkCommandBuffer copyCmd[2];
-	if (!allocateCommandBuffer(commandPool, 2, copyCmd)) {
+	VkCommandBuffer copyCmd;
+	if (!allocateCommandBuffer(commandPool, 1, &copyCmd)) {
 		return false;
 	}
-	vBufferSuccess = copyBuffer(stagingVBuffer, vBuffer, vSize, copyCmd[0]);
-	iBufferSuccess = copyBuffer(stagingIBuffer, iBuffer, iSize, copyCmd[1]);
-	if (!vBufferSuccess || !iBufferSuccess) {
+	if (!beginCommand(copyCmd, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)) {
 		return false;
 	}
 
-	if (!submitCommand(copyCmd, 2, graphicsQueue, fenceVertexIndexCopy)) {
+	VkBufferCopy vCopy;
+	vCopy.srcOffset = 0;
+	vCopy.dstOffset = 0;
+	vCopy.size = vSize;
+	vkCmdCopyBuffer(copyCmd, stagingVBuffer, vBuffer, 1, &vCopy);
+	VkBufferCopy iCopy;
+	iCopy.srcOffset = 0;
+	iCopy.dstOffset = 0;
+	iCopy.size = iSize;
+	vkCmdCopyBuffer(copyCmd, stagingIBuffer, iBuffer, 1, &iCopy);
+
+	if (vkEndCommandBuffer(copyCmd) != VK_SUCCESS) {
+		return false;
+	}
+
+	if (!submitCommand(&copyCmd, 1, graphicsQueue, fenceVertexIndexCopy)) {
 		return false;
 	}
 	if (vkWaitForFences(device, 1, &fenceVertexIndexCopy, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
 		return false;
 	}
 
-	vkFreeCommandBuffers(device, commandPool, 2, copyCmd);
+	vkFreeCommandBuffers(device, commandPool, 1, &copyCmd);
 	vkDestroyBuffer(device, stagingVBuffer, nullptr);
 	vkFreeMemory(device, stagingVBufferMemory, nullptr);
 	vkDestroyBuffer(device, stagingIBuffer, nullptr);
