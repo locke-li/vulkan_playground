@@ -19,7 +19,7 @@ void onFramebufferResize(GLFWwindow* window, int width, int height) {
 	}
 }
 
- bool RenderingTest::readInput(TestInput& inputOut) const {
+bool RenderingTest::readInput(TestInput& inputOut) const {
 	std::ifstream input("_input");
 	if (!input.is_open()) {
 		return false;
@@ -88,10 +88,9 @@ void onFramebufferResize(GLFWwindow* window, int width, int height) {
 	 };
 	 MeshInput inputCube{ { 0.0f, 0.0f, -2.0f }, { 1.0f, 0.0f, 0.0f, 0.0f }, { 1.0f, 1.0f, 1.0f } };
 	 inputCube.setMesh(std::move(cube));
-	 MeshInput inputLoadedModel{ { 0.0f, 0.0f, 0.0f }, { 1.0f, 0.0f, 0.0f, 0.0f }, {1.0f, 1.0f, 1.0f} };
+	 MeshInput inputLoadedModel{ { 0.2f, 0.0f, 0.0f }, glm::quat({0.0f, glm::radians(-45.0f), glm::radians(180.0f)}), {1.0f, 1.0f, 1.0f} };
 	 ModelImport modelImport;
-	 //downloaded from https://sketchfab.com/3d-models/u-557-ae10491added470c88e4e21bc8672cd1
-	 logResult("model loading", modelImport.load(input.modelPath, 32, &inputLoadedModel));
+	 logResult("model loading", modelImport.load(input.modelPath, 28, &inputLoadedModel));
 	 modelList.push_back(std::move(inputTetrahedron));
 	 modelList.push_back(std::move(inputCube));
 	 modelList.push_back(std::move(inputLoadedModel));
@@ -110,7 +109,7 @@ int RenderingTest::mainLoop() {
 
 	const auto& graphicsSetting = setting.getGraphics();
 	prepareModel(input);
-	renderingData.updateCamera(60.0f, WIDTH / (float)HEIGHT, glm::vec3(0.0f, -1.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f));
+	renderingData.updateCamera(45.0f, WIDTH / (float)HEIGHT, glm::vec3(0.0f, -1.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f));
 	renderingData.setRenderListFiltered(modelList);
 	ShaderInput shader(input.vertexShaderPath, input.fragmentShaderPath);
 	shader.preload();

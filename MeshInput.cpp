@@ -121,7 +121,7 @@ void MeshInput::setMesh(std::vector<MeshData>&& meshDataList) {
 			memcpy(buffer.data() + view.indexOffset, data.indices.data(), view.indexSize);
 			viewList.push_back(std::move(view));
 		}
-		const auto* parent = meshData.parentIndex > 0 && meshData.parentIndex< meshList.size() ? &meshList[meshData.parentIndex] : nullptr;
+		const auto* parent = (meshData.parentIndex > -1 && meshData.parentIndex < meshList.size()) ? &meshList[meshData.parentIndex] : nullptr;
 		addMesh({ std::move(viewList), parent, meshData.matrix });
 	}
 	bufferList.clear();

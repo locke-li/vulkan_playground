@@ -74,9 +74,10 @@ const std::vector<BufferView>& MeshNode::getView() const noexcept {
 void MeshNode::updateConstantData() {
 	constantData.model = localModelMatrix;
 	if (parent != nullptr) {
-		constantData.model = parent->localModelMatrix * constantData.model;
+		//parent node is placed directly before first child in array
+		constantData.model = parent->constantData.model * constantData.model;
 	}
-	if (root != nullptr) {
+	else if (root != nullptr) {
 		constantData.model = root->getModelMatrix() * constantData.model;
 	}
 }
