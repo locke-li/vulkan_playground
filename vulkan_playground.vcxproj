@@ -150,6 +150,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="MeshManager.cpp" />
     <ClCompile Include="MeshInput.cpp" />
     <ClCompile Include="Setting.cpp" />
     <ClCompile Include="ImageInput.cpp" />
@@ -159,11 +160,13 @@
     <ClCompile Include="MeshNode.cpp" />
     <ClCompile Include="RenderingTest.cpp" />
     <ClCompile Include="ShaderInput.cpp" />
+    <ClCompile Include="TextureManager.cpp" />
     <ClCompile Include="VulkanEnv.cpp" />
     <ClCompile Include="WindowLayer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DebugHelper.hpp" />
+    <ClInclude Include="MeshManager.h" />
     <ClInclude Include="MeshInput.h" />
     <ClInclude Include="MeshStruct.h" />
     <ClInclude Include="Setting.h" />
@@ -173,6 +176,7 @@
     <ClInclude Include="MeshNode.h" />
     <ClInclude Include="RenderingTest.h" />
     <ClInclude Include="ShaderInput.h" />
+    <ClInclude Include="TextureManager.h" />
     <ClInclude Include="VulkanEnv.h" />
     <ClInclude Include="WindowLayer.h" />
   </ItemGroup>

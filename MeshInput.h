@@ -1,8 +1,7 @@
 #pragma once
 #include "MeshStruct.h"
+#include "MeshNode.h"
 #include <vector>
-
-class MeshNode;
 
 class MeshInput
 {

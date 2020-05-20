@@ -90,10 +90,10 @@ bool RenderingTest::readInput(TestInput& inputOut) const {
 	 inputCube.setMesh(std::move(cube));
 	 MeshInput inputLoadedModel{ { 0.2f, 0.0f, 0.0f }, glm::quat({0.0f, glm::radians(-45.0f), glm::radians(180.0f)}), {1.0f, 1.0f, 1.0f} };
 	 ModelImport modelImport;
-	 logResult("model loading", modelImport.load(input.modelPath, 28, &inputLoadedModel));
-	 modelList.push_back(std::move(inputTetrahedron));
-	 modelList.push_back(std::move(inputCube));
-	 modelList.push_back(std::move(inputLoadedModel));
+	 logResult("model loading", modelImport.load(input.modelPath, 28, inputLoadedModel, textureManager));
+	 meshManager.addMesh(std::move(inputTetrahedron));
+	 meshManager.addMesh(std::move(inputCube));
+	 meshManager.addMesh(std::move(inputLoadedModel));
  }
 
 int RenderingTest::mainLoop() {
@@ -110,7 +110,7 @@ int RenderingTest::mainLoop() {
 	const auto& graphicsSetting = setting.getGraphics();
 	prepareModel(input);
 	renderingData.updateCamera(45.0f, WIDTH / (float)HEIGHT, glm::vec3(0.0f, -1.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f));
-	renderingData.setRenderListFiltered(modelList);
+	renderingData.setRenderListFiltered(meshManager.getMeshList());
 	ShaderInput shader(input.vertexShaderPath, input.fragmentShaderPath);
 	shader.preload();
 	vulkanEnv.setWindow(windowLayer.getWindow());
@@ -157,8 +157,8 @@ int RenderingTest::mainLoop() {
 
 	while (!windowLayer.shouldClose()) {
 		windowLayer.handleEvent();
-		modelList[0].animate(90);
-		modelList[1].animate(45);
+		meshManager.getMeshAt(0).animate(90);
+		meshManager.getMeshAt(1).animate(45);
 		vulkanEnv.drawFrame(renderingData);
 	}
 

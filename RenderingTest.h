@@ -3,7 +3,8 @@
 #include "Setting.h"
 #include "RenderingData.h"
 #include "VulkanEnv.h"
-#include "MeshInput.h"
+#include "MeshManager.h"
+#include "TextureManager.h"
 #include <vector>
 #include <string>
 
@@ -27,7 +28,8 @@ private:
 	RenderingData renderingData;
 	VulkanEnv vulkanEnv;
 	RenderContext renderContext;
-	std::vector<MeshInput> modelList;
+	TextureManager textureManager;
+	MeshManager meshManager;
 	void prepareModel(const TestInput&);
 	bool readInput(TestInput& inputOut) const;
 public:

@@ -14,8 +14,8 @@
 
 struct LoadingGltfData {
 	const float scaling;
-	std::vector<ImageInput>& const image;
-	std::vector<MeshData>& const mesh;
+	TextureManager& texture;
+	std::vector<MeshData>& mesh;
 };
 
 //this function processes image data embeded in glb/gltf files,
@@ -35,8 +35,8 @@ bool LoadImageData(tinygltf::Image* image, const int image_idx, std::string* err
 	ImageInput imageInput(true, true);
 	imageInput.setData(bytes, size, req_width, req_height);
 	//TODO can we be sure image_idx is sequencial?
-	assert(image_idx == data->image.size(), "Non sequencial image_idx");
-	data->image.push_back(std::move(imageInput));
+	assert(image_idx == data->texture.count());
+	data->texture.addTexture(std::move(imageInput));
 	return true;
 }
 
@@ -51,7 +51,7 @@ bool stringEndsWith(const std::string& value, const std::string& suffix) {
 ///
 /// obj format files are loaded as a single buffer, single bufferView mesh
 ///
-bool ModelImport::loadObj(const char* path, const float scaling, MeshInput& const meshOut) const {
+bool ModelImport::loadObj(const char* path, const float scaling, MeshInput& meshOut, TextureManager& texture) const {
 	tinyobj::attrib_t attrib;
 	std::vector<tinyobj::shape_t> shapeList;
 	std::vector<tinyobj::material_t> materialList;
@@ -238,12 +238,11 @@ bool loadGltfNode(const tinygltf::Model& model, const int nodeIndex, const int* 
 	return true;
 }
 
-bool ModelImport::loadGltf(const std::string& path, const float scaling, const bool isBinary, MeshInput& const meshOut) const {
+bool ModelImport::loadGltf(const std::string& path, const float scaling, const bool isBinary, MeshInput& meshOut, TextureManager& texture) const {
 	tinygltf::Model model;
 	tinygltf::TinyGLTF loader;//TODO should this be reused?
 	std::vector<MeshData> meshDataList;
-	std::vector<ImageInput> imageDataList;
-	LoadingGltfData loadingData{ scaling, imageDataList, meshDataList };
+	LoadingGltfData loadingData{ scaling, texture, meshDataList };
 	loader.SetImageLoader(LoadImageData, &loadingData);
 	std::string warning, error;
 	bool loadResult;
@@ -275,16 +274,16 @@ bool ModelImport::loadGltf(const std::string& path, const float scaling, const b
 	return true;
 }
 
-bool ModelImport::load(const std::string& path, const float scale, MeshInput& const mesh) const {
+bool ModelImport::load(const std::string& path, const float scale, MeshInput& mesh, TextureManager& texture) const {
 	bool result = false;
 	if (stringEndsWith(path, ".obj")) {
-		return loadObj(path.c_str(), scale, mesh);
+		return loadObj(path.c_str(), scale, mesh, texture);
 	}
 	else if (stringEndsWith(path, ".gltf")) {
-		return loadGltf(path, scale, false, mesh);
+		return loadGltf(path, scale, false, mesh, texture);
 	}
 	else if (stringEndsWith(path, ".glb")) {
-		return loadGltf(path, scale, true, mesh);
+		return loadGltf(path, scale, true, mesh, texture);
 	}
 	std::cout << "unknown format" << std::endl;
 	return result;
