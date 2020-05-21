@@ -96,28 +96,11 @@ bool RenderingTest::readInput(TestInput& inputOut) const {
 	 meshManager.addMesh(std::move(inputLoadedModel));
  }
 
- void fileOpenTest(const char* path) {
-	 //TODO check why load using "input.modelPath" fails occasionally
-	 std::cout << "test loading: " << path << "\n";
-	 FILE* f;
-	 auto err = fopen_s(&f, path, "r");
-	 if (f == nullptr) {
-		 constexpr int size = 128;
-		 char errStr[size];
-		 strerror_s(errStr, size, err);
-		 std::cout << "file open failed: " << errStr << std::endl;
-	 }
-	 else {
-		 fclose(f);
-	 }
- }
-
 int RenderingTest::mainLoop() {
 	TestInput input;
 	if (!readInput(input)) {
 		return 2;
 	}
-	fileOpenTest(input.modelPath.c_str());
 
 	if (!windowLayer.init()) {
 		return 1;
