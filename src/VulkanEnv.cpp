@@ -894,6 +894,7 @@ bool VulkanEnv::createTextureImage(ImageInput& input) {
 	imageSet.option.push_back(option);
 	imageSet.memory.push_back(imageMemory);
 
+	//TODO merge command buffer
 	std::array<VkCommandBuffer, 3> cmd;
 	allocateCommandBuffer(commandPool, static_cast<uint32_t>(cmd.size()), cmd.data());
 	transitionImageLayout(image, option, info.initialLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, cmd[0]);

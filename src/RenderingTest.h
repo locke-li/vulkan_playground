@@ -4,6 +4,7 @@
 #include "RenderingData.h"
 #include "VulkanEnv.h"
 #include "MeshManager.h"
+#include "MaterialManager.h"
 #include "TextureManager.h"
 #include <vector>
 #include <string>
@@ -29,6 +30,7 @@ private:
 	VulkanEnv vulkanEnv;
 	RenderContext renderContext;
 	TextureManager textureManager;
+	MaterialManager materialManager;
 	MeshManager meshManager;
 	void prepareModel(const TestInput&);
 	bool readInput(TestInput& inputOut) const;

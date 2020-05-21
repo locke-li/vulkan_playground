@@ -90,11 +90,26 @@ bool RenderingTest::readInput(TestInput& inputOut) const {
 	 inputCube.setMesh(std::move(cube));
 	 MeshInput inputLoadedModel{ { 0.2f, 0.0f, 0.0f }, glm::quat({0.0f, glm::radians(-45.0f), glm::radians(180.0f)}), {1.0f, 1.0f, 1.0f} };
 	 ModelImport modelImport;
-	 //TODO check why load using "input.modelPath" fails occasionally
-	 logResult("model loading", modelImport.load(input.modelPath, 28, inputLoadedModel, textureManager));
+	 logResult("model loading", modelImport.load(input.modelPath, { 28, inputLoadedModel, textureManager, materialManager }));
 	 meshManager.addMesh(std::move(inputTetrahedron));
 	 meshManager.addMesh(std::move(inputCube));
 	 meshManager.addMesh(std::move(inputLoadedModel));
+ }
+
+ void fileOpenTest(const char* path) {
+	 //TODO check why load using "input.modelPath" fails occasionally
+	 std::cout << "test loading: " << path << "\n";
+	 FILE* f;
+	 auto err = fopen_s(&f, path, "r");
+	 if (f == nullptr) {
+		 constexpr int size = 128;
+		 char errStr[size];
+		 strerror_s(errStr, size, err);
+		 std::cout << "file open failed: " << errStr << std::endl;
+	 }
+	 else {
+		 fclose(f);
+	 }
  }
 
 int RenderingTest::mainLoop() {
@@ -102,6 +117,7 @@ int RenderingTest::mainLoop() {
 	if (!readInput(input)) {
 		return 2;
 	}
+	fileOpenTest(input.modelPath.c_str());
 
 	if (!windowLayer.init()) {
 		return 1;

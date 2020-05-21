@@ -13,8 +13,7 @@
 #include <iostream>
 
 struct LoadingGltfData {
-	const float scaling;
-	TextureManager& texture;
+	ModelLoadingInfo& info;
 	std::vector<MeshData>& mesh;
 };
 
@@ -34,9 +33,10 @@ bool LoadImageData(tinygltf::Image* image, const int image_idx, std::string* err
 	auto* data = static_cast<LoadingGltfData*>(userData);
 	ImageInput imageInput(true, true);
 	imageInput.setData(bytes, size, req_width, req_height);
-	//TODO can we be sure image_idx is sequencial?
-	assert(image_idx == data->texture.count());
-	data->texture.addTexture(std::move(imageInput));
+	//TODO use this for testing
+	assert(image_idx == data->info.texture.count());
+	auto textureIndex = data->info.texture.addTexture(std::move(imageInput));
+	//TODO map image_idx to textureIndex
 	return true;
 }
 
@@ -51,7 +51,7 @@ bool stringEndsWith(const std::string& value, const std::string& suffix) {
 ///
 /// obj format files are loaded as a single buffer, single bufferView mesh
 ///
-bool ModelImport::loadObj(const char* path, const float scaling, MeshInput& meshOut, TextureManager& texture) const {
+bool ModelImport::loadObj(const char* path, ModelLoadingInfo&& info) const {
 	tinyobj::attrib_t attrib;
 	std::vector<tinyobj::shape_t> shapeList;
 	std::vector<tinyobj::material_t> materialList;
@@ -65,7 +65,7 @@ bool ModelImport::loadObj(const char* path, const float scaling, MeshInput& mesh
 		std::cout << warning << std::endl;
 	}
 
-	meshOut.reserve(shapeList.size());
+	info.mesh.reserve(shapeList.size());
 	std::unordered_map<Vertex, uint32_t> vertexIndex;
 	std::vector<std::vector<uint8_t>> buffer(1);
 	MeshData meshData;
@@ -79,9 +79,9 @@ bool ModelImport::loadObj(const char* path, const float scaling, MeshInput& mesh
 			Vertex vertex{};
 			auto index = indexInfo.vertex_index * 3;
 			vertex.pos = {
-				attrib.vertices[index] / scaling,
-				attrib.vertices[index + 1] / scaling,
-				attrib.vertices[index + 2] / scaling,
+				attrib.vertices[index] / info.scale,
+				attrib.vertices[index + 1] / info.scale,
+				attrib.vertices[index + 2] / info.scale,
 			};
 			index = indexInfo.texcoord_index * 2;
 			vertex.texCoord = {
@@ -103,7 +103,7 @@ bool ModelImport::loadObj(const char* path, const float scaling, MeshInput& mesh
 		std::cout << data.vertices.size() << "|" << data.indices.size() << std::endl;
 		meshData.data.push_back(std::move(data));
 	}
-	meshOut.setMesh({ std::move(meshData) });
+	info.mesh.setMesh({ std::move(meshData) });
 	//TODO manage material/texture
 	return true;
 }
@@ -141,7 +141,7 @@ bool loadGltfNodeMesh(const tinygltf::Model& model, const tinygltf::Node& node, 
 		data.vertices.reserve(accessorPos.count);
 		for (auto i = 0; i < accessorPos.count; ++i) {
 			Vertex vertex;
-			vertex.pos = glm::make_vec3(reinterpret_cast<const float*>(pos + i * 3)) / loadingData.scaling;
+			vertex.pos = glm::make_vec3(reinterpret_cast<const float*>(pos + i * 3)) / loadingData.info.scale;
 			if (texcoord0) {
 				vertex.texCoord = glm::make_vec2(texcoord0 + i * 2);
 			}
@@ -208,7 +208,7 @@ bool loadGltfNode(const tinygltf::Model& model, const int nodeIndex, const int* 
 		//TODO calculate TRS matrix
 	}
 	MatrixInput&& matrix = {
-		translation ? *translation / loadingData.scaling : glm::vec3(0.0f),
+		translation ? *translation / loadingData.info.scale : glm::vec3(0.0f),
 		rotation ? *rotation : glm::identity<glm::quat>(),
 		scale ? *scale : glm::vec3(1.0f),
 		trs ? *trs : glm::mat4{}
@@ -238,11 +238,11 @@ bool loadGltfNode(const tinygltf::Model& model, const int nodeIndex, const int* 
 	return true;
 }
 
-bool ModelImport::loadGltf(const std::string& path, const float scaling, const bool isBinary, MeshInput& meshOut, TextureManager& texture) const {
+bool ModelImport::loadGltf(const std::string& path, const bool isBinary, ModelLoadingInfo&& info) const {
 	tinygltf::Model model;
 	tinygltf::TinyGLTF loader;//TODO should this be reused?
 	std::vector<MeshData> meshDataList;
-	LoadingGltfData loadingData{ scaling, texture, meshDataList };
+	LoadingGltfData loadingData{ info, meshDataList };
 	loader.SetImageLoader(LoadImageData, &loadingData);
 	std::string warning, error;
 	bool loadResult;
@@ -269,21 +269,21 @@ bool ModelImport::loadGltf(const std::string& path, const float scaling, const b
 			return false;
 		}
 	}
-	meshOut.setMesh(std::move(meshDataList));
+	info.mesh.setMesh(std::move(meshDataList));
 	std::cout << std::endl;
 	return true;
 }
 
-bool ModelImport::load(const std::string& path, const float scale, MeshInput& mesh, TextureManager& texture) const {
+bool ModelImport::load(const std::string& path, ModelLoadingInfo&& info) const {
 	bool result = false;
 	if (stringEndsWith(path, ".obj")) {
-		return loadObj(path.c_str(), scale, mesh, texture);
+		return loadObj(path.c_str(), std::move(info));
 	}
 	else if (stringEndsWith(path, ".gltf")) {
-		return loadGltf(path, scale, false, mesh, texture);
+		return loadGltf(path, false, std::move(info));
 	}
 	else if (stringEndsWith(path, ".glb")) {
-		return loadGltf(path, scale, true, mesh, texture);
+		return loadGltf(path, true, std::move(info));
 	}
 	std::cout << "unknown format" << std::endl;
 	return result;
