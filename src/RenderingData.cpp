@@ -47,6 +47,7 @@ void RenderingData::setRenderListFiltered(const std::vector<MeshInput>& list) {
 	renderList.reserve(list.size());
 	//TODO filter/culling
 	for (const auto& input : list) {
+		if (!input.isEnabled()) continue;
 		renderList.push_back(&input);
 	}
 }

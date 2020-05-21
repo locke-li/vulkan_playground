@@ -6,6 +6,11 @@ size_t TextureManager::addTexture(ImageInput&& texture) {
 	return index;
 }
 
+ImageInput& TextureManager::getTexture(const int index) {
+	//TODO range check
+	return textureList[index];
+}
+
 const size_t TextureManager::count() const {
 	return textureList.size();
 }

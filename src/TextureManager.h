@@ -8,6 +8,7 @@ private:
 	std::vector<ImageInput> textureList;
 public:
 	size_t addTexture(ImageInput&& texture);
+	ImageInput& getTexture(const int index);
 	const size_t count() const;
 };
 

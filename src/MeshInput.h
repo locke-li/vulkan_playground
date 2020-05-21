@@ -6,6 +6,7 @@
 class MeshInput
 {
 private:
+	bool enabled;
 	std::vector<std::vector<uint8_t>> bufferList;
 	glm::vec3 position;
 	glm::quat rotation;
@@ -21,6 +22,8 @@ public:
 		const glm::vec3& scale = glm::vec3(1.0f));
 	MeshInput(const MeshInput& other) = delete;
 	MeshInput(MeshInput&& other) noexcept;
+	void setEnabled(bool value) noexcept;
+	bool isEnabled() const noexcept;
 	const uint8_t* bufferData(const int index) const;
 	void setPosition(const glm::vec3& pos) noexcept;
 	const glm::vec3& getPosition() const noexcept;

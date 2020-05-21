@@ -90,6 +90,7 @@ bool RenderingTest::readInput(TestInput& inputOut) const {
 	 inputCube.setMesh(std::move(cube));
 	 MeshInput inputLoadedModel{ { 0.2f, 0.0f, 0.0f }, glm::quat({0.0f, glm::radians(-45.0f), glm::radians(180.0f)}), {1.0f, 1.0f, 1.0f} };
 	 ModelImport modelImport;
+	 //TODO check why load using "input.modelPath" fails occasionally
 	 logResult("model loading", modelImport.load(input.modelPath, 28, inputLoadedModel, textureManager));
 	 meshManager.addMesh(std::move(inputTetrahedron));
 	 meshManager.addMesh(std::move(inputCube));

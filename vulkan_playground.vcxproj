@@ -150,37 +150,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="MeshManager.cpp" />
-    <ClCompile Include="MeshInput.cpp" />
-    <ClCompile Include="Setting.cpp" />
-    <ClCompile Include="ImageInput.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="ModelImport.cpp" />
-    <ClCompile Include="RenderingData.cpp" />
-    <ClCompile Include="MeshNode.cpp" />
-    <ClCompile Include="RenderingTest.cpp" />
-    <ClCompile Include="ShaderInput.cpp" />
-    <ClCompile Include="TextureManager.cpp" />
-    <ClCompile Include="VulkanEnv.cpp" />
-    <ClCompile Include="WindowLayer.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="DebugHelper.hpp" />
-    <ClInclude Include="MeshManager.h" />
-    <ClInclude Include="MeshInput.h" />
-    <ClInclude Include="MeshStruct.h" />
-    <ClInclude Include="Setting.h" />
-    <ClInclude Include="ImageInput.h" />
-    <ClInclude Include="ModelImport.h" />
-    <ClInclude Include="RenderingData.h" />
-    <ClInclude Include="MeshNode.h" />
-    <ClInclude Include="RenderingTest.h" />
-    <ClInclude Include="ShaderInput.h" />
-    <ClInclude Include="TextureManager.h" />
-    <ClInclude Include="VulkanEnv.h" />
-    <ClInclude Include="WindowLayer.h" />
-  </ItemGroup>
-  <ItemGroup>
     <None Include="README.md">
       <FileType>Text</FileType>
     </None>
@@ -191,6 +160,41 @@
       <FileType>Text</FileType>
     </None>
     <None Include="_input" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\ImageInput.cpp" />
+    <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\MaterialInput.cpp" />
+    <ClCompile Include="src\MaterialManager.cpp" />
+    <ClCompile Include="src\MeshInput.cpp" />
+    <ClCompile Include="src\MeshManager.cpp" />
+    <ClCompile Include="src\MeshNode.cpp" />
+    <ClCompile Include="src\ModelImport.cpp" />
+    <ClCompile Include="src\RenderingData.cpp" />
+    <ClCompile Include="src\RenderingTest.cpp" />
+    <ClCompile Include="src\Setting.cpp" />
+    <ClCompile Include="src\ShaderInput.cpp" />
+    <ClCompile Include="src\TextureManager.cpp" />
+    <ClCompile Include="src\VulkanEnv.cpp" />
+    <ClCompile Include="src\WindowLayer.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\DebugHelper.hpp" />
+    <ClInclude Include="src\ImageInput.h" />
+    <ClInclude Include="src\MaterialInput.h" />
+    <ClInclude Include="src\MaterialManager.h" />
+    <ClInclude Include="src\MeshInput.h" />
+    <ClInclude Include="src\MeshManager.h" />
+    <ClInclude Include="src\MeshNode.h" />
+    <ClInclude Include="src\MeshStruct.h" />
+    <ClInclude Include="src\ModelImport.h" />
+    <ClInclude Include="src\RenderingData.h" />
+    <ClInclude Include="src\RenderingTest.h" />
+    <ClInclude Include="src\Setting.h" />
+    <ClInclude Include="src\ShaderInput.h" />
+    <ClInclude Include="src\TextureManager.h" />
+    <ClInclude Include="src\VulkanEnv.h" />
+    <ClInclude Include="src\WindowLayer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

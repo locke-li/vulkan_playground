@@ -5,7 +5,8 @@
 #include <chrono>
 
 MeshInput::MeshInput(const glm::vec3& pos, const glm::quat& rot, const glm::vec3& scale)
-	: meshList(std::vector<MeshNode>())
+	: enabled(true)
+	, meshList(std::vector<MeshNode>())
 	, position(pos)
 	, rotation(rot)
 	, scale(scale)
@@ -14,7 +15,8 @@ MeshInput::MeshInput(const glm::vec3& pos, const glm::quat& rot, const glm::vec3
 }
 
 MeshInput::MeshInput(MeshInput&& other) noexcept
-	: bufferList(std::move(other.bufferList))
+	: enabled(std::move(other.enabled))
+	, bufferList(std::move(other.bufferList))
 	, meshList(std::move(other.meshList))
 	, position(std::move(other.position))
 	, rotation(std::move(other.rotation))
@@ -25,6 +27,13 @@ MeshInput::MeshInput(MeshInput&& other) noexcept
 	for (auto& mesh : meshList) {
 		mesh.setRoot(this);
 	}
+}
+
+void MeshInput::setEnabled(bool value) noexcept {
+	enabled = value;
+}
+bool MeshInput::isEnabled() const noexcept {
+	return enabled;
 }
 
 const uint8_t* MeshInput::bufferData(const int index) const {
