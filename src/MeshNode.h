@@ -40,5 +40,4 @@ public:
 	void updateConstantData();
 	void updateConstantDataAsLocal();
 	const MeshConstant& getConstantData() const;
-	int getMaterialLayoutIndex() const;
 };

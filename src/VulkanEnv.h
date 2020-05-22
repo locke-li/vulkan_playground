@@ -2,6 +2,7 @@
 #define GLFW_INCLUDE_VULKAN 
 #include "GLFW/glfw3.h"
 #include "MeshNode.h"
+#include "MaterialManager.h"
 #include "RenderingData.h"
 #include "ImageInput.h"
 #include "ShaderInput.h"
@@ -30,6 +31,11 @@ struct InFlightFrame {
 	VkFence fenceInFlight;
 };
 
+struct DrawInfo {
+	int setIndex;
+	const void* constantData;
+};
+
 struct DepthBuffer {
 	VkImage image;
 	VkDeviceMemory imageMemory;
@@ -46,7 +52,7 @@ struct VertexBuffer {
 struct IndexBuffer {
 	VkBuffer buffer;
 	VkDeviceMemory memory;
-	std::vector<const MeshNode*> input;
+	std::vector<DrawInfo> drawInfo;
 	std::vector<VkDeviceSize> offset;
 	std::vector<uint32_t> vOffset;
 	std::vector<uint32_t> iCount;
@@ -168,7 +174,7 @@ public:
 	bool createTextureImageView();
 	bool createTextureSampler();
 	bool setupFence();
-	bool createVertexBufferIndice(const std::vector<const MeshInput*>& input);
+	bool createVertexBufferIndice(const std::vector<const MeshInput*>& input, const MaterialManager& materialManager);
 	bool createUniformBuffer();
 	bool createDescriptorPool();
 	bool createDescriptorSet();

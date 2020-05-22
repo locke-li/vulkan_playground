@@ -119,7 +119,7 @@ int RenderingTest::mainLoop() {
 	logResult("create texture image", vulkanEnv.createTextureImage(textureManager.getTextureList()));
 	logResult("create texture image view", vulkanEnv.createTextureImageView());
 	logResult("create texture sampler", vulkanEnv.createTextureSampler());
-	logResult("create vertex/index buffer", vulkanEnv.createVertexBufferIndice(renderingData.getRenderList()));
+	logResult("create vertex/index buffer", vulkanEnv.createVertexBufferIndice(renderingData.getRenderList(), materialManager));
 	logResult("create uniform buffer", vulkanEnv.createUniformBuffer());
 	logResult("create descriptor pool", vulkanEnv.createDescriptorPool());
 	logResult("create descriptor set", vulkanEnv.createDescriptorSet());

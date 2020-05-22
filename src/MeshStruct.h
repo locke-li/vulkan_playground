@@ -60,6 +60,7 @@ struct BufferView {
 	uint32_t indexSize;
 	uint8_t indexStride;
 	uint32_t indexCount;
+	int materialIndex;
 };
 
 struct MeshConstant {

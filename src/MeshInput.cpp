@@ -88,6 +88,7 @@ BufferView MeshInput::createView(const size_t offset, const VertexIndexed& data)
 	view.indexCount = static_cast<uint32_t>(data.indices.size());
 	view.indexStride = sizeof(data.indices[0]);
 	view.indexSize = view.indexCount * view.indexStride;
+	view.materialIndex = data.material;
 	return view;
 }
 

@@ -9,6 +9,11 @@ MaterialInput& MaterialManager::getMaterial(const int index) {
 	return materialList[index];
 }
 
+const MaterialInput& MaterialManager::getMaterial(const int index) const {
+	//TODO range check
+	return materialList[index];
+}
+
 int MaterialManager::count() const {
 	return static_cast<int>(materialList.size());
 }
