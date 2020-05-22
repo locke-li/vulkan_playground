@@ -88,12 +88,12 @@ private:
 	std::vector<VkBuffer> uniformBuffer;
 	std::vector<VkDeviceMemory> uniformBufferMemory;
 	std::vector<std::vector<VkDescriptorSet>> descriptorSet;
+	std::vector<VkDescriptorPool> descriptorPool;
 	VkImage msaaColorImage;
 	VkImageView msaaColorImageView;
 	VkDeviceMemory msaaColorImageMemory;
 	VkDescriptorSetLayout descriptorSetLayoutUniform;
 	VkDescriptorSetLayout descriptorSetLayoutMaterial;
-	VkDescriptorPool descriptorPool;
 	VkRenderPass renderPass;
 	VkPipelineLayout graphicsPipelineLayout;
 	VkPipeline graphicsPipeline;
@@ -126,7 +126,7 @@ private:
 	bool queueFamilyValid(const VkPhysicalDevice device, uint32_t& score);
 	bool findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags flags, uint32_t* typeIndex);
 	bool findDepthFormat(VkFormat* format);
-	bool createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memTypeFlag, VkBuffer& buffer, VkDeviceMemory& memory);
+	bool createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, std::vector<VkMemoryPropertyFlags>&& memTypeFlag, VkBuffer& buffer, VkDeviceMemory& memory);
 	bool createStagingBuffer(VkDeviceSize size, VkBuffer& buffer, VkDeviceMemory& memory);
 	bool createImage(const VkImageCreateInfo& info, VkImage& image, VkDeviceMemory& imageMemory);
 	bool transitionImageLayout(VkImage image, const ImageOption& option, VkImageLayout oldLyaout, VkImageLayout newLayout, VkCommandBuffer cmd);

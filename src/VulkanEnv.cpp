@@ -603,7 +603,7 @@ bool VulkanEnv::createDescriptorSetLayout() {
 	texture.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 	texture.pImmutableSamplers = nullptr;
 
-	std::array<VkDescriptorSetLayoutBinding, 2> binding = {  sampler, texture };
+	std::array<VkDescriptorSetLayoutBinding, 2> binding = { sampler, texture };
 	VkDescriptorSetLayoutCreateInfo materialInfo;
 	materialInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 	materialInfo.flags = 0;
@@ -929,6 +929,7 @@ bool VulkanEnv::createTextureImage(std::vector<ImageInput>& textureList) {
 			transitionImageLayout(image, option, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, cmd[2]);
 		}
 
+		vkResetFences(device, 1, &fenceImageCopy);
 		submitCommand(cmd.data(), static_cast<uint32_t>(cmd.size()), graphicsQueue, fenceImageCopy);
 		vkWaitForFences(device, 1, &fenceImageCopy, VK_TRUE, UINT64_MAX);
 
@@ -963,7 +964,7 @@ bool VulkanEnv::transitionImageLayout(VkImage image, const ImageOption& option, 
 
 	VkPipelineStageFlags srcStage;
 	VkPipelineStageFlags dstStage;
-	if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+	if ((oldLayout == VK_IMAGE_LAYOUT_UNDEFINED || oldLayout == VK_IMAGE_LAYOUT_PREINITIALIZED) && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
 		barrier.srcAccessMask = 0;
 		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 		srcStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
@@ -983,6 +984,7 @@ bool VulkanEnv::transitionImageLayout(VkImage image, const ImageOption& option, 
 	}
 	else {
 		//TODO transition combinations
+		std::cout << "unsupported transition: " << oldLayout << "->" << newLayout << std::endl;
 		return false;
 	}
 
@@ -1146,7 +1148,7 @@ bool VulkanEnv::setupFence() {
 		vkCreateFence(device, &fenceInfo, nullptr, &fenceImageCopy) == VK_SUCCESS;
 }
 
-bool VulkanEnv::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memTypeFlag,
+bool VulkanEnv::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, std::vector<VkMemoryPropertyFlags>&& memTypeFlag,
 	VkBuffer& buffer, VkDeviceMemory& memory) {
 	VkBufferCreateInfo info;
 	info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -1157,30 +1159,33 @@ bool VulkanEnv::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemo
 	info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	info.queueFamilyIndexCount = 0;
 	info.pQueueFamilyIndices = nullptr;
-
 	if (vkCreateBuffer(device, &info, nullptr, &buffer) != VK_SUCCESS) {
 		return false;
 	}
 
 	VkMemoryRequirements memRequirement;
 	vkGetBufferMemoryRequirements(device, buffer, &memRequirement);
-
 	VkMemoryAllocateInfo allocInfo;
 	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	allocInfo.pNext = nullptr;
 	allocInfo.allocationSize = memRequirement.size;
-
-	if (!findMemoryType(memRequirement.memoryTypeBits, memTypeFlag, &allocInfo.memoryTypeIndex)) {
-		return false;
+	for (auto memFlag : memTypeFlag) {
+		if (findMemoryType(memRequirement.memoryTypeBits, memFlag, &allocInfo.memoryTypeIndex)) {
+			return vkAllocateMemory(device, &allocInfo, nullptr, &memory) == VK_SUCCESS &&
+				vkBindBufferMemory(device, buffer, memory, 0) == VK_SUCCESS;
+		}
 	}
-	return vkAllocateMemory(device, &allocInfo, nullptr, &memory) == VK_SUCCESS &&
-		vkBindBufferMemory(device, buffer, memory, 0) == VK_SUCCESS;
+	return false;
 }
 
 bool VulkanEnv::createStagingBuffer(VkDeviceSize size, VkBuffer& buffer, VkDeviceMemory& memory) {
 	return createBuffer(size,
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		{
+			//CPU accessable GPU memory on AMD
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+		},
 		buffer,
 		memory);
 }
@@ -1235,14 +1240,14 @@ bool VulkanEnv::createVertexBufferIndice(const std::vector<const MeshInput*>& in
 	VkDeviceMemory vMemory;
 	vBufferSuccess = createBuffer(vSize,
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		{ VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT },
 		vBuffer,
 		vMemory);
 	VkBuffer iBuffer;
 	VkDeviceMemory iMemory;
 	iBufferSuccess = createBuffer(iSize,
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		{ VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT },
 		iBuffer,
 		iMemory);
 	if (!vBufferSuccess || !iBufferSuccess) {
@@ -1298,7 +1303,7 @@ bool VulkanEnv::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags flags,
 	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
 	for (uint32_t i = 0; i < memProperties.memoryTypeCount; ++i) {
 		if ((typeFilter & (1 << i)) &&
-			(memProperties.memoryTypes[i].propertyFlags & flags)) {
+			(memProperties.memoryTypes[i].propertyFlags & flags) == flags) {
 			*typeIndex = i;
 			return true;
 		}
@@ -1314,7 +1319,7 @@ bool VulkanEnv::createUniformBuffer() {
 	for (auto i = 0; i < swapchainImage.size(); ++i) {
 		if (!createBuffer(size,
 			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+			{ VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT },
 			uniformBuffer[i],
 			uniformBufferMemory[i])) {
 			return false;
@@ -1324,6 +1329,8 @@ bool VulkanEnv::createUniformBuffer() {
 }
 
 bool VulkanEnv::createDescriptorPool() {
+	descriptorPool.resize(uniformBuffer.size());
+
 	//these determines the pool capacity
 	std::array<VkDescriptorPoolSize, 3> poolSize;
 	poolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -1339,23 +1346,28 @@ bool VulkanEnv::createDescriptorPool() {
 	info.pNext = nullptr;
 	info.poolSizeCount = static_cast<uint32_t>(poolSize.size());
 	info.pPoolSizes = poolSize.data();
-	//this limits the set count to be allocated
-	info.maxSets = static_cast<uint32_t>(uniformBuffer.size() * 2);
+	//this limits the set count can be allocated
+	info.maxSets = static_cast<uint32_t>(2);
 
-	return vkCreateDescriptorPool(device, &info, nullptr, &descriptorPool) == VK_SUCCESS;
+	for (auto& pool : descriptorPool) {
+		if (vkCreateDescriptorPool(device, &info, nullptr, &pool) != VK_SUCCESS) {
+			return false;
+		}
+	}
+	return true;
 }
 
 bool VulkanEnv::createDescriptorSet() {
 	std::vector<VkDescriptorSetLayout> layout{ descriptorSetLayoutUniform, descriptorSetLayoutMaterial };
-	VkDescriptorSetAllocateInfo info;
-	info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	info.pNext = nullptr;
-	info.descriptorPool = descriptorPool;
-	info.descriptorSetCount = static_cast<uint32_t>(layout.size());
-	info.pSetLayouts = layout.data();
-
 	descriptorSet.resize(static_cast<uint32_t>(uniformBuffer.size()));
-	for (auto i = 0; i < descriptorSet.size(); ++i) {
+	for (auto i = 0; i < uniformBuffer.size(); ++i) {
+		VkDescriptorSetAllocateInfo info;
+		info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		info.pNext = nullptr;
+		info.descriptorPool = descriptorPool[i];
+		info.descriptorSetCount = static_cast<uint32_t>(layout.size());
+		info.pSetLayouts = layout.data();
+
 		auto& descriptorSetPerSwapchain = descriptorSet[i];
 		descriptorSetPerSwapchain.resize(layout.size());
 		auto result = vkAllocateDescriptorSets(device, &info, descriptorSetPerSwapchain.data());
@@ -1601,8 +1613,8 @@ void VulkanEnv::destroySwapchain() {
 		vkDestroyImageView(device, swapchainImageView[i], nullptr);
 		vkDestroyBuffer(device, uniformBuffer[i], nullptr);
 		vkFreeMemory(device, uniformBufferMemory[i], nullptr);
+		vkDestroyDescriptorPool(device, descriptorPool[i], nullptr);
 	}
-	vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 	vkDestroySwapchainKHR(device, swapchain, nullptr);
 }
 

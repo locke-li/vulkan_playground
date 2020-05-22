@@ -9,6 +9,7 @@
 #define TINYGLTF_NO_STB_IMAGE
 #define TINYGLTF_NO_STB_IMAGE_WRITE
 #include "tiny_gltf.h"
+#include "stb_image.h"
 #include <unordered_map>
 #include <iostream>
 
@@ -23,7 +24,7 @@ struct LoadingGltfData {
 bool LoadImageData(tinygltf::Image* image, const int image_idx, std::string* err,
 	std::string* warn, int req_width, int req_height,
 	const unsigned char* bytes, int size, void* userData) {
-	std::cout << image_idx << " " << image->name << "|" << size << "|" << image->width << "|" << image->height << std::endl;
+	std::cout << image_idx << " " << image->name << "|" << size << std::endl;
 	if (!warn->empty()) {
 		std::cout << *warn << std::endl;
 	}
@@ -32,8 +33,8 @@ bool LoadImageData(tinygltf::Image* image, const int image_idx, std::string* err
 		return false;
 	}
 	auto* data = static_cast<LoadingGltfData*>(userData);
-	ImageInput imageInput(true, true);
-	imageInput.setData(bytes, size, req_width, req_height);
+	ImageInput imageInput(false, true);
+	imageInput.loadRaw(bytes, size);
 	data->info.texture.addTexture(std::move(imageInput));
 	return true;
 }

@@ -31,7 +31,7 @@ public:
 	const uint8_t* pixel() const noexcept;
 	void setMipLevel(const int offset);
 	bool load(const std::string& path);
-	void setData(const uint8_t* pixelData, const int size, const int widthIn, const int heightIn) noexcept;
+	bool loadRaw(const uint8_t* rawData, const int size);
 	void release();
 };
 

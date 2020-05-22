@@ -3,11 +3,12 @@
 #include "stb_image.h"
 #include <cmath>
 #include <algorithm>
+#include <iostream>
 
 ImageInput::ImageInput(const bool perserve, const bool mipmap)
 	: perserve(perserve)
 	, mipmap(mipmap)
-	, mipLevel(0)
+	, mipLevel(1)
 	, channel(0)
 	, width(0)
 	, height(0)
@@ -40,7 +41,7 @@ bool ImageInput::perserveData() const {
 }
 
 bool ImageInput::shouldGenerateMipmap() const {
-	return mipmap;
+	return mipmap && mipLevel > 1;
 }
 
 uint32_t ImageInput::getByteSize() const {
@@ -56,19 +57,25 @@ void ImageInput::setMipLevel(const int offset) {
 }
 
 bool ImageInput::load(const std::string& path) {
-	pixelData = std::unique_ptr<uint8_t>{ stbi_load(path.c_str(), &width, &height, &channel, STBI_rgb_alpha) };
+	auto* data = stbi_load(path.c_str(), &width, &height, &channel, STBI_rgb_alpha);
+	if (data == nullptr) {
+		std::cout << stbi_failure_reason() << std::endl;
+		return false;
+	}
+	pixelData = std::unique_ptr<uint8_t>{ data };
 	byteSize = width * height * BytePerPixel;
-	//TODO report error
-	return pixelData != nullptr;
+	return true;
 }
 
-void ImageInput::setData(const uint8_t* data, const int size, const int widthIn, const int heightIn) noexcept {
-	pixelData = std::unique_ptr<uint8_t>(new uint8_t[size]);
-	width = widthIn;
-	height = heightIn;
-	//TODO channel
-	byteSize = size;
-	memcpy(pixelData.get(), data, size);
+bool ImageInput::loadRaw(const uint8_t* rawData, const int size) {
+	auto* data = stbi_load_from_memory(rawData, size, &width, &height, &channel, STBI_rgb_alpha);
+	if (data == nullptr) {
+		std::cout << stbi_failure_reason() << std::endl;
+		return false;
+	}
+	pixelData = std::unique_ptr<uint8_t>{ data };
+	byteSize = width * height * BytePerPixel;
+	return true;
 }
 
 void ImageInput::release() {

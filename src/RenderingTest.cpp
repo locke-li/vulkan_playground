@@ -79,7 +79,7 @@ int RenderingTest::mainLoop() {
 	windowLayer.createWindow(APP_TITLE, WIDTH, HEIGHT);
 
 	const auto& graphicsSetting = setting.graphics;
-	ImageInput defaultTexture(false, true);
+	ImageInput defaultTexture(true, true);
 	defaultTexture.setMipLevel(3);
 	logResult("texture loading", defaultTexture.load(setting.misc.texturePath));
 	textureManager.addTexture(std::move(defaultTexture));
