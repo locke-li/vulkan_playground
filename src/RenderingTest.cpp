@@ -19,37 +19,7 @@ void onFramebufferResize(GLFWwindow* window, int width, int height) {
 	}
 }
 
-bool RenderingTest::readInput(TestInput& inputOut) const {
-	std::ifstream input("_input");
-	if (!input.is_open()) {
-		return false;
-	}
-	//NOTE for efficiency, go with C style per char parsing
-	std::string line;
-	while(std::getline(input, line)) {
-		if (line.length() == 0 || strncmp(line.c_str(), "#", 1) == 0) continue;
-		auto delimIndex = line.find('=', 0);
-		std::string key = line.substr(0, delimIndex);
-		++delimIndex;
-		if (key == "model") {
-			inputOut.modelPath = std::move(line.substr(delimIndex));
-		}
-		else if (key == "texture") {
-			inputOut.texturePath = std::move(line.substr(delimIndex));
-		}
-		else if (key == "vertex_shader") {
-			inputOut.vertexShaderPath = std::move(line.substr(delimIndex));
-		}
-		else if (key == "fragment_shader") {
-			inputOut.fragmentShaderPath = std::move(line.substr(delimIndex));
-		}
-		//silent ignore unrecognized
-		std::cout << line << std::endl;
-	}
-	return true;
-}
-
- void RenderingTest::prepareModel(const TestInput& input) {
+ void RenderingTest::prepareModel(const Setting::Misc& input) {
 	 VertexIndexed tetrahedron = {
 		 {
 			 {{0.0f, -0.577f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
@@ -97,8 +67,7 @@ bool RenderingTest::readInput(TestInput& inputOut) const {
  }
 
 int RenderingTest::mainLoop() {
-	TestInput input;
-	if (!readInput(input)) {
+	if (!setting.loadFrom("_input")) {
 		return 2;
 	}
 
@@ -107,11 +76,11 @@ int RenderingTest::mainLoop() {
 	}
 	windowLayer.createWindow(APP_TITLE, WIDTH, HEIGHT);
 
-	const auto& graphicsSetting = setting.getGraphics();
-	prepareModel(input);
+	const auto& graphicsSetting = setting.graphics;
+	prepareModel(setting.misc);
 	renderingData.updateCamera(45.0f, WIDTH / (float)HEIGHT, glm::vec3(0.0f, -1.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f));
 	renderingData.setRenderListFiltered(meshManager.getMeshList());
-	ShaderInput shader(input.vertexShaderPath, input.fragmentShaderPath);
+	ShaderInput shader(setting.misc.vertexShaderPath, setting.misc.fragmentShaderPath);
 	shader.preload();
 	vulkanEnv.setWindow(windowLayer.getWindow());
 	vulkanEnv.setRenderingData(renderingData);
@@ -124,7 +93,7 @@ int RenderingTest::mainLoop() {
 
 	ImageInput imageInput(false, true);
 	imageInput.setMipLevel(3);
-	logResult("texture loading", imageInput.load(input.texturePath));
+	logResult("texture loading", imageInput.load(setting.misc.texturePath));
 
 	logResult("create instance", vulkanEnv.createInstance(APP_TITLE));
 	logResult("create surface", vulkanEnv.createSurface());

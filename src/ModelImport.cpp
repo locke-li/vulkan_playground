@@ -117,7 +117,7 @@ bool loadGltfNodeMesh(const tinygltf::Model& model, const tinygltf::Node& node, 
 	for (const auto& primitive : mesh.primitives) {
 		//TODO support for mesh without indices
 		if (primitive.indices < 0) continue;
-		//glTF seems to pack the same attribute values in a continous bufferview
+		//glTF seems to pack the same attribute values in a contiguous bufferview
 		//which is not a valid vertex array
 		//thus we need to fill our Vertex array, this comes with the benefit of selectively choosing the vertex attributes/types to use
 		const auto& posIter = primitive.attributes.find("POSITION");

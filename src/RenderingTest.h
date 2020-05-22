@@ -9,13 +9,6 @@
 #include <vector>
 #include <string>
 
-struct TestInput {
-	std::string modelPath;
-	std::string texturePath;
-	std::string vertexShaderPath;
-	std::string fragmentShaderPath;
-};
-
 class RenderingTest
 {
 public:
@@ -32,8 +25,7 @@ private:
 	TextureManager textureManager;
 	MaterialManager materialManager;
 	MeshManager meshManager;
-	void prepareModel(const TestInput&);
-	bool readInput(TestInput& inputOut) const;
+	void prepareModel(const Setting::Misc&);
 public:
 	int mainLoop();
 };
