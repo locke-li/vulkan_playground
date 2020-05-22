@@ -93,3 +93,8 @@ void MeshNode::updateConstantDataAsLocal() {
 const MeshConstant& MeshNode::getConstantData() const {
 	return constantData;
 }
+
+int MeshNode::getMaterialLayoutIndex() const {
+	//TODO
+	return 1;
+}

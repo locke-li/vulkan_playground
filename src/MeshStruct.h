@@ -41,6 +41,7 @@ struct MatrixInput {
 struct VertexIndexed {
 	std::vector<Vertex> vertices;
 	std::vector<uint16_t> indices;
+	int material;
 };
 
 struct MeshData {

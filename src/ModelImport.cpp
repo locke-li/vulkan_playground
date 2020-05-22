@@ -14,6 +14,7 @@
 
 struct LoadingGltfData {
 	ModelLoadingInfo& info;
+	ModelImport::Offset& offset;
 	std::vector<MeshData>& mesh;
 };
 
@@ -22,7 +23,7 @@ struct LoadingGltfData {
 bool LoadImageData(tinygltf::Image* image, const int image_idx, std::string* err,
 	std::string* warn, int req_width, int req_height,
 	const unsigned char* bytes, int size, void* userData) {
-	std::cout << image_idx << " " << image->name << "|" << size << std::endl;
+	std::cout << image_idx << " " << image->name << "|" << size << "|" << image->width << "|" << image->height << std::endl;
 	if (!warn->empty()) {
 		std::cout << *warn << std::endl;
 	}
@@ -33,10 +34,7 @@ bool LoadImageData(tinygltf::Image* image, const int image_idx, std::string* err
 	auto* data = static_cast<LoadingGltfData*>(userData);
 	ImageInput imageInput(true, true);
 	imageInput.setData(bytes, size, req_width, req_height);
-	//TODO use this for testing
-	assert(image_idx == data->info.texture.count());
-	auto textureIndex = data->info.texture.addTexture(std::move(imageInput));
-	//TODO map image_idx to textureIndex
+	data->info.texture.addTexture(std::move(imageInput));
 	return true;
 }
 
@@ -51,7 +49,7 @@ bool stringEndsWith(const std::string& value, const std::string& suffix) {
 ///
 /// obj format files are loaded as a single buffer, single bufferView mesh
 ///
-bool ModelImport::loadObj(const char* path, ModelLoadingInfo&& info) const {
+bool ModelImport::loadObj(const char* path, ModelLoadingInfo&& info, Offset&& offset) const {
 	tinyobj::attrib_t attrib;
 	std::vector<tinyobj::shape_t> shapeList;
 	std::vector<tinyobj::material_t> materialList;
@@ -174,11 +172,13 @@ bool loadGltfNodeMesh(const tinygltf::Model& model, const tinygltf::Node& node, 
 			std::cout << "unsupported index type: " << accessorIndices.componentType << std::endl;
 			break;
 		}
-		std::cout << data.vertices.size() << "|" << data.indices.size() << "   ";
 		if (primitive.material > -1) {
-			const auto& mat = model.materials[primitive.material];
-			std::cout << mat.name << "\n";
+			data.material = primitive.material + loadingData.offset.material;
 		}
+		else {
+			data.material = -1;
+		}
+		std::cout << data.vertices.size() << "|" << data.indices.size() << "|" << data.material << "\n";
 		meshData.data.push_back(std::move(data));
 	}
 	loadingData.mesh.push_back(std::move(meshData));
@@ -238,11 +238,11 @@ bool loadGltfNode(const tinygltf::Model& model, const int nodeIndex, const int* 
 	return true;
 }
 
-bool ModelImport::loadGltf(const std::string& path, const bool isBinary, ModelLoadingInfo&& info) const {
+bool ModelImport::loadGltf(const std::string& path, const bool isBinary, ModelLoadingInfo&& info, Offset&& offset) const {
 	tinygltf::Model model;
 	tinygltf::TinyGLTF loader;//TODO should this be reused?
 	std::vector<MeshData> meshDataList;
-	LoadingGltfData loadingData{ info, meshDataList };
+	LoadingGltfData loadingData{ info, offset, meshDataList };
 	loader.SetImageLoader(LoadImageData, &loadingData);
 	std::string warning, error;
 	bool loadResult;
@@ -258,6 +258,14 @@ bool ModelImport::loadGltf(const std::string& path, const bool isBinary, ModelLo
 	}
 	if (!warning.empty()) {
 		std::cout << warning << std::endl;
+	}
+	for (const auto& mat : model.materials) {
+		MaterialInput material;
+		if (mat.pbrMetallicRoughness.baseColorTexture.index > -1) {
+			material.addTextureEntry(mat.pbrMetallicRoughness.baseColorTexture.index + offset.texture);
+		}
+		//TODO add other textures/values
+		info.material.addMaterial(std::move(material));
 	}
 	std::cout << "scene count = " << model.scenes.size() << " default = " << model.defaultScene << std::endl;
 	auto sceneIndex = model.defaultScene > -1 ? model.defaultScene : 0;
@@ -276,14 +284,18 @@ bool ModelImport::loadGltf(const std::string& path, const bool isBinary, ModelLo
 
 bool ModelImport::load(const std::string& path, ModelLoadingInfo&& info) const {
 	bool result = false;
+	Offset offset{
+		info.texture.count(),
+		info.material.count()
+	};
 	if (stringEndsWith(path, ".obj")) {
-		return loadObj(path.c_str(), std::move(info));
+		return loadObj(path.c_str(), std::move(info), std::move(offset));
 	}
 	else if (stringEndsWith(path, ".gltf")) {
-		return loadGltf(path, false, std::move(info));
+		return loadGltf(path, false, std::move(info), std::move(offset));
 	}
 	else if (stringEndsWith(path, ".glb")) {
-		return loadGltf(path, true, std::move(info));
+		return loadGltf(path, true, std::move(info), std::move(offset));
 	}
 	std::cout << "unknown format" << std::endl;
 	return result;

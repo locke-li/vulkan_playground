@@ -32,7 +32,8 @@ void onFramebufferResize(GLFWwindow* window, int width, int height) {
 			 0, 2, 3,
 			 0, 3, 1,
 			 3, 2, 1,
-		 }
+		 },
+		 0
 	 };
 	 MeshInput inputTetrahedron{ { 0.0f, 0.0f, -1.0f }, { 1.0f, 0.0f, 0.0f, 0.0f }, {1.0f, 1.0f, 1.0f} };
 	 inputTetrahedron.setMesh(std::move(tetrahedron));
@@ -54,7 +55,8 @@ void onFramebufferResize(GLFWwindow* window, int width, int height) {
 			 1, 7, 6, 6, 2, 1,//right
 			 5, 3, 2, 2, 6, 5,//bottom
 			 0, 4, 7, 7, 1, 0,//top
-		 }
+		 },
+		 0
 	 };
 	 MeshInput inputCube{ { 0.0f, 0.0f, -2.0f }, { 1.0f, 0.0f, 0.0f, 0.0f }, { 1.0f, 1.0f, 1.0f } };
 	 inputCube.setMesh(std::move(cube));
@@ -77,6 +79,14 @@ int RenderingTest::mainLoop() {
 	windowLayer.createWindow(APP_TITLE, WIDTH, HEIGHT);
 
 	const auto& graphicsSetting = setting.graphics;
+	ImageInput defaultTexture(false, true);
+	defaultTexture.setMipLevel(3);
+	logResult("texture loading", defaultTexture.load(setting.misc.texturePath));
+	textureManager.addTexture(std::move(defaultTexture));
+	MaterialInput defaultMaterial;
+	defaultMaterial.addTextureEntry(0);
+	materialManager.addMaterial(std::move(defaultMaterial));
+
 	prepareModel(setting.misc);
 	renderingData.updateCamera(45.0f, WIDTH / (float)HEIGHT, glm::vec3(0.0f, -1.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f));
 	renderingData.setRenderListFiltered(meshManager.getMeshList());
@@ -90,10 +100,6 @@ int RenderingTest::mainLoop() {
 	vulkanEnv.setMsaaSample(graphicsSetting.MSAASample);
 	renderContext.vulkanEnv = &vulkanEnv;
 	renderContext.renderingData = &renderingData;
-
-	ImageInput imageInput(false, true);
-	imageInput.setMipLevel(3);
-	logResult("texture loading", imageInput.load(setting.misc.texturePath));
 
 	logResult("create instance", vulkanEnv.createInstance(APP_TITLE));
 	logResult("create surface", vulkanEnv.createSurface());
@@ -110,7 +116,7 @@ int RenderingTest::mainLoop() {
 	logResult("create frame buffer", vulkanEnv.createFrameBuffer());
 	logResult("setup fence", vulkanEnv.setupFence());
 	logResult("create command pool", vulkanEnv.createCommandPool());
-	logResult("create texture image", vulkanEnv.createTextureImage(imageInput));
+	logResult("create texture image", vulkanEnv.createTextureImage(textureManager.getTextureList()));
 	logResult("create texture image view", vulkanEnv.createTextureImageView());
 	logResult("create texture sampler", vulkanEnv.createTextureSampler());
 	logResult("create vertex/index buffer", vulkanEnv.createVertexBufferIndice(renderingData.getRenderList()));

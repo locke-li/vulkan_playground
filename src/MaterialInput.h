@@ -19,6 +19,7 @@ private:
 	std::vector<MaterialTextureEntry> textureEntry;
 	std::vector<MaterialValueEntry> valueEntry;
 public:
+	MaterialInput() = default;
 	MaterialInput(const MaterialInput&) = delete;
 	MaterialInput(MaterialInput&&) = default;
 	const std::vector<MaterialTextureEntry> getTextureEntry() const noexcept;

@@ -11,6 +11,10 @@ ImageInput& TextureManager::getTexture(const int index) {
 	return textureList[index];
 }
 
-const size_t TextureManager::count() const {
-	return textureList.size();
+std::vector<ImageInput>& TextureManager::getTextureList() {
+	return textureList;
+}
+
+int TextureManager::count() const {
+	return static_cast<int>(textureList.size());
 }

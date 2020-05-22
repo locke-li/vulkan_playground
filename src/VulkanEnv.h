@@ -46,11 +46,10 @@ struct VertexBuffer {
 struct IndexBuffer {
 	VkBuffer buffer;
 	VkDeviceMemory memory;
-	std::vector<const BufferView*> input;
+	std::vector<const MeshNode*> input;
 	std::vector<VkDeviceSize> offset;
 	std::vector<uint32_t> vOffset;
 	std::vector<uint32_t> iCount;
-	std::vector<const MeshConstant*> constantData;
 };
 
 struct ImageOption {
@@ -88,11 +87,12 @@ private:
 	std::vector<VkFramebuffer> swapchainFramebuffer;
 	std::vector<VkBuffer> uniformBuffer;
 	std::vector<VkDeviceMemory> uniformBufferMemory;
-	std::vector<VkDescriptorSet> descriptorSet;
+	std::vector<std::vector<VkDescriptorSet>> descriptorSet;
 	VkImage msaaColorImage;
 	VkImageView msaaColorImageView;
 	VkDeviceMemory msaaColorImageMemory;
-	VkDescriptorSetLayout descriptorSetLayout;
+	VkDescriptorSetLayout descriptorSetLayoutUniform;
+	VkDescriptorSetLayout descriptorSetLayoutMaterial;
 	VkDescriptorPool descriptorPool;
 	VkRenderPass renderPass;
 	VkPipelineLayout graphicsPipelineLayout;
@@ -128,7 +128,6 @@ private:
 	bool findDepthFormat(VkFormat* format);
 	bool createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memTypeFlag, VkBuffer& buffer, VkDeviceMemory& memory);
 	bool createStagingBuffer(VkDeviceSize size, VkBuffer& buffer, VkDeviceMemory& memory);
-	bool copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size, VkCommandBuffer cmd);
 	bool createImage(const VkImageCreateInfo& info, VkImage& image, VkDeviceMemory& imageMemory);
 	bool transitionImageLayout(VkImage image, const ImageOption& option, VkImageLayout oldLyaout, VkImageLayout newLayout, VkCommandBuffer cmd);
 	bool copyImage(VkBuffer src, VkImage dst, uint32_t width, uint32_t height, uint32_t mipLevel, VkCommandBuffer cmd);
@@ -165,7 +164,7 @@ public:
 	bool createGraphicsPipelineLayout();
 	bool createGraphicsPipeline();
 	bool createFrameBuffer();
-	bool createTextureImage(ImageInput& input);
+	bool createTextureImage(std::vector<ImageInput>& input);
 	bool createTextureImageView();
 	bool createTextureSampler();
 	bool setupFence();
