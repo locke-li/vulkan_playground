@@ -1324,11 +1324,14 @@ bool VulkanEnv::createUniformBuffer() {
 }
 
 bool VulkanEnv::createDescriptorPool() {
-	std::array<VkDescriptorPoolSize, 2> poolSize;
+	//these determines the pool capacity
+	std::array<VkDescriptorPoolSize, 3> poolSize;
 	poolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	poolSize[0].descriptorCount = static_cast<uint32_t>(uniformBuffer.size());
-	poolSize[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	poolSize[1].type = VK_DESCRIPTOR_TYPE_SAMPLER;
 	poolSize[1].descriptorCount = static_cast<uint32_t>(uniformBuffer.size());
+	poolSize[2].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	poolSize[2].descriptorCount = static_cast<uint32_t>(uniformBuffer.size());
 
 	VkDescriptorPoolCreateInfo info;
 	info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -1336,7 +1339,8 @@ bool VulkanEnv::createDescriptorPool() {
 	info.pNext = nullptr;
 	info.poolSizeCount = static_cast<uint32_t>(poolSize.size());
 	info.pPoolSizes = poolSize.data();
-	info.maxSets = static_cast<uint32_t>(uniformBuffer.size());
+	//this limits the set count to be allocated
+	info.maxSets = static_cast<uint32_t>(uniformBuffer.size() * 2);
 
 	return vkCreateDescriptorPool(device, &info, nullptr, &descriptorPool) == VK_SUCCESS;
 }
@@ -1351,13 +1355,14 @@ bool VulkanEnv::createDescriptorSet() {
 	info.pSetLayouts = layout.data();
 
 	descriptorSet.resize(static_cast<uint32_t>(uniformBuffer.size()));
-	for (auto& descriptorSetPerSwapchain : descriptorSet) {
+	for (auto i = 0; i < descriptorSet.size(); ++i) {
+		auto& descriptorSetPerSwapchain = descriptorSet[i];
 		descriptorSetPerSwapchain.resize(layout.size());
-		if (vkAllocateDescriptorSets(device, &info, descriptorSetPerSwapchain.data()) != VK_SUCCESS) {
+		auto result = vkAllocateDescriptorSets(device, &info, descriptorSetPerSwapchain.data());
+		if (result != VK_SUCCESS) {
 			return false;
 		}
-	}
-	for (auto i = 0; i < uniformBuffer.size(); ++i) {
+
 		std::vector<VkWriteDescriptorSet> writeArr(3);
 
 		VkDescriptorBufferInfo bufferInfo;
@@ -1368,7 +1373,7 @@ bool VulkanEnv::createDescriptorSet() {
 		VkWriteDescriptorSet& uniformWrite = writeArr[0];
 		uniformWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		uniformWrite.pNext = nullptr;
-		uniformWrite.dstSet = descriptorSet[i][0];
+		uniformWrite.dstSet = descriptorSetPerSwapchain[0];
 		uniformWrite.dstBinding = 0;
 		uniformWrite.dstArrayElement = 0;
 		uniformWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -1377,15 +1382,32 @@ bool VulkanEnv::createDescriptorSet() {
 		uniformWrite.pImageInfo = nullptr;
 		uniformWrite.pTexelBufferView = nullptr;
 
+		VkDescriptorImageInfo samplerInfo;
+		samplerInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		samplerInfo.imageView = 0;
+		samplerInfo.sampler = imageSet.sampler[0];
+
+		VkWriteDescriptorSet& samplerWrite = writeArr[1];
+		samplerWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		samplerWrite.pNext = nullptr;
+		samplerWrite.dstSet = descriptorSetPerSwapchain[1];
+		samplerWrite.dstBinding = 0;
+		samplerWrite.dstArrayElement = 0;
+		samplerWrite.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+		samplerWrite.descriptorCount = 1;
+		samplerWrite.pBufferInfo = nullptr;
+		samplerWrite.pImageInfo = &samplerInfo;
+		samplerWrite.pTexelBufferView = nullptr;
+
 		VkDescriptorImageInfo imageInfo;
 		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		imageInfo.imageView = imageSet.view[0];
-		imageInfo.sampler = imageSet.sampler[0];
+		imageInfo.sampler = 0;
 
-		VkWriteDescriptorSet& textureWrite = writeArr[1];
+		VkWriteDescriptorSet& textureWrite = writeArr[2];
 		textureWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		textureWrite.pNext = nullptr;
-		textureWrite.dstSet = descriptorSet[i][1];
+		textureWrite.dstSet = descriptorSetPerSwapchain[1];
 		textureWrite.dstBinding = 1;
 		textureWrite.dstArrayElement = 0;
 		textureWrite.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
@@ -1393,18 +1415,6 @@ bool VulkanEnv::createDescriptorSet() {
 		textureWrite.pBufferInfo = nullptr;
 		textureWrite.pImageInfo = &imageInfo;
 		textureWrite.pTexelBufferView = nullptr;
-
-		VkWriteDescriptorSet& samplerWrite = writeArr[2];
-		samplerWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		samplerWrite.pNext = nullptr;
-		samplerWrite.dstSet = descriptorSet[i][1];
-		samplerWrite.dstBinding = 0;
-		samplerWrite.dstArrayElement = 0;
-		samplerWrite.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-		samplerWrite.descriptorCount = 1;
-		samplerWrite.pBufferInfo = nullptr;
-		samplerWrite.pImageInfo = nullptr;
-		samplerWrite.pTexelBufferView = nullptr;
 
 		vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeArr.size()), writeArr.data(), 0, nullptr);
 	}
@@ -1504,13 +1514,11 @@ bool VulkanEnv::setupCommandBuffer(const uint32_t index, const uint32_t imageInd
 	vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 	vkCmdSetViewport(cmd, 0, 1, &viewport);
 	const auto& currentDescriptorSet = descriptorSet[imageIndex];
-	//bind uniform data
-	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipelineLayout, 0, 1, currentDescriptorSet.data(), 0, nullptr);
 	vkCmdBindVertexBuffers(cmd, 0, static_cast<uint32_t>(vertexBuffer.buffer.size()), vertexBuffer.buffer.data(), vertexBuffer.offset.data());
 	for (auto i = 0; i < indexBuffer.offset.size(); ++i) {
 		const auto& mesh = *indexBuffer.input[i];
 		//bind material data
-		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipelineLayout, 1, mesh.getMaterialLayoutIndex(), currentDescriptorSet.data(), 0, nullptr);
+		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipelineLayout, 0, 2, currentDescriptorSet.data(), 0, nullptr);
 		vkCmdBindIndexBuffer(cmd, indexBuffer.buffer, indexBuffer.offset[i], VK_INDEX_TYPE_UINT16);
 		vkCmdPushConstants(cmd, graphicsPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, MeshNode::getConstantSize(), &mesh.getConstantData());
 		vkCmdDrawIndexed(cmd, indexBuffer.iCount[i], 1, 0, indexBuffer.vOffset[i], 0);
