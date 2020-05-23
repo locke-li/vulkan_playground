@@ -1332,6 +1332,7 @@ bool VulkanEnv::createUniformBuffer() {
 
 bool VulkanEnv::createDescriptorPool() {
 	descriptorPool.resize(uniformBuffer.size());
+	descriptorSet.resize(uniformBuffer.size());
 
 	//these determines the pool capacity
 	std::array<VkDescriptorPoolSize, 3> poolSize;
@@ -1359,84 +1360,82 @@ bool VulkanEnv::createDescriptorPool() {
 	return true;
 }
 
-bool VulkanEnv::createDescriptorSet() {
+bool VulkanEnv::setupDescriptorSet(int imageIndex) {
 	std::vector<VkDescriptorSetLayout> layout(1 + imageSet.image.size());
 	layout[layout.size() - 1] = descriptorSetLayoutUniform;
 	for (auto k = 0; k < imageSet.image.size(); ++k) {
 		layout[k] = descriptorSetLayoutMaterial;
 	}
-	descriptorSet.resize(static_cast<uint32_t>(uniformBuffer.size()));
-	for (auto i = 0; i < uniformBuffer.size(); ++i) {
-		VkDescriptorSetAllocateInfo info;
-		info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		info.pNext = nullptr;
-		info.descriptorPool = descriptorPool[i];
-		info.descriptorSetCount = static_cast<uint32_t>(layout.size());
-		info.pSetLayouts = layout.data();
+	VkDescriptorSetAllocateInfo info;
+	info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	info.pNext = nullptr;
+	info.descriptorPool = descriptorPool[imageIndex];
+	info.descriptorSetCount = static_cast<uint32_t>(layout.size());
+	info.pSetLayouts = layout.data();
 
-		auto& descriptorSetPerSwapchain = descriptorSet[i];
-		descriptorSetPerSwapchain.resize(layout.size());
-		auto result = vkAllocateDescriptorSets(device, &info, descriptorSetPerSwapchain.data());
-		if (result != VK_SUCCESS) {
-			return false;
-		}
-
-		std::vector<VkWriteDescriptorSet> writeArr(2 + imageSet.image.size());
-
-		VkDescriptorBufferInfo bufferInfo;
-		bufferInfo.buffer = uniformBuffer[i];
-		bufferInfo.offset = 0;
-		bufferInfo.range = uniformSize;
-		VkWriteDescriptorSet& uniformWrite = writeArr[writeArr.size() - 1];
-		uniformWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		uniformWrite.pNext = nullptr;
-		uniformWrite.dstSet = descriptorSetPerSwapchain.back();
-		uniformWrite.dstBinding = 0;
-		uniformWrite.dstArrayElement = 0;
-		uniformWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		uniformWrite.descriptorCount = 1;
-		uniformWrite.pBufferInfo = &bufferInfo;
-		uniformWrite.pImageInfo = nullptr;
-		uniformWrite.pTexelBufferView = nullptr;
-
-		VkDescriptorImageInfo samplerInfo;
-		samplerInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		samplerInfo.imageView = 0;
-		samplerInfo.sampler = imageSet.sampler[0];
-		VkWriteDescriptorSet& samplerWrite = writeArr[writeArr.size() - 2];
-		samplerWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		samplerWrite.pNext = nullptr;
-		samplerWrite.dstSet = descriptorSetPerSwapchain.back();
-		samplerWrite.dstBinding = 1;
-		samplerWrite.dstArrayElement = 0;
-		samplerWrite.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-		samplerWrite.descriptorCount = 1;
-		samplerWrite.pBufferInfo = nullptr;
-		samplerWrite.pImageInfo = &samplerInfo;
-		samplerWrite.pTexelBufferView = nullptr;
-
-		std::vector<VkDescriptorImageInfo> imageInfoList(imageSet.image.size());
-		std::vector<VkWriteDescriptorSet> textureWriteList();
-		for (auto k = 0; k < imageSet.image.size(); ++k) {
-			VkDescriptorImageInfo& imageInfo = imageInfoList[k];
-			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			imageInfo.imageView = imageSet.view[k];
-			imageInfo.sampler = 0;
-			VkWriteDescriptorSet& textureWrite = writeArr[k];
-			textureWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			textureWrite.pNext = nullptr;
-			textureWrite.dstSet = descriptorSetPerSwapchain[k];
-			textureWrite.dstBinding = 0;
-			textureWrite.dstArrayElement = 0;
-			textureWrite.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-			textureWrite.descriptorCount = 1;
-			textureWrite.pBufferInfo = nullptr;
-			textureWrite.pImageInfo = &imageInfo;
-			textureWrite.pTexelBufferView = nullptr;
-		}
-
-		vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeArr.size()), writeArr.data(), 0, nullptr);
+	auto& descriptorSetPerSwapchain = descriptorSet[imageIndex];
+	descriptorSetPerSwapchain.resize(layout.size());
+	vkResetDescriptorPool(device, descriptorPool[imageIndex], 0);
+	auto result = vkAllocateDescriptorSets(device, &info, descriptorSetPerSwapchain.data());
+	if (result != VK_SUCCESS) {
+		return false;
 	}
+
+	std::vector<VkWriteDescriptorSet> writeArr(2 + imageSet.image.size());
+
+	VkDescriptorBufferInfo bufferInfo;
+	bufferInfo.buffer = uniformBuffer[imageIndex];
+	bufferInfo.offset = 0;
+	bufferInfo.range = uniformSize;
+	VkWriteDescriptorSet& uniformWrite = writeArr[writeArr.size() - 1];
+	uniformWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	uniformWrite.pNext = nullptr;
+	uniformWrite.dstSet = descriptorSetPerSwapchain.back();
+	uniformWrite.dstBinding = 0;
+	uniformWrite.dstArrayElement = 0;
+	uniformWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	uniformWrite.descriptorCount = 1;
+	uniformWrite.pBufferInfo = &bufferInfo;
+	uniformWrite.pImageInfo = nullptr;
+	uniformWrite.pTexelBufferView = nullptr;
+
+	VkDescriptorImageInfo samplerInfo;
+	samplerInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	samplerInfo.imageView = 0;
+	samplerInfo.sampler = imageSet.sampler[0];
+	VkWriteDescriptorSet& samplerWrite = writeArr[writeArr.size() - 2];
+	samplerWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	samplerWrite.pNext = nullptr;
+	samplerWrite.dstSet = descriptorSetPerSwapchain.back();
+	samplerWrite.dstBinding = 1;
+	samplerWrite.dstArrayElement = 0;
+	samplerWrite.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+	samplerWrite.descriptorCount = 1;
+	samplerWrite.pBufferInfo = nullptr;
+	samplerWrite.pImageInfo = &samplerInfo;
+	samplerWrite.pTexelBufferView = nullptr;
+
+	std::vector<VkDescriptorImageInfo> imageInfoList(imageSet.image.size());
+	std::vector<VkWriteDescriptorSet> textureWriteList();
+	for (auto k = 0; k < imageSet.image.size(); ++k) {
+		VkDescriptorImageInfo& imageInfo = imageInfoList[k];
+		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		imageInfo.imageView = imageSet.view[k];
+		imageInfo.sampler = 0;
+		VkWriteDescriptorSet& textureWrite = writeArr[k];
+		textureWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		textureWrite.pNext = nullptr;
+		textureWrite.dstSet = descriptorSetPerSwapchain[k];
+		textureWrite.dstBinding = 0;
+		textureWrite.dstArrayElement = 0;
+		textureWrite.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+		textureWrite.descriptorCount = 1;
+		textureWrite.pBufferInfo = nullptr;
+		textureWrite.pImageInfo = &imageInfo;
+		textureWrite.pTexelBufferView = nullptr;
+	}
+
+	vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeArr.size()), writeArr.data(), 0, nullptr);
 	return true;
 }
 
@@ -1649,7 +1648,6 @@ bool VulkanEnv::recreateSwapchain() {
 		createFrameBuffer() &&
 		createUniformBuffer() &&
 		createDescriptorPool() &&
-		createDescriptorSet() &&
 		updateUniformBuffer();
 	return result;
 }
@@ -1683,6 +1681,8 @@ bool VulkanEnv::drawFrame(const RenderingData& renderingData) {
 	//std::cout << "image acquired " << imageIndex << std::endl;
 	vkWaitForFences(device, 1, &frame.fenceInFlight, VK_TRUE, UINT64_MAX);
 	//std::cout << "frame fence pass " << currentFrame << std::endl;
+
+	setupDescriptorSet(imageIndex);
 	setupCommandBuffer(frameIndex, imageIndex);
 
 	VkSubmitInfo submitInfo;

@@ -141,6 +141,7 @@ private:
 	bool allocateCommandBuffer(const VkCommandPool pool, const uint32_t count, VkCommandBuffer* cmd);
 	bool beginCommand(VkCommandBuffer& cmd, VkCommandBufferUsageFlags flag);
 	bool submitCommand(VkCommandBuffer* cmd, uint32_t count, VkQueue queue, VkFence fence);
+	bool setupDescriptorSet(int imageIndex);
 	bool setupCommandBuffer(const uint32_t index, const uint32_t imageIndex);
 	void destroySwapchain();
 public:
@@ -177,7 +178,6 @@ public:
 	bool createVertexBufferIndice(const std::vector<const MeshInput*>& input, const MaterialManager& materialManager);
 	bool createUniformBuffer();
 	bool createDescriptorPool();
-	bool createDescriptorSet();
 	bool createCommandPool();
 	bool allocateFrameCommandBuffer();
 	bool createFrameSyncObject();
