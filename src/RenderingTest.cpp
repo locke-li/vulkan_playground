@@ -121,7 +121,7 @@ int RenderingTest::mainLoop() {
 	logResult("create texture sampler", vulkanEnv.createTextureSampler());
 	logResult("create vertex/index buffer", vulkanEnv.createVertexBufferIndice(renderingData.getRenderList(), materialManager));
 	logResult("create uniform buffer", vulkanEnv.createUniformBuffer());
-	logResult("create descriptor pool", vulkanEnv.createDescriptorPool());
+	logResult("prepare descriptor", vulkanEnv.prepareDescriptor());
 	logResult("allocate swapchain command buffer", vulkanEnv.allocateFrameCommandBuffer());
 	logResult("create frame sync object", vulkanEnv.createFrameSyncObject());
 	logResult("update uniform buffer", vulkanEnv.updateUniformBuffer());

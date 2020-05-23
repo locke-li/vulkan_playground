@@ -29,6 +29,7 @@ struct InFlightFrame {
 	VkSemaphore semaphoreImageAquired;
 	VkSemaphore semaphoreRenderFinished;
 	VkFence fenceInFlight;
+	VkDescriptorPool descriptorPool;
 };
 
 struct DrawInfo {
@@ -138,10 +139,13 @@ private:
 	bool transitionImageLayout(VkImage image, const ImageOption& option, VkImageLayout oldLyaout, VkImageLayout newLayout, VkCommandBuffer cmd);
 	bool copyImage(VkBuffer src, VkImage dst, uint32_t width, uint32_t height, uint32_t mipLevel, VkCommandBuffer cmd);
 	bool generateTextureMipmap(VkImage image, const ImageOption& option, uint32_t width, uint32_t height, VkCommandBuffer cmd);
+	void releaseDescriptorPool(VkDescriptorPool pool);
+	bool requestDescriptorPool(int requirement, VkDescriptorPool& pool);
+	bool createDescriptorPool(int requirement, VkDescriptorPool& pool);
 	bool allocateCommandBuffer(const VkCommandPool pool, const uint32_t count, VkCommandBuffer* cmd);
 	bool beginCommand(VkCommandBuffer& cmd, VkCommandBufferUsageFlags flag);
 	bool submitCommand(VkCommandBuffer* cmd, uint32_t count, VkQueue queue, VkFence fence);
-	bool setupDescriptorSet(int imageIndex);
+	bool setupDescriptorSet(int imageIndex, VkDescriptorPool pool);
 	bool setupCommandBuffer(const uint32_t index, const uint32_t imageIndex);
 	void destroySwapchain();
 public:
@@ -177,7 +181,7 @@ public:
 	bool setupFence();
 	bool createVertexBufferIndice(const std::vector<const MeshInput*>& input, const MaterialManager& materialManager);
 	bool createUniformBuffer();
-	bool createDescriptorPool();
+	bool prepareDescriptor();
 	bool createCommandPool();
 	bool allocateFrameCommandBuffer();
 	bool createFrameSyncObject();

@@ -1330,10 +1330,18 @@ bool VulkanEnv::createUniformBuffer() {
 	return true;
 }
 
-bool VulkanEnv::createDescriptorPool() {
+bool VulkanEnv::prepareDescriptor() {
 	descriptorPool.resize(uniformBuffer.size());
 	descriptorSet.resize(uniformBuffer.size());
+	for (auto& pool : descriptorPool) {
+		if (!createDescriptorPool(0, pool)) {
+			return false;
+		}
+	}
+	return true;
+}
 
+bool VulkanEnv::createDescriptorPool(int requirement, VkDescriptorPool& pool) {
 	//these determines the pool capacity
 	std::array<VkDescriptorPoolSize, 3> poolSize;
 	poolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -1352,15 +1360,10 @@ bool VulkanEnv::createDescriptorPool() {
 	//this limits the set count can be allocated
 	info.maxSets = static_cast<uint32_t>(2 + imageSet.image.size());
 
-	for (auto& pool : descriptorPool) {
-		if (vkCreateDescriptorPool(device, &info, nullptr, &pool) != VK_SUCCESS) {
-			return false;
-		}
-	}
-	return true;
+	return vkCreateDescriptorPool(device, &info, nullptr, &pool) == VK_SUCCESS;
 }
 
-bool VulkanEnv::setupDescriptorSet(int imageIndex) {
+bool VulkanEnv::setupDescriptorSet(int imageIndex, VkDescriptorPool pool) {
 	std::vector<VkDescriptorSetLayout> layout(1 + imageSet.image.size());
 	layout[layout.size() - 1] = descriptorSetLayoutUniform;
 	for (auto k = 0; k < imageSet.image.size(); ++k) {
@@ -1369,13 +1372,12 @@ bool VulkanEnv::setupDescriptorSet(int imageIndex) {
 	VkDescriptorSetAllocateInfo info;
 	info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 	info.pNext = nullptr;
-	info.descriptorPool = descriptorPool[imageIndex];
+	info.descriptorPool = pool;
 	info.descriptorSetCount = static_cast<uint32_t>(layout.size());
 	info.pSetLayouts = layout.data();
 
 	auto& descriptorSetPerSwapchain = descriptorSet[imageIndex];
 	descriptorSetPerSwapchain.resize(layout.size());
-	vkResetDescriptorPool(device, descriptorPool[imageIndex], 0);
 	auto result = vkAllocateDescriptorSets(device, &info, descriptorSetPerSwapchain.data());
 	if (result != VK_SUCCESS) {
 		return false;
@@ -1647,7 +1649,7 @@ bool VulkanEnv::recreateSwapchain() {
 		createGraphicsPipeline() &&
 		createFrameBuffer() &&
 		createUniformBuffer() &&
-		createDescriptorPool() &&
+		prepareDescriptor() &&
 		updateUniformBuffer();
 	return result;
 }
@@ -1670,6 +1672,23 @@ bool VulkanEnv::updateUniformBuffer(const uint32_t imageIndex) {
 	return true;
 }
 
+
+void VulkanEnv::releaseDescriptorPool(VkDescriptorPool pool) {
+	if (pool == nullptr) return;
+	vkResetDescriptorPool(device, pool, 0);
+	descriptorPool.push_back(pool);
+}
+
+bool VulkanEnv::requestDescriptorPool(int requirement, VkDescriptorPool& pool) {
+	//TODO check requirement & create if no matching one exists
+	if (descriptorPool.empty()) {
+		return createDescriptorPool(requirement, pool);
+	}
+	pool = descriptorPool.back();
+	descriptorPool.pop_back();
+	return true;
+}
+
 bool VulkanEnv::drawFrame(const RenderingData& renderingData) {
 	auto& frame = inFlightFrame[currentFrame];
 	auto frameIndex = currentFrame;
@@ -1682,7 +1701,9 @@ bool VulkanEnv::drawFrame(const RenderingData& renderingData) {
 	vkWaitForFences(device, 1, &frame.fenceInFlight, VK_TRUE, UINT64_MAX);
 	//std::cout << "frame fence pass " << currentFrame << std::endl;
 
-	setupDescriptorSet(imageIndex);
+	releaseDescriptorPool(frame.descriptorPool);
+	requestDescriptorPool(0, frame.descriptorPool);
+	setupDescriptorSet(imageIndex, frame.descriptorPool);
 	setupCommandBuffer(frameIndex, imageIndex);
 
 	VkSubmitInfo submitInfo;
