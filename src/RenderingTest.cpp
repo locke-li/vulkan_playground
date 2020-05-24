@@ -117,6 +117,7 @@ int RenderingTest::mainLoop() {
 	logResult("setup fence", vulkanEnv.setupFence());
 	logResult("create command pool", vulkanEnv.createCommandPool());
 	logResult("create texture image", vulkanEnv.createTextureImage(textureManager.getTextureList()));
+	textureManager.releaseNonPreserved();
 	logResult("create texture image view", vulkanEnv.createTextureImageView());
 	logResult("create texture sampler", vulkanEnv.createTextureSampler());
 	logResult("create vertex/index buffer", vulkanEnv.createVertexBufferIndice(renderingData.getRenderList(), materialManager));

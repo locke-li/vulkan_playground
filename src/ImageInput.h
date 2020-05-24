@@ -25,7 +25,7 @@ public:
 	int getWidth() const;
 	int getHeight() const;
 	uint32_t getMipLevel() const;
-	bool perserveData() const;
+	bool preserveData() const;
 	bool shouldGenerateMipmap() const;
 	uint32_t getByteSize() const;
 	const uint8_t* pixel() const noexcept;

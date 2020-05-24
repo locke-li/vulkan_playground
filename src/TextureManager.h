@@ -11,5 +11,6 @@ public:
 	ImageInput& getTexture(const int index);
 	std::vector<ImageInput>& getTextureList();
 	int count() const;
+	void releaseNonPreserved();
 };
 

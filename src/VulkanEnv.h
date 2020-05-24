@@ -175,7 +175,7 @@ public:
 	bool createGraphicsPipelineLayout();
 	bool createGraphicsPipeline();
 	bool createFrameBuffer();
-	bool createTextureImage(std::vector<ImageInput>& input);
+	bool createTextureImage(const std::vector<ImageInput>& input);
 	bool createTextureImageView();
 	bool createTextureSampler();
 	bool setupFence();

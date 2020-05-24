@@ -18,3 +18,11 @@ std::vector<ImageInput>& TextureManager::getTextureList() {
 int TextureManager::count() const {
 	return static_cast<int>(textureList.size());
 }
+
+void TextureManager::releaseNonPreserved() {
+	for (auto& tex : textureList) {
+		if (!tex.preserveData()) {
+			tex.release();
+		}
+	}
+}

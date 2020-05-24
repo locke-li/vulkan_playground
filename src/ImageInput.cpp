@@ -36,7 +36,7 @@ uint32_t ImageInput::getMipLevel() const {
 	return mipmap ? mipLevel : 1;
 }
 
-bool ImageInput::perserveData() const {
+bool ImageInput::preserveData() const {
 	return perserve;
 }
 

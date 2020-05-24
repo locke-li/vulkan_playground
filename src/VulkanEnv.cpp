@@ -132,7 +132,7 @@ bool hasStencilComponent(VkFormat format) {
 		format == VK_FORMAT_D16_UNORM_S8_UINT;
 }
 
-bool createShaderModule(const VkDevice device, const std::vector<char>& code, VkShaderModule* shaderModule) {
+bool createShaderModule(const VkDevice device, std::vector<char>&& code, VkShaderModule* shaderModule) {
 	VkShaderModuleCreateInfo info;
 	info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 	info.flags = 0;
@@ -532,9 +532,6 @@ bool VulkanEnv::createRenderPass() {
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 	renderPassInfo.flags = 0;
 	renderPassInfo.pNext = nullptr;
-	//to be filled later
-	//renderPassInfo.attachmentCount
-	//renderPassInfo.pAttachments
 	renderPassInfo.subpassCount = 1;
 	renderPassInfo.pSubpasses = &subpass;
 	renderPassInfo.dependencyCount = 1;
@@ -639,13 +636,10 @@ bool VulkanEnv::createGraphicsPipelineLayout() {
 }
 
 bool VulkanEnv::createGraphicsPipeline() {
-	auto vertCode = shader->getVertData();
-	auto fragCode = shader->getFragData();
-
 	VkShaderModule vertShader;
-	createShaderModule(device, vertCode, &vertShader);
+	createShaderModule(device, shader->getVertData(), &vertShader);
 	VkShaderModule fragShader;
-	createShaderModule(device, fragCode, &fragShader);
+	createShaderModule(device, shader->getFragData(), &fragShader);
 
 	VkPipelineShaderStageCreateInfo vertStage;
 	vertStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -863,7 +857,7 @@ bool VulkanEnv::createImage(const VkImageCreateInfo& info, VkImage& image, VkDev
 	return true;
 }
 
-bool VulkanEnv::createTextureImage(std::vector<ImageInput>& textureList) {
+bool VulkanEnv::createTextureImage(const std::vector<ImageInput>& textureList) {
 	//TODO batch submit
 	for (auto& texture : textureList) {
 		if (!texture.isValid()) {
@@ -895,12 +889,11 @@ bool VulkanEnv::createTextureImage(std::vector<ImageInput>& textureList) {
 		info.mipLevels = option.mipLevel;
 		info.arrayLayers = 1;
 		info.format = option.format;
-		if (texture.perserveData()) {
+		if (texture.preserveData()) {
 			info.tiling = VK_IMAGE_TILING_LINEAR;
 			info.initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
 		}
 		else {
-			texture.release();
 			info.tiling = VK_IMAGE_TILING_OPTIMAL;
 			info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		}
