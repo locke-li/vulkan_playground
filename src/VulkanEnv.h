@@ -99,8 +99,8 @@ private:
 	VkImage msaaColorImage;
 	VkImageView msaaColorImageView;
 	VkDeviceMemory msaaColorImageMemory;
-	VkDescriptorSetLayout descriptorSetLayoutUniform;
-	VkDescriptorSetLayout descriptorSetLayoutMaterial;
+	//TODO use pipeline cache
+	std::vector<VkDescriptorSetLayout> descriptorSetLayout;
 	VkRenderPass renderPass;
 	VkPipelineLayout graphicsPipelineLayout;
 	VkPipeline graphicsPipeline;

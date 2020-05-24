@@ -569,6 +569,8 @@ bool VulkanEnv::createRenderPass() {
 }
 
 bool VulkanEnv::createDescriptorSetLayout() {
+	descriptorSetLayout.resize(2);
+
 	VkDescriptorSetLayoutBinding uniform;
 	uniform.binding = 0;
 	uniform.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -590,7 +592,7 @@ bool VulkanEnv::createDescriptorSetLayout() {
 	uniformInfo.pNext = nullptr;
 	uniformInfo.bindingCount = static_cast<uint32_t>(binding.size());
 	uniformInfo.pBindings = binding.data();
-	if (vkCreateDescriptorSetLayout(device, &uniformInfo, nullptr, &descriptorSetLayoutUniform) != VK_SUCCESS) {
+	if (vkCreateDescriptorSetLayout(device, &uniformInfo, nullptr, &descriptorSetLayout[0]) != VK_SUCCESS) {
 		return false;
 	}
 
@@ -607,7 +609,7 @@ bool VulkanEnv::createDescriptorSetLayout() {
 	materialInfo.pNext = nullptr;
 	materialInfo.bindingCount = 1;
 	materialInfo.pBindings = &texture;
-	if (vkCreateDescriptorSetLayout(device, &materialInfo, nullptr, &descriptorSetLayoutMaterial) != VK_SUCCESS) {
+	if (vkCreateDescriptorSetLayout(device, &materialInfo, nullptr, &descriptorSetLayout[1]) != VK_SUCCESS) {
 		return false;
 	}
 	return true;
@@ -619,10 +621,6 @@ bool VulkanEnv::createGraphicsPipelineLayout() {
 	vertexConstant.size = MeshNode::getConstantSize();
 	vertexConstant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
-	std::array<VkDescriptorSetLayout, 2> descriptorSetLayout{ 
-		descriptorSetLayoutUniform, 
-		descriptorSetLayoutMaterial
-	};
 	VkPipelineLayoutCreateInfo info;
 	info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	info.flags = 0;
@@ -1358,9 +1356,9 @@ bool VulkanEnv::createDescriptorPool(int requirement, VkDescriptorPool& pool) {
 
 bool VulkanEnv::setupDescriptorSet(int imageIndex, VkDescriptorPool pool) {
 	std::vector<VkDescriptorSetLayout> layout(1 + imageSet.image.size());
-	layout[layout.size() - 1] = descriptorSetLayoutUniform;
+	layout[layout.size() - 1] = descriptorSetLayout[0];
 	for (auto k = 0; k < imageSet.image.size(); ++k) {
-		layout[k] = descriptorSetLayoutMaterial;
+		layout[k] = descriptorSetLayout[1];
 	}
 	VkDescriptorSetAllocateInfo info;
 	info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -1411,7 +1409,6 @@ bool VulkanEnv::setupDescriptorSet(int imageIndex, VkDescriptorPool pool) {
 	samplerWrite.pTexelBufferView = nullptr;
 
 	std::vector<VkDescriptorImageInfo> imageInfoList(imageSet.image.size());
-	std::vector<VkWriteDescriptorSet> textureWriteList();
 	for (auto k = 0; k < imageSet.image.size(); ++k) {
 		VkDescriptorImageInfo& imageInfo = imageInfoList[k];
 		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -1590,8 +1587,9 @@ void VulkanEnv::destroy() {
 	vkDestroyFence(device, fenceImageCopy, nullptr);
 	vkDestroyCommandPool(device, commandPool, nullptr);
 	vkDestroyCommandPool(device, commandPoolReset, nullptr);
-	vkDestroyDescriptorSetLayout(device, descriptorSetLayoutUniform, nullptr);
-	vkDestroyDescriptorSetLayout(device, descriptorSetLayoutMaterial, nullptr);
+	for (auto& layout : descriptorSetLayout) {
+		vkDestroyDescriptorSetLayout(device, layout, nullptr);
+	}
 	vkDestroyDevice(device, nullptr);
 	vkDestroySurfaceKHR(instance, surface, nullptr);
 	vkDestroyInstance(instance, nullptr);
