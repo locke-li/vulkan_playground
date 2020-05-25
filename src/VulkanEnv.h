@@ -1,6 +1,7 @@
 #pragma once
 #define GLFW_INCLUDE_VULKAN 
 #include "GLFW/glfw3.h"
+#include "vk_mem_alloc.h"
 #include "MeshNode.h"
 #include "MaterialManager.h"
 #include "RenderingData.h"
@@ -46,13 +47,13 @@ struct DepthBuffer {
 
 struct VertexBuffer {
 	std::vector<VkBuffer> buffer;
-	std::vector<VkDeviceMemory> memory;
+	std::vector<VmaAllocation> allocation;
 	std::vector<VkDeviceSize> offset;
 };
 
 struct IndexBuffer {
 	VkBuffer buffer;
-	VkDeviceMemory memory;
+	VmaAllocation allocation;
 	std::vector<DrawInfo> drawInfo;
 	std::vector<VkDeviceSize> offset;
 	std::vector<uint32_t> vOffset;
@@ -84,6 +85,7 @@ private:
 	std::vector<PhysicalDeviceCandidate> physicalDeviceCandidate;
 	VkPhysicalDevice physicalDevice;
 	VkDevice device;
+	VmaAllocator vmaAllocator;
 	VkQueue graphicsQueue;
 	VkQueue presentQueue;
 	VkSwapchainKHR swapchain;
@@ -93,7 +95,7 @@ private:
 	std::vector<VkImageView> swapchainImageView;
 	std::vector<VkFramebuffer> swapchainFramebuffer;
 	std::vector<VkBuffer> uniformBuffer;
-	std::vector<VkDeviceMemory> uniformBufferMemory;
+	std::vector<VmaAllocation> uniformBufferAllocation;
 	std::vector<std::vector<VkDescriptorSet>> descriptorSet;
 	std::vector<VkDescriptorPool> descriptorPool;
 	std::vector<VkDescriptorPool> descriptorPoolFree;
@@ -134,8 +136,8 @@ private:
 	bool queueFamilyValid(const VkPhysicalDevice device, uint32_t& score);
 	bool findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags flags, uint32_t* typeIndex);
 	bool findDepthFormat(VkFormat* format);
-	bool createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, std::vector<VkMemoryPropertyFlags>&& memTypeFlag, VkBuffer& buffer, VkDeviceMemory& memory);
-	bool createStagingBuffer(VkDeviceSize size, VkBuffer& buffer, VkDeviceMemory& memory);
+	bool createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VmaMemoryUsage allocUsage, VkBuffer& buffer, VmaAllocation& allocation);
+	bool createStagingBuffer(VkDeviceSize size, VkBuffer& buffer, VmaAllocation& allocation);
 	bool createImage(const VkImageCreateInfo& info, VkImage& image, VkDeviceMemory& imageMemory);
 	bool transitionImageLayout(VkImage image, const ImageOption& option, VkImageLayout oldLyaout, VkImageLayout newLayout, VkCommandBuffer cmd);
 	bool copyImage(VkBuffer src, VkImage dst, uint32_t width, uint32_t height, uint32_t mipLevel, VkCommandBuffer cmd);
@@ -166,6 +168,7 @@ public:
 	bool createInstance(const char* appName);
 	bool createPhysicalDevice();
 	bool createDevice();
+	bool createAllocator();
 	bool createSurface();
 	bool createSwapchain();
 	bool createSwapchainImageView();

@@ -105,6 +105,7 @@ int RenderingTest::mainLoop() {
 	logResult("create surface", vulkanEnv.createSurface());
 	logResult("create physical device", vulkanEnv.createPhysicalDevice());
 	logResult("create logical device", vulkanEnv.createDevice());
+	logResult("create allocator", vulkanEnv.createAllocator());
 	logResult("create swapchain", vulkanEnv.createSwapchain());
 	logResult("create swapchain imageview", vulkanEnv.createSwapchainImageView());
 	logResult("create msaa color buffer", vulkanEnv.createMsaaColorBuffer());

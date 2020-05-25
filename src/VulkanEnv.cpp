@@ -350,6 +350,15 @@ bool VulkanEnv::createDevice() {
 	return true;
 }
 
+bool VulkanEnv::createAllocator() {
+	VmaAllocatorCreateInfo info{};
+	info.frameInUseCount = 2;//TODO associate with frame count
+	info.instance = instance;
+	info.physicalDevice = physicalDevice;
+	info.device = device;
+	return vmaCreateAllocator(&info, &vmaAllocator) == VK_SUCCESS;
+}
+
 bool VulkanEnv::createSwapchain() {
 	frameBufferResized = false;
 	swapchainFormat = chooseSwapSurfaceFormat(swapchainSupport.formats);
@@ -863,15 +872,15 @@ bool VulkanEnv::createTextureImage(const std::vector<ImageInput>& textureList) {
 		}
 		auto size = texture.getByteSize();
 		VkBuffer stagingBuffer;
-		VkDeviceMemory stagingBufferMemory;
+		VmaAllocation stagingBufferMemory;
 		if (!createStagingBuffer(size, stagingBuffer, stagingBufferMemory)) {
 			return false;
 		}
 
 		void* buffer;
-		vkMapMemory(device, stagingBufferMemory, 0, size, 0, &buffer);
+		vmaMapMemory(vmaAllocator, stagingBufferMemory, &buffer);
 		memcpy(buffer, texture.pixel(), size);
-		vkUnmapMemory(device, stagingBufferMemory);
+		vmaUnmapMemory(vmaAllocator, stagingBufferMemory);
 
 		ImageOption option = { texture.getMipLevel(), VK_FORMAT_R8G8B8A8_SRGB };
 		VkImage image;
@@ -924,8 +933,7 @@ bool VulkanEnv::createTextureImage(const std::vector<ImageInput>& textureList) {
 		submitCommand(cmd.data(), static_cast<uint32_t>(cmd.size()), graphicsQueue, fenceImageCopy);
 		vkWaitForFences(device, 1, &fenceImageCopy, VK_TRUE, UINT64_MAX);
 
-		vkDestroyBuffer(device, stagingBuffer, nullptr);
-		vkFreeMemory(device, stagingBufferMemory, nullptr);
+		vmaDestroyBuffer(vmaAllocator, stagingBuffer, stagingBufferMemory);
 	}
 	return true;
 }
@@ -1139,8 +1147,7 @@ bool VulkanEnv::setupFence() {
 		vkCreateFence(device, &fenceInfo, nullptr, &fenceImageCopy) == VK_SUCCESS;
 }
 
-bool VulkanEnv::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, std::vector<VkMemoryPropertyFlags>&& memTypeFlag,
-	VkBuffer& buffer, VkDeviceMemory& memory) {
+bool VulkanEnv::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VmaMemoryUsage allocUsage, VkBuffer& buffer, VmaAllocation& allocation) {
 	VkBufferCreateInfo info;
 	info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	info.flags = 0;
@@ -1150,35 +1157,14 @@ bool VulkanEnv::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, std::v
 	info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	info.queueFamilyIndexCount = 0;
 	info.pQueueFamilyIndices = nullptr;
-	if (vkCreateBuffer(device, &info, nullptr, &buffer) != VK_SUCCESS) {
-		return false;
-	}
 
-	VkMemoryRequirements memRequirement;
-	vkGetBufferMemoryRequirements(device, buffer, &memRequirement);
-	VkMemoryAllocateInfo allocInfo;
-	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocInfo.pNext = nullptr;
-	allocInfo.allocationSize = memRequirement.size;
-	for (auto memFlag : memTypeFlag) {
-		if (findMemoryType(memRequirement.memoryTypeBits, memFlag, &allocInfo.memoryTypeIndex)) {
-			return vkAllocateMemory(device, &allocInfo, nullptr, &memory) == VK_SUCCESS &&
-				vkBindBufferMemory(device, buffer, memory, 0) == VK_SUCCESS;
-		}
-	}
-	return false;
+	VmaAllocationCreateInfo allocInfo{};
+	allocInfo.usage = allocUsage;
+	return vmaCreateBuffer(vmaAllocator, &info, &allocInfo, &buffer, &allocation, nullptr) == VK_SUCCESS;
 }
 
-bool VulkanEnv::createStagingBuffer(VkDeviceSize size, VkBuffer& buffer, VkDeviceMemory& memory) {
-	return createBuffer(size,
-		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-		{
-			//CPU accessable GPU memory on AMD
-			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-		},
-		buffer,
-		memory);
+bool VulkanEnv::createStagingBuffer(VkDeviceSize size, VkBuffer& buffer, VmaAllocation& allocation) {
+	return createBuffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY, buffer, allocation);
 }
 
 bool VulkanEnv::createVertexBufferIndice(const std::vector<const MeshInput*>& input, const MaterialManager& materialManager) {
@@ -1201,48 +1187,44 @@ bool VulkanEnv::createVertexBufferIndice(const std::vector<const MeshInput*>& in
 
 	//TODO merge memory block alloc
 	VkBuffer stagingVBuffer;
-	VkDeviceMemory stagingVBufferMemory;
-	auto vBufferSuccess = createStagingBuffer(vSize, stagingVBuffer, stagingVBufferMemory);
+	VmaAllocation stagingVBufferAllocation;
+	auto vBufferSuccess = createStagingBuffer(vSize, stagingVBuffer, stagingVBufferAllocation);
 	VkBuffer stagingIBuffer;
-	VkDeviceMemory stagingIBufferMemory;
-	auto iBufferSuccess = createStagingBuffer(vSize, stagingIBuffer, stagingIBufferMemory);
+	VmaAllocation stagingIBufferAllocation;
+	auto iBufferSuccess = createStagingBuffer(vSize, stagingIBuffer, stagingIBufferAllocation);
 	if(!vBufferSuccess || !iBufferSuccess) {
 		return false;
 	}
 
+	void* vData;
+	void* iData;
 	vSize = 0;
 	iSize = 0;
+	vmaMapMemory(vmaAllocator, stagingVBufferAllocation, &vData);
+	vmaMapMemory(vmaAllocator, stagingIBufferAllocation, &iData);
 	for (const auto& vertexInput : input) {
 		for (const auto& mesh : vertexInput->getMeshList()) {
 			for (const auto& view : mesh.getView()) {
-				void* vData;
-				vkMapMemory(device, stagingVBufferMemory, vSize, view.vertexSize, 0, &vData);
-				memcpy(vData, vertexInput->bufferData(view.bufferIndex) + view.vertexOffset, view.vertexSize);
-				vkUnmapMemory(device, stagingVBufferMemory);
-				void* iData;
-				vkMapMemory(device, stagingIBufferMemory, iSize, view.indexSize, 0, &iData);
-				memcpy(iData, vertexInput->bufferData(view.bufferIndex) + view.indexOffset, view.indexSize);
-				vkUnmapMemory(device, stagingIBufferMemory);
+				memcpy((uint8_t*)vData + vSize, vertexInput->bufferData(view.bufferIndex) + view.vertexOffset, view.vertexSize);
+				memcpy((uint8_t*)iData + iSize, vertexInput->bufferData(view.bufferIndex) + view.indexOffset, view.indexSize);
 				vSize += view.vertexSize;
 				iSize += view.indexSize;
 			}
 		}
 	}
+	vmaUnmapMemory(vmaAllocator, stagingVBufferAllocation);
+	vmaUnmapMemory(vmaAllocator, stagingIBufferAllocation);
 
 	VkBuffer vBuffer;
-	VkDeviceMemory vMemory;
-	vBufferSuccess = createBuffer(vSize,
+	VmaAllocation vAllocation;
+	vBufferSuccess = createBuffer(vSize, 
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-		{ VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT },
-		vBuffer,
-		vMemory);
+		VMA_MEMORY_USAGE_GPU_ONLY, vBuffer, vAllocation);
 	VkBuffer iBuffer;
-	VkDeviceMemory iMemory;
+	VmaAllocation iAllocation;
 	iBufferSuccess = createBuffer(iSize,
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-		{ VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT },
-		iBuffer,
-		iMemory);
+		VMA_MEMORY_USAGE_GPU_ONLY, iBuffer, iAllocation);
 	if (!vBufferSuccess || !iBufferSuccess) {
 		return false;
 	}
@@ -1278,16 +1260,14 @@ bool VulkanEnv::createVertexBufferIndice(const std::vector<const MeshInput*>& in
 	}
 
 	vkFreeCommandBuffers(device, commandPool, 1, &copyCmd);
-	vkDestroyBuffer(device, stagingVBuffer, nullptr);
-	vkFreeMemory(device, stagingVBufferMemory, nullptr);
-	vkDestroyBuffer(device, stagingIBuffer, nullptr);
-	vkFreeMemory(device, stagingIBufferMemory, nullptr);
+	vmaDestroyBuffer(vmaAllocator, stagingVBuffer, stagingVBufferAllocation);
+	vmaDestroyBuffer(vmaAllocator, stagingIBuffer, stagingIBufferAllocation);
 
 	vertexBuffer.buffer.push_back(vBuffer);
 	vertexBuffer.offset.push_back(0);
-	vertexBuffer.memory.push_back(vMemory);
+	vertexBuffer.allocation.push_back(vAllocation);
 	indexBuffer.buffer = iBuffer;
-	indexBuffer.memory = iMemory;
+	indexBuffer.allocation = iAllocation;
 	return true;
 }
 
@@ -1307,14 +1287,12 @@ bool VulkanEnv::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags flags,
 bool VulkanEnv::createUniformBuffer() {
 	VkDeviceSize size = sizeof(UniformBufferData);
 	uniformBuffer.resize(swapchainImage.size());
-	uniformBufferMemory.resize(swapchainImage.size());
+	uniformBufferAllocation.resize(swapchainImage.size());
 
 	for (auto i = 0; i < swapchainImage.size(); ++i) {
-		if (!createBuffer(size,
+		if (!createBuffer(size, 
 			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-			{ VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT },
-			uniformBuffer[i],
-			uniformBufferMemory[i])) {
+			VMA_MEMORY_USAGE_CPU_TO_GPU, uniformBuffer[i], uniformBufferAllocation[i])) {
 			return false;
 		}
 	}
@@ -1572,11 +1550,9 @@ void VulkanEnv::destroy() {
 	}
 	destroySwapchain();
 	for (auto i = 0; i < vertexBuffer.buffer.size(); ++i) {
-		vkDestroyBuffer(device, vertexBuffer.buffer[i], nullptr);
-		vkFreeMemory(device, vertexBuffer.memory[i], nullptr);
+		vmaDestroyBuffer(vmaAllocator, vertexBuffer.buffer[i], vertexBuffer.allocation[i]);
 	}
-	vkDestroyBuffer(device, indexBuffer.buffer, nullptr);
-	vkFreeMemory(device, indexBuffer.memory, nullptr);
+	vmaDestroyBuffer(vmaAllocator, indexBuffer.buffer, indexBuffer.allocation);
 	vkDestroyFence(device, fenceVertexIndexCopy, nullptr);
 	for (auto i = 0; i < imageSet.image.size(); ++i) {
 		vkDestroyImageView(device, imageSet.view[i], nullptr);
@@ -1592,6 +1568,7 @@ void VulkanEnv::destroy() {
 	for (auto& layout : descriptorSetLayout) {
 		vkDestroyDescriptorSetLayout(device, layout, nullptr);
 	}
+	vmaDestroyAllocator(vmaAllocator);
 	vkDestroyDevice(device, nullptr);
 	vkDestroySurfaceKHR(instance, surface, nullptr);
 	vkDestroyInstance(instance, nullptr);
@@ -1612,8 +1589,7 @@ void VulkanEnv::destroySwapchain() {
 	vkFreeMemory(device, msaaColorImageMemory, nullptr);
 	for (auto i = 0; i < swapchainImageView.size(); ++i) {
 		vkDestroyImageView(device, swapchainImageView[i], nullptr);
-		vkDestroyBuffer(device, uniformBuffer[i], nullptr);
-		vkFreeMemory(device, uniformBufferMemory[i], nullptr);
+		vmaDestroyBuffer(vmaAllocator, uniformBuffer[i], uniformBufferAllocation[i]);
 	}
 	for (auto pool : descriptorPool) {
 		vkDestroyDescriptorPool(device, pool, nullptr);
@@ -1661,9 +1637,9 @@ bool VulkanEnv::updateUniformBuffer() {
 bool VulkanEnv::updateUniformBuffer(const uint32_t imageIndex) {
 	const auto& uniform = renderingData->getUniform();
 	void* buffer;
-	vkMapMemory(device, uniformBufferMemory[imageIndex], 0, sizeof(uniform), 0, &buffer);
+	vmaMapMemory(vmaAllocator, uniformBufferAllocation[imageIndex], &buffer);
 	memcpy(buffer, &uniform, sizeof(uniform));
-	vkUnmapMemory(device, uniformBufferMemory[imageIndex]);
+	vmaUnmapMemory(vmaAllocator, uniformBufferAllocation[imageIndex]);
 	return true;
 }
 
