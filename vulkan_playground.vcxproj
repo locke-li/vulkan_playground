@@ -75,7 +75,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\_lib\stb;C:\VulkanSDK\1.2.135.0\Include;C:\_lib\glm\glm;C:\_lib\glfw-3.3.2.bin.WIN64\include;C:\_lib\tinyobjloader;C:\_lib\tinygltf;$(IncludePath)</IncludePath>
+    <IncludePath>C:\_lib\stb;C:\VulkanSDK\1.2.135.0\Include;C:\_lib\glm\glm;C:\_lib\glfw-3.3.2.bin.WIN64\include;C:\_lib\tinyobjloader;C:\_lib\tinygltf;C:\_lib\VulkanMemoryAllocator\src;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
@@ -162,6 +162,10 @@
     <None Include="_input" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="lib\stb_image_impl.cpp" />
+    <ClCompile Include="lib\tiny_gltf_loader_impl.cpp" />
+    <ClCompile Include="lib\tiny_obj_loader_impl.cpp" />
+    <ClCompile Include="lib\vma_impl.cpp" />
     <ClCompile Include="src\ImageInput.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\MaterialInput.cpp" />
