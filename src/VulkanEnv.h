@@ -96,6 +96,7 @@ private:
 	std::vector<VkDeviceMemory> uniformBufferMemory;
 	std::vector<std::vector<VkDescriptorSet>> descriptorSet;
 	std::vector<VkDescriptorPool> descriptorPool;
+	std::vector<VkDescriptorPool> descriptorPoolFree;
 	VkImage msaaColorImage;
 	VkImageView msaaColorImageView;
 	VkDeviceMemory msaaColorImageMemory;

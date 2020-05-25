@@ -1323,11 +1323,13 @@ bool VulkanEnv::createUniformBuffer() {
 
 bool VulkanEnv::prepareDescriptor() {
 	descriptorPool.resize(uniformBuffer.size());
+	descriptorPoolFree.reserve(uniformBuffer.size());
 	descriptorSet.resize(uniformBuffer.size());
 	for (auto& pool : descriptorPool) {
 		if (!createDescriptorPool(0, pool)) {
 			return false;
 		}
+		descriptorPoolFree.push_back(pool);
 	}
 	return true;
 }
@@ -1612,7 +1614,9 @@ void VulkanEnv::destroySwapchain() {
 		vkDestroyImageView(device, swapchainImageView[i], nullptr);
 		vkDestroyBuffer(device, uniformBuffer[i], nullptr);
 		vkFreeMemory(device, uniformBufferMemory[i], nullptr);
-		vkDestroyDescriptorPool(device, descriptorPool[i], nullptr);
+	}
+	for (auto pool : descriptorPool) {
+		vkDestroyDescriptorPool(device, pool, nullptr);
 	}
 	vkDestroySwapchainKHR(device, swapchain, nullptr);
 }
@@ -1667,16 +1671,16 @@ bool VulkanEnv::updateUniformBuffer(const uint32_t imageIndex) {
 void VulkanEnv::releaseDescriptorPool(VkDescriptorPool pool) {
 	if (pool == nullptr) return;
 	vkResetDescriptorPool(device, pool, 0);
-	descriptorPool.push_back(pool);
+	descriptorPoolFree.push_back(pool);
 }
 
 bool VulkanEnv::requestDescriptorPool(int requirement, VkDescriptorPool& pool) {
 	//TODO check requirement & create if no matching one exists
-	if (descriptorPool.empty()) {
+	if (descriptorPoolFree.empty()) {
 		return createDescriptorPool(requirement, pool);
 	}
-	pool = descriptorPool.back();
-	descriptorPool.pop_back();
+	pool = descriptorPoolFree.back();
+	descriptorPoolFree.pop_back();
 	return true;
 }
 
