@@ -437,10 +437,10 @@ bool VulkanEnv::createMsaaColorBuffer() {
 	info.queueFamilyIndexCount = 0;
 	info.pQueueFamilyIndices = nullptr;
 
-	if (!createImage(info, msaaColorImage, msaaColorImageMemory)) {
+	if (!createImage(info, msaaColorBuffer.image, msaaColorBuffer.imageAllocation)) {
 		return false;
 	}
-	if (!createImageView(device, msaaColorImage, swapchainFormat.format, VK_IMAGE_ASPECT_COLOR_BIT, 1, msaaColorImageView)) {
+	if (!createImageView(device, msaaColorBuffer.image, swapchainFormat.format, VK_IMAGE_ASPECT_COLOR_BIT, 1, msaaColorBuffer.view)) {
 		return false;
 	}
 	return true;
@@ -468,7 +468,7 @@ bool VulkanEnv::createDepthBuffer() {
 	info.samples = msaaSample;
 	info.queueFamilyIndexCount = 0;
 	info.pQueueFamilyIndices = nullptr;
-	if (!createImage(info, depthBuffer.image, depthBuffer.imageMemory)) {
+	if (!createImage(info, depthBuffer.image, depthBuffer.imageAllocation)) {
 		return false;
 	}
 	if (!createImageView(device, depthBuffer.image, depthBuffer.format, VK_IMAGE_ASPECT_DEPTH_BIT, 1, depthBuffer.view)) {
@@ -837,7 +837,7 @@ bool VulkanEnv::createFrameBuffer() {
 			info.attachmentCount = 2;
 		}
 		else {
-			attachments[2] = msaaColorImageView;
+			attachments[2] = msaaColorBuffer.view;
 			info.attachmentCount = 3;
 		}
 
@@ -848,25 +848,10 @@ bool VulkanEnv::createFrameBuffer() {
 	return true;
 }
 
-bool VulkanEnv::createImage(const VkImageCreateInfo& info, VkImage& image, VkDeviceMemory& imageMemory) {
-	if (vkCreateImage(device, &info, nullptr, &image) != VK_SUCCESS) {
-		return false;
-	}
-
-	VkMemoryRequirements memRequirement;
-	vkGetImageMemoryRequirements(device, image, &memRequirement);
-	VkMemoryAllocateInfo memInfo;
-	memInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	memInfo.pNext = nullptr;
-	memInfo.allocationSize = memRequirement.size;
-	if (!findMemoryType(memRequirement.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &memInfo.memoryTypeIndex) ||
-		vkAllocateMemory(device, &memInfo, nullptr, &imageMemory) != VK_SUCCESS) {
-		return false;
-	}
-	if (vkBindImageMemory(device, image, imageMemory, 0) != VK_SUCCESS) {
-		return false;
-	}
-	return true;
+bool VulkanEnv::createImage(const VkImageCreateInfo& info, VkImage& image, VmaAllocation& allocation) {
+	VmaAllocationCreateInfo allocInfo{};
+	allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+	return vmaCreateImage(vmaAllocator, &info, &allocInfo, &image, &allocation, nullptr) == VK_SUCCESS;
 }
 
 bool VulkanEnv::createTextureImage(const std::vector<ImageInput>& textureList) {
@@ -877,19 +862,19 @@ bool VulkanEnv::createTextureImage(const std::vector<ImageInput>& textureList) {
 		}
 		auto size = texture.getByteSize();
 		VkBuffer stagingBuffer;
-		VmaAllocation stagingBufferMemory;
-		if (!createStagingBuffer(size, stagingBuffer, stagingBufferMemory)) {
+		VmaAllocation stagingBufferAllocation;
+		if (!createStagingBuffer(size, stagingBuffer, stagingBufferAllocation)) {
 			return false;
 		}
 
 		void* buffer;
-		vmaMapMemory(vmaAllocator, stagingBufferMemory, &buffer);
+		vmaMapMemory(vmaAllocator, stagingBufferAllocation, &buffer);
 		memcpy(buffer, texture.pixel(), size);
-		vmaUnmapMemory(vmaAllocator, stagingBufferMemory);
+		vmaUnmapMemory(vmaAllocator, stagingBufferAllocation);
 
 		ImageOption option = { texture.getMipLevel(), VK_FORMAT_R8G8B8A8_SRGB };
 		VkImage image;
-		VkDeviceMemory imageMemory;
+		VmaAllocation imageAllocation;
 		VkImageCreateInfo info;
 		info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 		info.flags = 0;
@@ -917,10 +902,10 @@ bool VulkanEnv::createTextureImage(const std::vector<ImageInput>& textureList) {
 		info.samples = VK_SAMPLE_COUNT_1_BIT;
 		info.queueFamilyIndexCount = 0;
 		info.pQueueFamilyIndices = nullptr;
-		createImage(info, image, imageMemory);
+		createImage(info, image, imageAllocation);
 		imageSet.image.push_back(image);
 		imageSet.option.push_back(std::move(option));
-		imageSet.memory.push_back(imageMemory);
+		imageSet.allocation.push_back(imageAllocation);
 
 		VkCommandBuffer cmd;
 		allocateCommandBuffer(commandPool, 1, &cmd);
@@ -944,7 +929,7 @@ bool VulkanEnv::createTextureImage(const std::vector<ImageInput>& textureList) {
 		submitCommand(&cmd, 1, graphicsQueue, fenceImageCopy);
 		vkWaitForFences(device, 1, &fenceImageCopy, VK_TRUE, UINT64_MAX);
 
-		vmaDestroyBuffer(vmaAllocator, stagingBuffer, stagingBufferMemory);
+		vmaDestroyBuffer(vmaAllocator, stagingBuffer, stagingBufferAllocation);
 	}
 	return true;
 }
@@ -1553,8 +1538,7 @@ void VulkanEnv::destroy() {
 	vkDestroyFence(device, fenceVertexIndexCopy, nullptr);
 	for (auto i = 0; i < imageSet.image.size(); ++i) {
 		vkDestroyImageView(device, imageSet.view[i], nullptr);
-		vkDestroyImage(device, imageSet.image[i], nullptr);
-		vkFreeMemory(device, imageSet.memory[i], nullptr);
+		vmaDestroyImage(vmaAllocator, imageSet.image[i], imageSet.allocation[i]);
 	}
 	for (const auto& sampler : imageSet.sampler) {
 		vkDestroySampler(device, sampler, nullptr);
@@ -1579,11 +1563,9 @@ void VulkanEnv::destroySwapchain() {
 	vkDestroyPipeline(device, graphicsPipeline, nullptr);
 	vkDestroyRenderPass(device, renderPass, nullptr);
 	vkDestroyImageView(device, depthBuffer.view, nullptr);
-	vkDestroyImage(device, depthBuffer.image, nullptr);
-	vkFreeMemory(device, depthBuffer.imageMemory, nullptr);
-	vkDestroyImageView(device, msaaColorImageView, nullptr);
-	vkDestroyImage(device, msaaColorImage, nullptr);
-	vkFreeMemory(device, msaaColorImageMemory, nullptr);
+	vmaDestroyImage(vmaAllocator, depthBuffer.image, depthBuffer.imageAllocation);
+	vkDestroyImageView(device, msaaColorBuffer.view, nullptr);
+	vmaDestroyImage(vmaAllocator, msaaColorBuffer.image, msaaColorBuffer.imageAllocation);
 	for (auto i = 0; i < swapchainImageView.size(); ++i) {
 		vkDestroyImageView(device, swapchainImageView[i], nullptr);
 		vmaDestroyBuffer(vmaAllocator, uniformBuffer[i], uniformBufferAllocation[i]);

@@ -40,9 +40,15 @@ struct DrawInfo {
 
 struct DepthBuffer {
 	VkImage image;
-	VkDeviceMemory imageMemory;
+	VmaAllocation imageAllocation;
 	VkImageView view;
 	VkFormat format;
+};
+
+struct MsaaColorBuffer {
+	VkImage image;
+	VmaAllocation imageAllocation;
+	VkImageView view;
 };
 
 struct VertexBuffer {
@@ -69,7 +75,7 @@ struct ImageSet {
 	std::vector<VkImage> image;
 	std::vector<ImageOption> option;
 	std::vector<VkImageView> view;
-	std::vector<VkDeviceMemory> memory;
+	std::vector<VmaAllocation> allocation;
 	std::vector<VkSampler> sampler;
 };
 
@@ -100,9 +106,6 @@ private:
 	std::vector<std::vector<VkDescriptorSet>> descriptorSet;
 	std::vector<VkDescriptorPool> descriptorPool;
 	std::vector<VkDescriptorPool> descriptorPoolFree;
-	VkImage msaaColorImage;
-	VkImageView msaaColorImageView;
-	VkDeviceMemory msaaColorImageMemory;
 	//TODO use pipeline cache
 	std::vector<VkDescriptorSetLayout> descriptorSetLayout;
 	VkRenderPass renderPass;
@@ -115,6 +118,7 @@ private:
 	IndexBuffer indexBuffer;
 	ImageSet imageSet;
 	DepthBuffer depthBuffer;
+	MsaaColorBuffer msaaColorBuffer;
 
 	uint32_t maxFrameInFlight;
 	std::vector<InFlightFrame> inFlightFrame;
@@ -139,7 +143,7 @@ private:
 	bool findDepthFormat(VkFormat* format);
 	bool createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VmaMemoryUsage allocUsage, VkBuffer& buffer, VmaAllocation& allocation);
 	bool createStagingBuffer(VkDeviceSize size, VkBuffer& buffer, VmaAllocation& allocation);
-	bool createImage(const VkImageCreateInfo& info, VkImage& image, VkDeviceMemory& imageMemory);
+	bool createImage(const VkImageCreateInfo& info, VkImage& image, VmaAllocation& allocation);
 	bool cmdTransitionImageLayout(VkCommandBuffer cmd, VkImage image, const ImageOption& option, VkImageLayout oldLyaout, VkImageLayout newLayout);
 	void cmdCopyImage(VkCommandBuffer cmd, VkBuffer src, VkImage dst, uint32_t width, uint32_t height, uint32_t mipLevel);
 	bool cmdGenerateTextureMipmap(VkCommandBuffer cmd, VkImage image, const ImageOption& option, uint32_t width, uint32_t height);
