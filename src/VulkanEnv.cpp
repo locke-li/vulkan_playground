@@ -922,20 +922,26 @@ bool VulkanEnv::createTextureImage(const std::vector<ImageInput>& textureList) {
 		imageSet.option.push_back(std::move(option));
 		imageSet.memory.push_back(imageMemory);
 
-		//TODO merge command buffer
-		std::array<VkCommandBuffer, 3> cmd;
-		allocateCommandBuffer(commandPool, static_cast<uint32_t>(cmd.size()), cmd.data());
-		transitionImageLayout(image, option, info.initialLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, cmd[0]);
-		copyImage(stagingBuffer, image, texture.getWidth(), texture.getHeight(), 0, cmd[1]);
+		VkCommandBuffer cmd;
+		allocateCommandBuffer(commandPool, 1, &cmd);
+		if (!beginCommand(cmd, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)) {
+			return false;
+		}
+		cmdTransitionImageLayout(cmd, image, option, info.initialLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+		cmdCopyImage(cmd, stagingBuffer, image, texture.getWidth(), texture.getHeight(), 0);
 		if (texture.shouldGenerateMipmap()) {
-			generateTextureMipmap(image, option, texture.getWidth(), texture.getHeight(), cmd[2]);
+			cmdGenerateTextureMipmap(cmd, image, option, texture.getWidth(), texture.getHeight());
 		}
 		else {
-			transitionImageLayout(image, option, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, cmd[2]);
+			cmdTransitionImageLayout(cmd, image, option, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		}
+
+		if (vkEndCommandBuffer(cmd) != VK_SUCCESS) {
+			return false;
 		}
 
 		vkResetFences(device, 1, &fenceImageCopy);
-		submitCommand(cmd.data(), static_cast<uint32_t>(cmd.size()), graphicsQueue, fenceImageCopy);
+		submitCommand(&cmd, 1, graphicsQueue, fenceImageCopy);
 		vkWaitForFences(device, 1, &fenceImageCopy, VK_TRUE, UINT64_MAX);
 
 		vmaDestroyBuffer(vmaAllocator, stagingBuffer, stagingBufferMemory);
@@ -943,15 +949,13 @@ bool VulkanEnv::createTextureImage(const std::vector<ImageInput>& textureList) {
 	return true;
 }
 
-bool VulkanEnv::transitionImageLayout(VkImage image, const ImageOption& option, VkImageLayout oldLayout, VkImageLayout newLayout, VkCommandBuffer cmd) {
+bool VulkanEnv::cmdTransitionImageLayout(VkCommandBuffer cmd, VkImage image, const ImageOption& option, VkImageLayout oldLayout, VkImageLayout newLayout) {
 	VkFormatProperties properties;
 	vkGetPhysicalDeviceFormatProperties(physicalDevice, option.format, &properties);
 	if ((properties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT) == 0) {
 		return false;
 	}
-	if (!beginCommand(cmd, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)) {
-		return false;
-	}
+	
 	VkImageMemoryBarrier barrier;
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 	barrier.pNext = nullptr;
@@ -1000,14 +1004,10 @@ bool VulkanEnv::transitionImageLayout(VkImage image, const ImageOption& option, 
 		0, nullptr,
 		1, &barrier);
 
-	return vkEndCommandBuffer(cmd) == VK_SUCCESS;
+	return true;
 }
 
-bool VulkanEnv::copyImage(VkBuffer src, VkImage dst, uint32_t width, uint32_t height, uint32_t mipLevel, VkCommandBuffer cmd) {
-	if (!beginCommand(cmd, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)) {
-		return false;
-	}
-
+void VulkanEnv::cmdCopyImage(VkCommandBuffer cmd, VkBuffer src, VkImage dst, uint32_t width, uint32_t height, uint32_t mipLevel) {
 	VkBufferImageCopy copy;
 	copy.bufferOffset = 0;
 	copy.bufferRowLength = 0;
@@ -1019,15 +1019,9 @@ bool VulkanEnv::copyImage(VkBuffer src, VkImage dst, uint32_t width, uint32_t he
 	copy.imageSubresource.baseArrayLayer = 0;
 	copy.imageSubresource.layerCount = 1;
 	vkCmdCopyBufferToImage(cmd, src, dst, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
-
-	return vkEndCommandBuffer(cmd) == VK_SUCCESS;
 }
 
-bool VulkanEnv::generateTextureMipmap(VkImage image, const ImageOption& option, uint32_t width, uint32_t height, VkCommandBuffer cmd) {
-
-	if (!beginCommand(cmd, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)) {
-		return false;
-	}
+bool VulkanEnv::cmdGenerateTextureMipmap(VkCommandBuffer cmd, VkImage image, const ImageOption& option, uint32_t width, uint32_t height) {
 	VkImageMemoryBarrier barrier;
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 	barrier.pNext = nullptr;

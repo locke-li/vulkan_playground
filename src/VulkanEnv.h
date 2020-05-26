@@ -140,9 +140,9 @@ private:
 	bool createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VmaMemoryUsage allocUsage, VkBuffer& buffer, VmaAllocation& allocation);
 	bool createStagingBuffer(VkDeviceSize size, VkBuffer& buffer, VmaAllocation& allocation);
 	bool createImage(const VkImageCreateInfo& info, VkImage& image, VkDeviceMemory& imageMemory);
-	bool transitionImageLayout(VkImage image, const ImageOption& option, VkImageLayout oldLyaout, VkImageLayout newLayout, VkCommandBuffer cmd);
-	bool copyImage(VkBuffer src, VkImage dst, uint32_t width, uint32_t height, uint32_t mipLevel, VkCommandBuffer cmd);
-	bool generateTextureMipmap(VkImage image, const ImageOption& option, uint32_t width, uint32_t height, VkCommandBuffer cmd);
+	bool cmdTransitionImageLayout(VkCommandBuffer cmd, VkImage image, const ImageOption& option, VkImageLayout oldLyaout, VkImageLayout newLayout);
+	void cmdCopyImage(VkCommandBuffer cmd, VkBuffer src, VkImage dst, uint32_t width, uint32_t height, uint32_t mipLevel);
+	bool cmdGenerateTextureMipmap(VkCommandBuffer cmd, VkImage image, const ImageOption& option, uint32_t width, uint32_t height);
 	void releaseDescriptorPool(VkDescriptorPool pool);
 	bool requestDescriptorPool(int requirement, VkDescriptorPool& pool);
 	bool createDescriptorPool(int requirement, VkDescriptorPool& pool);
