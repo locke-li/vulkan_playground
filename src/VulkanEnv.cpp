@@ -548,6 +548,7 @@ bool VulkanEnv::createRenderPass() {
 	renderPassInfo.pDependencies = &dependency;
 
 	VkAttachmentDescription attachments[3];
+	renderPassInfo.pAttachments = attachments;
 	if (msaaSample != VK_SAMPLE_COUNT_1_BIT) {
 		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 		colorAttachmentRef.attachment = 2;
@@ -570,13 +571,11 @@ bool VulkanEnv::createRenderPass() {
 		attachments[1] = depthAttachment;
 		attachments[2] = colorAttachment;
 		renderPassInfo.attachmentCount = 3;
-		renderPassInfo.pAttachments = attachments;
 	}
 	else {
 		attachments[0] = colorAttachment;
 		attachments[1] = depthAttachment;
 		renderPassInfo.attachmentCount = 2;
-		renderPassInfo.pAttachments = attachments;
 	}
 
 	return vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) == VK_SUCCESS;
@@ -830,15 +829,16 @@ bool VulkanEnv::createFrameBuffer() {
 		info.width = swapchainExtent.width;
 		info.height = swapchainExtent.height;
 		info.layers = 1;
+		VkImageView attachments[3];
+		attachments[0] = swapchainImageView[i];
+		attachments[1] = depthBuffer.view;
+		info.pAttachments = attachments;
 		if (msaaSample == VK_SAMPLE_COUNT_1_BIT) {
-			VkImageView attachments[] = { swapchainImageView[i] , depthBuffer.view };
 			info.attachmentCount = 2;
-			info.pAttachments = attachments;
 		}
 		else {
-			VkImageView attachments[] = { swapchainImageView[i] , depthBuffer.view, msaaColorImageView };
+			attachments[2] = msaaColorImageView;
 			info.attachmentCount = 3;
-			info.pAttachments = attachments;
 		}
 
 		if (vkCreateFramebuffer(device, &info, nullptr, &swapchainFramebuffer[i]) != VK_SUCCESS) {
@@ -1489,20 +1489,18 @@ bool VulkanEnv::setupCommandBuffer(const uint32_t index, const uint32_t imageInd
 	renderPassBegin.renderPass = renderPass;
 	renderPassBegin.renderArea.offset = { 0, 0 };
 	renderPassBegin.renderArea.extent = swapchainExtent;
+	VkClearValue clearColor[3];
+	renderPassBegin.pClearValues = clearColor;
 	if (msaaSample == VK_SAMPLE_COUNT_1_BIT) {
-		std::array<VkClearValue, 2> clearColor;
 		clearColor[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
 		clearColor[1].depthStencil = { 1.0f, 0 };
-		renderPassBegin.clearValueCount = static_cast<uint32_t>(clearColor.size());
-		renderPassBegin.pClearValues = clearColor.data();
+		renderPassBegin.clearValueCount = 2;
 	}
 	else {
-		std::array<VkClearValue, 3> clearColor;
 		clearColor[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
 		clearColor[1].depthStencil = { 1.0f, 0 };
 		clearColor[2].color = { 0.0f, 0.0f, 0.0f, 1.0f };
-		renderPassBegin.clearValueCount = static_cast<uint32_t>(clearColor.size());
-		renderPassBegin.pClearValues = clearColor.data();
+		renderPassBegin.clearValueCount = 3;
 	}
 
 	vkCmdBeginRenderPass(cmd, &renderPassBegin, VK_SUBPASS_CONTENTS_INLINE);
