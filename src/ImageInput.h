@@ -13,13 +13,15 @@ private:
 	int height;
 	int channel;
 	uint32_t mipLevel;
-	bool perserve;
+	bool preserve;
 	bool mipmap;
 	const int BytePerPixel = 4;
 public:
-	ImageInput(const bool perserve, const bool mipmap);
+	ImageInput(const bool preserve, const bool mipmap);
 	ImageInput(const ImageInput&) = delete;
 	ImageInput(ImageInput&&) = default;
+	ImageInput operator=(const ImageInput&) = delete;
+	ImageInput operator=(ImageInput&&) noexcept;
 	~ImageInput();
 	bool isValid() const;
 	int getWidth() const;

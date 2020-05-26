@@ -3,8 +3,8 @@
 #include <algorithm>
 #include <iostream>
 
-ImageInput::ImageInput(const bool perserve, const bool mipmap)
-	: perserve(perserve)
+ImageInput::ImageInput(const bool preserve, const bool mipmap)
+	: preserve(preserve)
 	, mipmap(mipmap)
 	, mipLevel(1)
 	, channel(0)
@@ -12,7 +12,13 @@ ImageInput::ImageInput(const bool perserve, const bool mipmap)
 	, height(0)
 	, pixelData(nullptr)
 	, byteSize(-1)
-{}
+{
+}
+
+ImageInput ImageInput::operator=(ImageInput&& other) noexcept
+{
+	return ImageInput(std::move(other));
+}
 
 ImageInput::~ImageInput() {
 	release();
@@ -35,7 +41,7 @@ uint32_t ImageInput::getMipLevel() const {
 }
 
 bool ImageInput::preserveData() const {
-	return perserve;
+	return preserve;
 }
 
 bool ImageInput::shouldGenerateMipmap() const {

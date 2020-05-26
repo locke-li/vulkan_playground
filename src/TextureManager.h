@@ -12,5 +12,6 @@ public:
 	std::vector<ImageInput>& getTextureList();
 	int count() const;
 	void releaseNonPreserved();
+	void cleanup();
 };
 

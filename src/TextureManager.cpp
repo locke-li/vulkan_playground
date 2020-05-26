@@ -26,3 +26,12 @@ void TextureManager::releaseNonPreserved() {
 		}
 	}
 }
+
+void TextureManager::cleanup() {
+	auto iter = std::remove_if(textureList.begin(), textureList.end(),
+		[](const ImageInput& tex) {
+			return !tex.preserveData();
+		}
+	);
+	textureList.erase(iter, textureList.end());
+}

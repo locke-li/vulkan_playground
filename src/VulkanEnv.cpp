@@ -15,9 +15,6 @@ enum class PhysicalDeviceScore: uint32_t {
 	QueueFamilyValid = 1000,
 };
 
-const std::vector<const char*> validationLayer = {
-	"VK_LAYER_KHRONOS_validation"
-};
 const std::vector<const char*> extension = {
 	VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
@@ -206,6 +203,10 @@ uint32_t VulkanEnv::getWidth() const {
 
 uint32_t VulkanEnv::getHeight() const {
 	return swapchainExtent.height;
+}
+
+void VulkanEnv::enableValidationLayer(std::vector<const char*>&& layer) {
+	validationLayer = std::move(layer);
 }
 
 void VulkanEnv::onFramebufferResize() noexcept {
@@ -546,6 +547,7 @@ bool VulkanEnv::createRenderPass() {
 	renderPassInfo.dependencyCount = 1;
 	renderPassInfo.pDependencies = &dependency;
 
+	VkAttachmentDescription attachments[3];
 	if (msaaSample != VK_SAMPLE_COUNT_1_BIT) {
 		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 		colorAttachmentRef.attachment = 2;
@@ -564,12 +566,15 @@ bool VulkanEnv::createRenderPass() {
 		colorResolveRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 		subpass.pResolveAttachments = &colorResolveRef;
 
-		VkAttachmentDescription attachments[] = { colorResolve, depthAttachment, colorAttachment };
+		attachments[0] = colorResolve;
+		attachments[1] = depthAttachment;
+		attachments[2] = colorAttachment;
 		renderPassInfo.attachmentCount = 3;
 		renderPassInfo.pAttachments = attachments;
 	}
 	else {
-		VkAttachmentDescription attachments[] = { colorAttachment, depthAttachment };
+		attachments[0] = colorAttachment;
+		attachments[1] = depthAttachment;
 		renderPassInfo.attachmentCount = 2;
 		renderPassInfo.pAttachments = attachments;
 	}

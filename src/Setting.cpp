@@ -1,5 +1,6 @@
 #include "Setting.h"
 #include <fstream>
+#include <sstream>
 
 bool Setting::loadFrom(const std::string& path) {
 	std::ifstream input(path);
@@ -15,15 +16,23 @@ bool Setting::loadFrom(const std::string& path) {
 		++delimIndex;
 		if (key == "model") {
 			miscData.modelPath = std::move(line.substr(delimIndex));
+			continue;
 		}
-		else if (key == "texture") {
+		if (key == "texture") {
 			miscData.texturePath = std::move(line.substr(delimIndex));
+			continue;
 		}
-		else if (key == "vertex_shader") {
+		if (key == "vertex_shader") {
 			miscData.vertexShaderPath = std::move(line.substr(delimIndex));
+			continue;
 		}
-		else if (key == "fragment_shader") {
+		if (key == "fragment_shader") {
 			miscData.fragmentShaderPath = std::move(line.substr(delimIndex));
+			continue;
+		}
+		if (key == "enable_validation_layer") {
+			std::istringstream(line.substr(delimIndex)) >> std::boolalpha >> miscData.enableValidationLayer;
+			continue;
 		}
 		//silently ignores unrecognized
 	}

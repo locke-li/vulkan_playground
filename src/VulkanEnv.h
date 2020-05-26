@@ -79,6 +79,7 @@ private:
 	GLFWwindow* window;
 	const RenderingData* renderingData;
 	const ShaderInput* shader;
+	std::vector<const char*> validationLayer;
 
 	VkInstance instance;
 	VkSurfaceKHR surface;
@@ -161,6 +162,7 @@ public:
 	void setMsaaSample(const uint32_t count) noexcept;
 	uint32_t getWidth() const;
 	uint32_t getHeight() const;
+	void enableValidationLayer(std::vector<const char*>&& layer);
 	void selectPhysicalDevice(const PhysicalDeviceCandidate& candidate);
 	void onFramebufferResize() noexcept;
 	void waitUntilIdle();

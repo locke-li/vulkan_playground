@@ -4,3 +4,5 @@ texture=texture/vibrant-watercolor-flow-texture-background_1017-19544.jpg
 
 vertex_shader=shader/vert_simple_triangle.spv
 fragment_shader=shader/frag_color.spv
+
+enable_validation_layer=true

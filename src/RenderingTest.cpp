@@ -94,6 +94,9 @@ int RenderingTest::mainLoop() {
 	shader.preload();
 	vulkanEnv.setWindow(windowLayer.getWindow());
 	vulkanEnv.setRenderingData(renderingData);
+	if (setting.misc.enableValidationLayer) {
+		vulkanEnv.enableValidationLayer({ "VK_LAYER_KHRONOS_validation" });
+	}
 	vulkanEnv.setShader(shader);
 	vulkanEnv.setMaxFrameInFlight(graphicsSetting.MaxFrameInFlight);
 	vulkanEnv.setUniformSize(renderingData.getUniformSize());

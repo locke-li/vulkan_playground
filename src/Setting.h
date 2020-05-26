@@ -13,6 +13,7 @@ public:
 		std::string texturePath;
 		std::string vertexShaderPath;
 		std::string fragmentShaderPath;
+		bool enableValidationLayer;
 	};
 private:
 	Graphics graphicsData;
