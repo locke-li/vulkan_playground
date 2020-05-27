@@ -1,4 +1,5 @@
 #include "TextureManager.h"
+#include <algorithm>
 
 size_t TextureManager::addTexture(ImageInput&& texture) {
 	auto index = textureList.size();

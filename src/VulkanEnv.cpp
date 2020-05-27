@@ -129,7 +129,7 @@ bool hasStencilComponent(VkFormat format) {
 		format == VK_FORMAT_D16_UNORM_S8_UINT;
 }
 
-bool createShaderModule(const VkDevice device, std::vector<char>&& code, VkShaderModule* shaderModule) {
+bool createShaderModule(const VkDevice device, const std::vector<char>& code, VkShaderModule* shaderModule) {
 	VkShaderModuleCreateInfo info;
 	info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 	info.flags = 0;

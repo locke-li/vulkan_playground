@@ -6,41 +6,41 @@ ShaderInput::ShaderInput(const std::string& vertexPath, const std::string& fragm
 	, fragPath(fragmentPath)
 {}
 
-std::vector<char> ShaderInput::loadFile(const std::string& path) const {
+bool ShaderInput::loadFile(const std::string& path, std::vector<char>& buffer) const {
 	std::ifstream file(path, std::ios::ate | std::ios::binary);
 	if (!file.is_open()) {
-		return std::vector<char>();
+		return false;
 	}
 	auto size = (size_t)file.tellg();
 	//size should be multiples of 4
-	std::vector<char> buffer(size);
+	buffer.resize(size);
 	file.seekg(0);
 	file.read(buffer.data(), size);
 	file.close();
-	return buffer;
+	return true;
 }
 
-std::vector<char> ShaderInput::getVertData() const {
-	return *vertData;
+const std::vector<char>& ShaderInput::getVertData() const {
+	return vertData;
 }
 
-std::vector<char> ShaderInput::getFragData() const {
-	return *fragData;
+const std::vector<char>& ShaderInput::getFragData() const {
+	return fragData;
 }
 
-void ShaderInput::preloadVert() {
-	vertData = std::make_unique<std::vector<char>>(loadFile(vertPath));
+bool ShaderInput::preloadVert() {
+	return !vertPath.empty() && loadFile(vertPath, vertData);
 }
 
-void ShaderInput::preloadFrag() {
-	fragData = std::make_unique<std::vector<char>>(loadFile(fragPath));
+bool ShaderInput::preloadFrag() {
+	return !fragPath.empty() && loadFile(fragPath, fragData);
 }
 
-void ShaderInput::preload() {
-	if (!vertPath.empty()) {
-		preloadVert();
-	}
-	if (!fragPath.empty()) {
-		preloadFrag();
-	}
+bool ShaderInput::preload() {
+	return (vertPath.empty() || preloadVert()) && (fragPath.empty() || preloadFrag());
+}
+
+void ShaderInput::unload() {
+	vertData.resize(0);
+	fragData.resize(0);
 }

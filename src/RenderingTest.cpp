@@ -91,7 +91,7 @@ int RenderingTest::mainLoop() {
 	renderingData.updateCamera(45.0f, WIDTH / (float)HEIGHT, glm::vec3(0.0f, -1.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f));
 	renderingData.setRenderListFiltered(meshManager.getMeshList());
 	ShaderInput shader(setting.misc.vertexShaderPath, setting.misc.fragmentShaderPath);
-	shader.preload();
+	logResult("shader loading", shader.preload());
 	vulkanEnv.setWindow(windowLayer.getWindow());
 	vulkanEnv.setRenderingData(renderingData);
 	vulkanEnv.setMaterialManager(materialManager);
@@ -118,6 +118,7 @@ int RenderingTest::mainLoop() {
 	logResult("create descriptor set layout", vulkanEnv.createDescriptorSetLayout());
 	logResult("create graphics pipeline layout", vulkanEnv.createGraphicsPipelineLayout());
 	logResult("create graphics pipeline", vulkanEnv.createGraphicsPipeline());
+	shader.unload();
 	logResult("create frame buffer", vulkanEnv.createFrameBuffer());
 	logResult("setup fence", vulkanEnv.setupFence());
 	logResult("create command pool", vulkanEnv.createCommandPool());

@@ -8,15 +8,16 @@ class ShaderInput
 private:
 	std::string vertPath;
 	std::string fragPath;
-	std::unique_ptr<std::vector<char>> vertData;
-	std::unique_ptr<std::vector<char>> fragData;
-	std::vector<char> loadFile(const std::string& path) const;
+	std::vector<char> vertData;
+	std::vector<char> fragData;
+	bool loadFile(const std::string& path, std::vector<char>& buffer) const;
 public:
 	ShaderInput(const std::string& vertexPath, const std::string& fragmentPath);
-	std::vector<char> getVertData() const;
-	std::vector<char> getFragData() const;
-	void preloadVert();
-	void preloadFrag();
-	void preload();
+	const std::vector<char>& getVertData() const;
+	const std::vector<char>& getFragData() const;
+	bool preloadVert();
+	bool preloadFrag();
+	bool preload();
+	void unload();
 };
 

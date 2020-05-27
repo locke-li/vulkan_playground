@@ -15,16 +15,25 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="shader\frag_color.glsl">
-      <Filter>Resource Files</Filter>
-    </None>
-    <None Include="shader\vert_simple_triangle.glsl">
-      <Filter>Resource Files</Filter>
-    </None>
     <None Include="README.md">
       <Filter>Resource Files</Filter>
     </None>
     <None Include="_input">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="shader\vert_min.glsl">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="shader\vert_simple.glsl">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="shader\frag_color.glsl">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="shader\frag_pbr.glsl">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="shader\frag_simple.glsl">
       <Filter>Resource Files</Filter>
     </None>
   </ItemGroup>

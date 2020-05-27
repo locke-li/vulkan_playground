@@ -153,12 +153,11 @@
     <None Include="README.md">
       <FileType>Text</FileType>
     </None>
-    <None Include="shader\frag_color.glsl">
-      <FileType>Text</FileType>
-    </None>
-    <None Include="shader\vert_simple_triangle.glsl">
-      <FileType>Text</FileType>
-    </None>
+    <None Include="shader\frag_color.glsl" />
+    <None Include="shader\frag_pbr.glsl" />
+    <None Include="shader\frag_simple.glsl" />
+    <None Include="shader\vert_min.glsl" />
+    <None Include="shader\vert_simple.glsl" />
     <None Include="_input" />
   </ItemGroup>
   <ItemGroup>
