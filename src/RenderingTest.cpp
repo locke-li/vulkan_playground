@@ -89,6 +89,8 @@ int RenderingTest::mainLoop() {
 
 	prepareModel(setting.misc);
 	renderingData.updateCamera(45.0f, WIDTH / (float)HEIGHT, glm::vec3(0.0f, -1.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f));
+	renderingData.addLight({ LightType::Point, 1.0f, 5.0f, glm::vec3(0.0f, -1.5f, 0.0f) });
+	renderingData.updateLight();
 	renderingData.setRenderListFiltered(meshManager.getMeshList());
 	ShaderInput shader(setting.misc.vertexShaderPath, setting.misc.fragmentShaderPath);
 	logResult("shader loading", shader.preload());
@@ -100,7 +102,6 @@ int RenderingTest::mainLoop() {
 	}
 	vulkanEnv.setShader(shader);
 	vulkanEnv.setMaxFrameInFlight(graphicsSetting.MaxFrameInFlight);
-	vulkanEnv.setUniformSize(renderingData.getUniformSize());
 	vulkanEnv.setMsaaSample(graphicsSetting.MSAASample);
 	renderContext.vulkanEnv = &vulkanEnv;
 	renderContext.renderingData = &renderingData;

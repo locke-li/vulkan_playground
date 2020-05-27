@@ -33,6 +33,11 @@ struct InFlightFrame {
 	VkDescriptorPool descriptorPool;
 };
 
+struct Buffer {
+	VkBuffer buffer;
+	VmaAllocation allocation;
+};
+
 struct DrawInfo {
 	int setIndex;
 	const void* constantData;
@@ -102,8 +107,8 @@ private:
 	std::vector<VkImage> swapchainImage;
 	std::vector<VkImageView> swapchainImageView;
 	std::vector<VkFramebuffer> swapchainFramebuffer;
-	std::vector<VkBuffer> uniformBuffer;
-	std::vector<VmaAllocation> uniformBufferAllocation;
+	std::vector<Buffer> uniformBufferMatrix;
+	std::vector<Buffer> uniformBufferLight;
 	std::vector<std::vector<VkDescriptorSet>> descriptorSet;
 	std::vector<VkDescriptorPool> descriptorPool;
 	std::vector<VkDescriptorPool> descriptorPoolFree;
@@ -130,7 +135,6 @@ private:
 	QueueFamily queueFamily;
 	float queuePriority = 1.0;
 	SwapchainSupport swapchainSupport;
-	uint32_t uniformSize;
 	uint32_t targetMsaaSample = 1;
 	VkSampleCountFlagBits msaaSample;
 
@@ -165,7 +169,6 @@ public:
 	void setShader(const ShaderInput& input) noexcept;
 	void setMaxFrameInFlight(const uint32_t value) noexcept;
 	void setPreferedPresentMode(const VkPresentModeKHR mode) noexcept;
-	void setUniformSize(const uint32_t size) noexcept;
 	void setMsaaSample(const uint32_t count) noexcept;
 	uint32_t getWidth() const;
 	uint32_t getHeight() const;
@@ -202,7 +205,8 @@ public:
 
 	bool recreateSwapchain();
 	bool updateUniformBuffer();
-	bool updateUniformBuffer(const uint32_t imageIndex);
+	bool updateUniformBufferMatrix(const uint32_t imageIndex);
+	bool updateUniformBufferLight(const uint32_t imageIndex);
 	bool drawFrame(const RenderingData& renderingData);
 };
 

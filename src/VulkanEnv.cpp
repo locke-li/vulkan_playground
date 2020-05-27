@@ -193,10 +193,6 @@ void VulkanEnv::setPreferedPresentMode(const VkPresentModeKHR mode) noexcept {
 	preferedPresentMode = mode;
 }
 
-void VulkanEnv::setUniformSize(const uint32_t size) noexcept {
-	uniformSize = size;
-}
-
 void VulkanEnv::setMsaaSample(const uint32_t count) noexcept {
 	targetMsaaSample = count;
 }
@@ -586,27 +582,34 @@ bool VulkanEnv::createRenderPass() {
 }
 
 bool VulkanEnv::createDescriptorSetLayout() {
-	VkDescriptorSetLayoutBinding uniform;
-	uniform.binding = 0;
-	uniform.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	uniform.descriptorCount = 1;
-	uniform.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-	uniform.pImmutableSamplers = nullptr;
+	VkDescriptorSetLayoutBinding uniformMatrix;
+	uniformMatrix.binding = 0;
+	uniformMatrix.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	uniformMatrix.descriptorCount = 1;
+	uniformMatrix.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	uniformMatrix.pImmutableSamplers = nullptr;
+
+	VkDescriptorSetLayoutBinding uniformLight;
+	uniformLight.binding = 1;
+	uniformLight.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	uniformLight.descriptorCount = 1;
+	uniformLight.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	uniformLight.pImmutableSamplers = nullptr;
 
 	VkDescriptorSetLayoutBinding sampler;
-	sampler.binding = 1;
+	sampler.binding = 2;
 	sampler.descriptorCount = 1;
 	sampler.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
 	sampler.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 	sampler.pImmutableSamplers = nullptr;
 
-	std::array<VkDescriptorSetLayoutBinding, 2> binding = { uniform, sampler };
+	VkDescriptorSetLayoutBinding binding[]{ uniformMatrix, uniformLight, sampler };
 	VkDescriptorSetLayoutCreateInfo uniformInfo;
 	uniformInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 	uniformInfo.flags = 0;
 	uniformInfo.pNext = nullptr;
-	uniformInfo.bindingCount = static_cast<uint32_t>(binding.size());
-	uniformInfo.pBindings = binding.data();
+	uniformInfo.bindingCount = 3;
+	uniformInfo.pBindings = binding;
 	if (vkCreateDescriptorSetLayout(device, &uniformInfo, nullptr, &descriptorSetLayoutUniform) != VK_SUCCESS) {
 		return false;
 	}
@@ -1288,14 +1291,15 @@ bool VulkanEnv::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags flags,
 }
 
 bool VulkanEnv::createUniformBuffer() {
-	VkDeviceSize size = sizeof(UniformBufferData);
-	uniformBuffer.resize(swapchainImage.size());
-	uniformBufferAllocation.resize(swapchainImage.size());
-
+	uniformBufferMatrix.resize(swapchainImage.size());
+	uniformBufferLight.resize(swapchainImage.size());
 	for (auto i = 0; i < swapchainImage.size(); ++i) {
-		if (!createBuffer(size, 
-			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-			VMA_MEMORY_USAGE_CPU_TO_GPU, uniformBuffer[i], uniformBufferAllocation[i])) {
+		if (!createBuffer(sizeof(MatrixUniformBufferData),
+				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+				VMA_MEMORY_USAGE_CPU_TO_GPU, uniformBufferMatrix[i].buffer, uniformBufferMatrix[i].allocation) ||
+			!createBuffer(sizeof(LightUniformBufferData),
+				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+				VMA_MEMORY_USAGE_CPU_TO_GPU, uniformBufferLight[i].buffer, uniformBufferLight[i].allocation)) {
 			return false;
 		}
 	}
@@ -1303,9 +1307,9 @@ bool VulkanEnv::createUniformBuffer() {
 }
 
 bool VulkanEnv::prepareDescriptor() {
-	descriptorPool.resize(uniformBuffer.size());
-	descriptorPoolFree.reserve(uniformBuffer.size());
-	descriptorSet.resize(uniformBuffer.size());
+	descriptorPool.resize(uniformBufferMatrix.size());
+	descriptorPoolFree.reserve(uniformBufferMatrix.size());
+	descriptorSet.resize(uniformBufferMatrix.size());
 	for (auto& pool : descriptorPool) {
 		if (!createDescriptorPool(0, pool)) {
 			return false;
@@ -1322,11 +1326,11 @@ bool VulkanEnv::createDescriptorPool(int requirement, VkDescriptorPool& pool) {
 	//these determines the pool capacity
 	std::array<VkDescriptorPoolSize, 3> poolSize;
 	poolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	poolSize[0].descriptorCount = 1 + materialCount;
+	poolSize[0].descriptorCount = 2 + materialCount;//matrix + light + per material
 	poolSize[1].type = VK_DESCRIPTOR_TYPE_SAMPLER;
 	poolSize[1].descriptorCount = 1;
 	poolSize[2].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	poolSize[2].descriptorCount = imageSetCount;//TODO
+	poolSize[2].descriptorCount = imageSetCount;
 
 	VkDescriptorPoolCreateInfo info;
 	info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -1366,24 +1370,41 @@ bool VulkanEnv::setupDescriptorSet(int imageIndex, VkDescriptorPool pool) {
 
 	auto maxTextureCountPerMaterial = 3;
 	std::vector<VkWriteDescriptorSet> writeArr;
-	writeArr.reserve(2 + materialLayoutCount * maxTextureCountPerMaterial);
+	writeArr.reserve(3 + materialLayoutCount * maxTextureCountPerMaterial);
 
-	VkDescriptorBufferInfo bufferInfo;
-	bufferInfo.buffer = uniformBuffer[imageIndex];
-	bufferInfo.offset = 0;
-	bufferInfo.range = uniformSize;
-	VkWriteDescriptorSet uniformWrite;
-	uniformWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	uniformWrite.pNext = nullptr;
-	uniformWrite.dstSet = descriptorSetPerSwapchain.back();
-	uniformWrite.dstBinding = 0;
-	uniformWrite.dstArrayElement = 0;
-	uniformWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	uniformWrite.descriptorCount = 1;
-	uniformWrite.pBufferInfo = &bufferInfo;
-	uniformWrite.pImageInfo = nullptr;
-	uniformWrite.pTexelBufferView = nullptr;
-	writeArr.push_back(std::move(uniformWrite));
+	VkDescriptorBufferInfo matrixBufferInfo;
+	matrixBufferInfo.buffer = uniformBufferMatrix[imageIndex].buffer;
+	matrixBufferInfo.offset = 0;
+	matrixBufferInfo.range = sizeof(MatrixUniformBufferData);
+	VkWriteDescriptorSet uniformMatrixWrite;
+	uniformMatrixWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	uniformMatrixWrite.pNext = nullptr;
+	uniformMatrixWrite.dstSet = descriptorSetPerSwapchain.back();
+	uniformMatrixWrite.dstBinding = 0;
+	uniformMatrixWrite.dstArrayElement = 0;
+	uniformMatrixWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	uniformMatrixWrite.descriptorCount = 1;
+	uniformMatrixWrite.pBufferInfo = &matrixBufferInfo;
+	uniformMatrixWrite.pImageInfo = nullptr;
+	uniformMatrixWrite.pTexelBufferView = nullptr;
+	writeArr.push_back(std::move(uniformMatrixWrite));
+
+	VkDescriptorBufferInfo lightBufferInfo;
+	lightBufferInfo.buffer = uniformBufferLight[imageIndex].buffer;
+	lightBufferInfo.offset = 0;
+	lightBufferInfo.range = sizeof(LightUniformBufferData);
+	VkWriteDescriptorSet uniformLightWrite;
+	uniformLightWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	uniformLightWrite.pNext = nullptr;
+	uniformLightWrite.dstSet = descriptorSetPerSwapchain.back();
+	uniformLightWrite.dstBinding = 1;
+	uniformLightWrite.dstArrayElement = 0;
+	uniformLightWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	uniformLightWrite.descriptorCount = 1;
+	uniformLightWrite.pBufferInfo = &lightBufferInfo;
+	uniformLightWrite.pImageInfo = nullptr;
+	uniformLightWrite.pTexelBufferView = nullptr;
+	writeArr.push_back(std::move(uniformLightWrite));
 
 	VkDescriptorImageInfo samplerInfo;
 	samplerInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -1393,7 +1414,7 @@ bool VulkanEnv::setupDescriptorSet(int imageIndex, VkDescriptorPool pool) {
 	samplerWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	samplerWrite.pNext = nullptr;
 	samplerWrite.dstSet = descriptorSetPerSwapchain.back();
-	samplerWrite.dstBinding = 1;
+	samplerWrite.dstBinding = 2;
 	samplerWrite.dstArrayElement = 0;
 	samplerWrite.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
 	samplerWrite.descriptorCount = 1;
@@ -1608,7 +1629,8 @@ void VulkanEnv::destroySwapchain() {
 	vmaDestroyImage(vmaAllocator, msaaColorBuffer.image, msaaColorBuffer.imageAllocation);
 	for (auto i = 0; i < swapchainImageView.size(); ++i) {
 		vkDestroyImageView(device, swapchainImageView[i], nullptr);
-		vmaDestroyBuffer(vmaAllocator, uniformBuffer[i], uniformBufferAllocation[i]);
+		vmaDestroyBuffer(vmaAllocator, uniformBufferMatrix[i].buffer, uniformBufferMatrix[i].allocation);
+		vmaDestroyBuffer(vmaAllocator, uniformBufferLight[i].buffer, uniformBufferLight[i].allocation);
 	}
 	for (auto pool : descriptorPool) {
 		vkDestroyDescriptorPool(device, pool, nullptr);
@@ -1645,20 +1667,29 @@ bool VulkanEnv::recreateSwapchain() {
 }
 
 bool VulkanEnv::updateUniformBuffer() {
-	for (auto i = 0; i < uniformBuffer.size(); ++i) {
-		if (!updateUniformBuffer(i)) {
+	for (auto i = 0; i < uniformBufferMatrix.size(); ++i) {
+		if (!updateUniformBufferMatrix(i) || ! updateUniformBufferLight(i)) {
 			return false;
 		}
 	}
 	return true;
 }
 
-bool VulkanEnv::updateUniformBuffer(const uint32_t imageIndex) {
-	const auto& uniform = renderingData->getUniform();
+bool VulkanEnv::updateUniformBufferMatrix(const uint32_t imageIndex) {
+	const auto& data = renderingData->getMatrixUniform();
 	void* buffer;
-	vmaMapMemory(vmaAllocator, uniformBufferAllocation[imageIndex], &buffer);
-	memcpy(buffer, &uniform, sizeof(uniform));
-	vmaUnmapMemory(vmaAllocator, uniformBufferAllocation[imageIndex]);
+	vmaMapMemory(vmaAllocator, uniformBufferMatrix[imageIndex].allocation, &buffer);
+	memcpy(buffer, &data, sizeof(data));
+	vmaUnmapMemory(vmaAllocator, uniformBufferMatrix[imageIndex].allocation);
+	return true;
+}
+
+bool VulkanEnv::updateUniformBufferLight(const uint32_t imageIndex) {
+	const auto& data = renderingData->getLightUniform();
+	void* buffer;
+	vmaMapMemory(vmaAllocator, uniformBufferLight[imageIndex].allocation, &buffer);
+	memcpy(buffer, &data, sizeof(data));
+	vmaUnmapMemory(vmaAllocator, uniformBufferLight[imageIndex].allocation);
 	return true;
 }
 

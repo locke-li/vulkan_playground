@@ -1,10 +1,10 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
-layout(binding = 0) uniform UniformFrame {
+layout(binding = 0) uniform UniformMatrix {
     mat4 view;
     mat4 proj;
-} ubo;
+} matrix;
 
 layout(push_constant) uniform MeshConstant {
     mat4 model;
@@ -18,7 +18,7 @@ layout(location = 0) out vec3 fragColor;
 layout(location = 1) out vec2 fragTexCoord;
 
 void main() {
-    gl_Position = ubo.proj * ubo.view * pc.model * vec4(position, 1.0);
+    gl_Position = matrix.proj * matrix.view * pc.model * vec4(position, 1.0);
     fragColor = color;
     fragTexCoord = texCoord;
 }

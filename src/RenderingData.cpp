@@ -5,11 +5,11 @@
 #include "gtc/matrix_transform.hpp"
 
 void RenderingData::updateProjection() {
-	uniformData.proj = glm::perspective(glm::radians(cameraFov), windowAspectRatio, 0.05f, 10.0f);
+	matrixData.proj = glm::perspective(glm::radians(cameraFov), windowAspectRatio, 0.05f, 10.0f);
 }
 
 void RenderingData::updateView() {
-	uniformData.view = glm::lookAt(cameraPos, cameraViewCenter, glm::vec3(0.0f, 1.0f, 0.0f));
+	matrixData.view = glm::lookAt(cameraPos, cameraViewCenter, glm::vec3(0.0f, 1.0f, 0.0f));
 }
 
 void RenderingData::setFov(const float fov) {
@@ -34,12 +34,26 @@ void RenderingData::updateCamera(const float fov, const float aspectRatio, const
 	updateProjection();
 }
 
-const UniformBufferData& RenderingData::getUniform() const {
-	return uniformData;
+void RenderingData::addLight(Light&& light) {
+	lightList.push_back(std::move(light));
 }
 
-uint32_t RenderingData::getUniformSize() const {
-	return sizeof(uniformData);
+void RenderingData::updateLight() {
+	const auto& light = lightList[0];
+	lightData.lightPos = glm::vec4(light.pos, light.type);
+	lightData.lightData = glm::vec4(light.intensity, light.falloff, 0.0f, 0.0f);
+}
+
+const std::vector<Light>& RenderingData::getLightList() const {
+	return lightList;
+}
+
+const MatrixUniformBufferData& RenderingData::getMatrixUniform() const {
+	return matrixData;
+}
+
+const LightUniformBufferData& RenderingData::getLightUniform() const {
+	return lightData;
 }
 
 void RenderingData::setRenderListFiltered(const std::vector<MeshInput>& list) {
