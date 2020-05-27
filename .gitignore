@@ -1,5 +1,5 @@
 .vs/
 x64/
-vulkan_playground.cap
 model/
 texture/
+*.spv

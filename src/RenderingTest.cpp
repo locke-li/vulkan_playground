@@ -94,6 +94,7 @@ int RenderingTest::mainLoop() {
 	shader.preload();
 	vulkanEnv.setWindow(windowLayer.getWindow());
 	vulkanEnv.setRenderingData(renderingData);
+	vulkanEnv.setMaterialManager(materialManager);
 	if (setting.misc.enableValidationLayer) {
 		vulkanEnv.enableValidationLayer({ "VK_LAYER_KHRONOS_validation" });
 	}
@@ -124,7 +125,7 @@ int RenderingTest::mainLoop() {
 	textureManager.releaseNonPreserved();
 	logResult("create texture image view", vulkanEnv.createTextureImageView());
 	logResult("create texture sampler", vulkanEnv.createTextureSampler());
-	logResult("create vertex/index buffer", vulkanEnv.createVertexBufferIndice(renderingData.getRenderList(), materialManager));
+	logResult("create vertex/index buffer", vulkanEnv.createVertexBufferIndice(renderingData.getRenderList()));
 	logResult("create uniform buffer", vulkanEnv.createUniformBuffer());
 	logResult("prepare descriptor", vulkanEnv.prepareDescriptor());
 	logResult("allocate swapchain command buffer", vulkanEnv.allocateFrameCommandBuffer());

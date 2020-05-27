@@ -4,10 +4,12 @@
 layout(location = 0) in vec3 color;
 layout(location = 1) in vec2 texCoord;
 layout(set = 0, binding = 1) uniform sampler texSampler;
-layout(set = 1, binding = 0) uniform texture2D tex;
+layout(set = 1, binding = 1) uniform texture2D baseTex;
+layout(set = 1, binding = 2) uniform texture2D metallicRoughnessTex;
+//layout(set = 1, binding = 3) uniform texture2D normalMap;
 
 layout(location = 0) out vec4 outColor;
 
 void main() {
-    outColor = texture(sampler2D(tex, texSampler), texCoord);
+    outColor = texture(sampler2D(baseTex, texSampler), texCoord);
 }

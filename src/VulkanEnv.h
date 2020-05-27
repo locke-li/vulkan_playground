@@ -86,6 +86,7 @@ private:
 	const RenderingData* renderingData;
 	const ShaderInput* shader;
 	std::vector<const char*> validationLayer;
+	const MaterialManager* materialManager;
 
 	VkInstance instance;
 	VkSurfaceKHR surface;
@@ -107,7 +108,8 @@ private:
 	std::vector<VkDescriptorPool> descriptorPool;
 	std::vector<VkDescriptorPool> descriptorPoolFree;
 	//TODO use pipeline cache
-	std::vector<VkDescriptorSetLayout> descriptorSetLayout;
+	VkDescriptorSetLayout descriptorSetLayoutUniform;
+	std::vector<VkDescriptorSetLayout> descriptorSetLayoutMaterial;
 	VkRenderPass renderPass;
 	VkPipelineLayout graphicsPipelineLayout;
 	VkPipeline graphicsPipeline;
@@ -159,6 +161,7 @@ private:
 public:
 	void setWindow(GLFWwindow *window) noexcept;
 	void setRenderingData(const RenderingData& data) noexcept;
+	void setMaterialManager(const MaterialManager&) noexcept;
 	void setShader(const ShaderInput& input) noexcept;
 	void setMaxFrameInFlight(const uint32_t value) noexcept;
 	void setPreferedPresentMode(const VkPresentModeKHR mode) noexcept;
@@ -189,7 +192,7 @@ public:
 	bool createTextureImageView();
 	bool createTextureSampler();
 	bool setupFence();
-	bool createVertexBufferIndice(const std::vector<const MeshInput*>& input, const MaterialManager& materialManager);
+	bool createVertexBufferIndice(const std::vector<const MeshInput*>& input);
 	bool createUniformBuffer();
 	bool prepareDescriptor();
 	bool createCommandPool();

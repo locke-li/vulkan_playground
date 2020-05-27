@@ -237,6 +237,31 @@ bool loadGltfNode(const tinygltf::Model& model, const int nodeIndex, const int* 
 	return true;
 }
 
+void loadGltfMaterial(const tinygltf::Material& mat, ModelLoadingInfo& info, ModelImport::Offset& offset) {
+	MaterialInput material;
+	//PBR material
+	const auto& pbr = mat.pbrMetallicRoughness;
+	material.addValueEntry(glm::make_vec4(pbr.baseColorFactor.data()));
+	material.addValueEntry(glm::vec4{ pbr.metallicFactor, 0.0f, 0.0f, 0.0f });
+	//TODO sampler states
+	if (pbr.baseColorTexture.index > -1) {
+		material.addTextureEntry(mat.pbrMetallicRoughness.baseColorTexture.index + offset.texture);
+	}
+	if (pbr.metallicRoughnessTexture.index > -1) {
+		material.addTextureEntry(mat.pbrMetallicRoughness.metallicRoughnessTexture.index + offset.texture);
+	}
+	if (mat.normalTexture.index > -1) {
+		material.addTextureEntry(mat.normalTexture.index + offset.texture);
+	}
+	if (mat.emissiveTexture.index > -1) {
+		material.addTextureEntry(mat.emissiveTexture.index + offset.texture);
+	}
+	if (mat.occlusionTexture.index > -1) {
+		material.addTextureEntry(mat.occlusionTexture.index + offset.texture);
+	}
+	info.material.addMaterial(std::move(material));
+}
+
 bool ModelImport::loadGltf(const std::string& path, const bool isBinary, ModelLoadingInfo&& info, Offset&& offset) const {
 	tinygltf::Model model;
 	tinygltf::TinyGLTF loader;//TODO should this be reused?
@@ -259,12 +284,7 @@ bool ModelImport::loadGltf(const std::string& path, const bool isBinary, ModelLo
 		std::cout << warning << std::endl;
 	}
 	for (const auto& mat : model.materials) {
-		MaterialInput material;
-		if (mat.pbrMetallicRoughness.baseColorTexture.index > -1) {
-			material.addTextureEntry(mat.pbrMetallicRoughness.baseColorTexture.index + offset.texture);
-		}
-		//TODO add other textures/values
-		info.material.addMaterial(std::move(material));
+		loadGltfMaterial(mat, info, offset);
 	}
 	std::cout << "scene count = " << model.scenes.size() << " default = " << model.defaultScene << std::endl;
 	auto sceneIndex = model.defaultScene > -1 ? model.defaultScene : 0;

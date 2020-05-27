@@ -177,6 +177,10 @@ void VulkanEnv::setRenderingData(const RenderingData& data) noexcept {
 	renderingData = &data;
 }
 
+void VulkanEnv::setMaterialManager(const MaterialManager& material) noexcept {
+	materialManager = &material;
+}
+
 void VulkanEnv::setShader(const ShaderInput& input) noexcept {
 	shader = &input;
 }
@@ -582,8 +586,6 @@ bool VulkanEnv::createRenderPass() {
 }
 
 bool VulkanEnv::createDescriptorSetLayout() {
-	descriptorSetLayout.resize(2);
-
 	VkDescriptorSetLayoutBinding uniform;
 	uniform.binding = 0;
 	uniform.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -605,25 +607,42 @@ bool VulkanEnv::createDescriptorSetLayout() {
 	uniformInfo.pNext = nullptr;
 	uniformInfo.bindingCount = static_cast<uint32_t>(binding.size());
 	uniformInfo.pBindings = binding.data();
-	if (vkCreateDescriptorSetLayout(device, &uniformInfo, nullptr, &descriptorSetLayout[0]) != VK_SUCCESS) {
+	if (vkCreateDescriptorSetLayout(device, &uniformInfo, nullptr, &descriptorSetLayoutUniform) != VK_SUCCESS) {
 		return false;
 	}
 
-	VkDescriptorSetLayoutBinding texture;
-	texture.binding = 0;
-	texture.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	texture.descriptorCount = 1;
-	texture.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-	texture.pImmutableSamplers = nullptr;
+	const auto& matPrototypeList = materialManager->getPrototypeList();
+	descriptorSetLayoutMaterial.resize(matPrototypeList.size());
+	for (auto k = 0; k < matPrototypeList.size(); ++k) {
+		const auto& prototype = matPrototypeList[k];
+		auto textureCount = 3;//TODO prototype.textureCount;
+		std::vector<VkDescriptorSetLayoutBinding> binding(textureCount + 1);
+		VkDescriptorSetLayoutBinding& value = binding[0];
+		value.binding = 0;
+		value.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		value.descriptorCount = 1;
+		value.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+		value.pImmutableSamplers = nullptr;
 
-	VkDescriptorSetLayoutCreateInfo materialInfo;
-	materialInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	materialInfo.flags = 0;
-	materialInfo.pNext = nullptr;
-	materialInfo.bindingCount = 1;
-	materialInfo.pBindings = &texture;
-	if (vkCreateDescriptorSetLayout(device, &materialInfo, nullptr, &descriptorSetLayout[1]) != VK_SUCCESS) {
-		return false;
+		for (auto n = 0; n < textureCount; ++n) {
+			auto m = n + 1;
+			VkDescriptorSetLayoutBinding& texture = binding[m];
+			texture.binding = m;
+			texture.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+			texture.descriptorCount = 1;
+			texture.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+			texture.pImmutableSamplers = nullptr;
+		}
+
+		VkDescriptorSetLayoutCreateInfo materialInfo;
+		materialInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+		materialInfo.flags = 0;
+		materialInfo.pNext = nullptr;
+		materialInfo.bindingCount = static_cast<uint32_t>(binding.size());
+		materialInfo.pBindings = binding.data();
+		if (vkCreateDescriptorSetLayout(device, &materialInfo, nullptr, &descriptorSetLayoutMaterial[k]) != VK_SUCCESS) {
+			return false;
+		}
 	}
 	return true;
 }
@@ -634,12 +653,14 @@ bool VulkanEnv::createGraphicsPipelineLayout() {
 	vertexConstant.size = MeshNode::getConstantSize();
 	vertexConstant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
+	//TODO multiple layout
+	VkDescriptorSetLayout layout[]{ descriptorSetLayoutUniform, descriptorSetLayoutMaterial[0] };
 	VkPipelineLayoutCreateInfo info;
 	info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	info.flags = 0;
 	info.pNext = nullptr;
-	info.setLayoutCount = static_cast<uint32_t>(descriptorSetLayout.size());
-	info.pSetLayouts = descriptorSetLayout.data();
+	info.setLayoutCount = 2;
+	info.pSetLayouts = layout;
 	info.pushConstantRangeCount = 1;
 	info.pPushConstantRanges = &vertexConstant;
 
@@ -1151,7 +1172,7 @@ bool VulkanEnv::createStagingBuffer(VkDeviceSize size, VkBuffer& buffer, VmaAllo
 	return createBuffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY, buffer, allocation);
 }
 
-bool VulkanEnv::createVertexBufferIndice(const std::vector<const MeshInput*>& input, const MaterialManager& materialManager) {
+bool VulkanEnv::createVertexBufferIndice(const std::vector<const MeshInput*>& input) {
 	uint32_t vCount = 0, vSize = 0, iSize = 0;
 	for (const auto& vertexInput : input) {
 		for (const auto& mesh : vertexInput->getMeshList()) {
@@ -1159,9 +1180,7 @@ bool VulkanEnv::createVertexBufferIndice(const std::vector<const MeshInput*>& in
 				indexBuffer.offset.push_back(iSize);
 				indexBuffer.vOffset.push_back(vCount);
 				indexBuffer.iCount.push_back(view.indexCount);
-				const auto& mat = materialManager.getMaterial(view.materialIndex);
-				auto mainTex = mat.getTextureEntry()[0];
-				indexBuffer.drawInfo.push_back(DrawInfo{ mainTex.textureIndex, &mesh.getConstantData() });
+				indexBuffer.drawInfo.push_back(DrawInfo{ view.materialIndex, &mesh.getConstantData() });
 				vSize += view.vertexSize;
 				vCount += view.vertexCount;
 				iSize += view.indexSize;
@@ -1297,14 +1316,17 @@ bool VulkanEnv::prepareDescriptor() {
 }
 
 bool VulkanEnv::createDescriptorPool(int requirement, VkDescriptorPool& pool) {
+	uint32_t imageCount = static_cast<uint32_t>(imageSet.image.size());//TODO this assumes no empty/unset material texture
+	uint32_t materialCount = static_cast<uint32_t>(descriptorSetLayoutMaterial.size());
+	uint32_t imageSetCount = materialCount * 3;//TODO
 	//these determines the pool capacity
 	std::array<VkDescriptorPoolSize, 3> poolSize;
 	poolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	poolSize[0].descriptorCount = 1;
+	poolSize[0].descriptorCount = 1 + materialCount;
 	poolSize[1].type = VK_DESCRIPTOR_TYPE_SAMPLER;
 	poolSize[1].descriptorCount = 1;
 	poolSize[2].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	poolSize[2].descriptorCount = static_cast<uint32_t>(imageSet.image.size());
+	poolSize[2].descriptorCount = imageSetCount;//TODO
 
 	VkDescriptorPoolCreateInfo info;
 	info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -1313,38 +1335,44 @@ bool VulkanEnv::createDescriptorPool(int requirement, VkDescriptorPool& pool) {
 	info.poolSizeCount = static_cast<uint32_t>(poolSize.size());
 	info.pPoolSizes = poolSize.data();
 	//this limits the set count can be allocated
-	info.maxSets = static_cast<uint32_t>(2 + imageSet.image.size());
+	info.maxSets = imageSetCount + 2;
 
 	return vkCreateDescriptorPool(device, &info, nullptr, &pool) == VK_SUCCESS;
-}
+}	 
 
 bool VulkanEnv::setupDescriptorSet(int imageIndex, VkDescriptorPool pool) {
-	std::vector<VkDescriptorSetLayout> layout(1 + imageSet.image.size());
-	layout[layout.size() - 1] = descriptorSetLayout[0];
-	for (auto k = 0; k < imageSet.image.size(); ++k) {
-		layout[k] = descriptorSetLayout[1];
-	}
-	VkDescriptorSetAllocateInfo info;
-	info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	info.pNext = nullptr;
-	info.descriptorPool = pool;
-	info.descriptorSetCount = static_cast<uint32_t>(layout.size());
-	info.pSetLayouts = layout.data();
+	uint32_t materialLayoutCount = static_cast<uint32_t>(descriptorSetLayoutMaterial.size());
+	VkDescriptorSetAllocateInfo info1;
+	info1.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	info1.pNext = nullptr;
+	info1.descriptorPool = pool;
+	info1.descriptorSetCount = 1;
+	info1.pSetLayouts = &descriptorSetLayoutUniform;
+
+	VkDescriptorSetAllocateInfo info2;
+	info2.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	info2.pNext = nullptr;
+	info2.descriptorPool = pool;
+	info2.descriptorSetCount = materialLayoutCount;
+	info2.pSetLayouts = descriptorSetLayoutMaterial.data();
 
 	auto& descriptorSetPerSwapchain = descriptorSet[imageIndex];
-	descriptorSetPerSwapchain.resize(layout.size());
-	auto result = vkAllocateDescriptorSets(device, &info, descriptorSetPerSwapchain.data());
-	if (result != VK_SUCCESS) {
+	descriptorSetPerSwapchain.resize(materialLayoutCount + 1);//TODO reserve? then where to shrink it
+	auto result1 = vkAllocateDescriptorSets(device, &info1, descriptorSetPerSwapchain.data() + materialLayoutCount);
+	auto result2 = vkAllocateDescriptorSets(device, &info2, descriptorSetPerSwapchain.data());
+	if (result1 != VK_SUCCESS || result2 != VK_SUCCESS) {
 		return false;
 	}
 
-	std::vector<VkWriteDescriptorSet> writeArr(2 + imageSet.image.size());
+	auto maxTextureCountPerMaterial = 3;
+	std::vector<VkWriteDescriptorSet> writeArr;
+	writeArr.reserve(2 + materialLayoutCount * maxTextureCountPerMaterial);
 
 	VkDescriptorBufferInfo bufferInfo;
 	bufferInfo.buffer = uniformBuffer[imageIndex];
 	bufferInfo.offset = 0;
 	bufferInfo.range = uniformSize;
-	VkWriteDescriptorSet& uniformWrite = writeArr[writeArr.size() - 1];
+	VkWriteDescriptorSet uniformWrite;
 	uniformWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	uniformWrite.pNext = nullptr;
 	uniformWrite.dstSet = descriptorSetPerSwapchain.back();
@@ -1355,12 +1383,13 @@ bool VulkanEnv::setupDescriptorSet(int imageIndex, VkDescriptorPool pool) {
 	uniformWrite.pBufferInfo = &bufferInfo;
 	uniformWrite.pImageInfo = nullptr;
 	uniformWrite.pTexelBufferView = nullptr;
+	writeArr.push_back(std::move(uniformWrite));
 
 	VkDescriptorImageInfo samplerInfo;
 	samplerInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	samplerInfo.imageView = 0;
 	samplerInfo.sampler = imageSet.sampler[0];
-	VkWriteDescriptorSet& samplerWrite = writeArr[writeArr.size() - 2];
+	VkWriteDescriptorSet samplerWrite;
 	samplerWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	samplerWrite.pNext = nullptr;
 	samplerWrite.dstSet = descriptorSetPerSwapchain.back();
@@ -1371,6 +1400,7 @@ bool VulkanEnv::setupDescriptorSet(int imageIndex, VkDescriptorPool pool) {
 	samplerWrite.pBufferInfo = nullptr;
 	samplerWrite.pImageInfo = &samplerInfo;
 	samplerWrite.pTexelBufferView = nullptr;
+	writeArr.push_back(std::move(samplerWrite));
 
 	std::vector<VkDescriptorImageInfo> imageInfoList(imageSet.image.size());
 	for (auto k = 0; k < imageSet.image.size(); ++k) {
@@ -1378,17 +1408,26 @@ bool VulkanEnv::setupDescriptorSet(int imageIndex, VkDescriptorPool pool) {
 		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		imageInfo.imageView = imageSet.view[k];
 		imageInfo.sampler = 0;
-		VkWriteDescriptorSet& textureWrite = writeArr[k];
-		textureWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		textureWrite.pNext = nullptr;
-		textureWrite.dstSet = descriptorSetPerSwapchain[k];
-		textureWrite.dstBinding = 0;
-		textureWrite.dstArrayElement = 0;
-		textureWrite.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-		textureWrite.descriptorCount = 1;
-		textureWrite.pBufferInfo = nullptr;
-		textureWrite.pImageInfo = &imageInfo;
-		textureWrite.pTexelBufferView = nullptr;
+	}
+
+	const auto& matList = materialManager->getMaterialList();
+	for (auto k = 0; k < matList.size(); ++k) {
+		const auto& mat = matList[k];
+		const auto& texEntry = mat.getTextureEntry();
+		for (auto t = 0; t < texEntry.size(); ++t) {
+			VkWriteDescriptorSet textureWrite;
+			textureWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			textureWrite.pNext = nullptr;
+			textureWrite.dstSet = descriptorSetPerSwapchain[k];
+			textureWrite.dstBinding = t + 1;
+			textureWrite.dstArrayElement = 0;
+			textureWrite.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+			textureWrite.descriptorCount = 1;
+			textureWrite.pBufferInfo = nullptr;
+			textureWrite.pImageInfo = &imageInfoList[texEntry[t].textureIndex];
+			textureWrite.pTexelBufferView = nullptr;
+			writeArr.push_back(std::move(textureWrite));
+		}
 	}
 
 	vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeArr.size()), writeArr.data(), 0, nullptr);
@@ -1546,7 +1585,8 @@ void VulkanEnv::destroy() {
 	vkDestroyFence(device, fenceImageCopy, nullptr);
 	vkDestroyCommandPool(device, commandPool, nullptr);
 	vkDestroyCommandPool(device, commandPoolReset, nullptr);
-	for (auto& layout : descriptorSetLayout) {
+	vkDestroyDescriptorSetLayout(device, descriptorSetLayoutUniform, nullptr);
+	for (auto& layout : descriptorSetLayoutMaterial) {
 		vkDestroyDescriptorSetLayout(device, layout, nullptr);
 	}
 	vmaDestroyAllocator(vmaAllocator);
