@@ -10,8 +10,9 @@ struct MatrixUniformBufferData {
 };
 
 struct LightUniformBufferData {
+	glm::vec4 cameraPos;//(xyz:pos, w:)
 	glm::vec4 lightPos;//(xyz:pos/dir, w:type)
-	glm::vec4 lightData;//(x:intensity, y:falloff, z:,w:)
+	glm::vec4 lightData;//(x:intensity, y:falloff, z:, w:)
 };
 
 enum class LightType : uint8_t {

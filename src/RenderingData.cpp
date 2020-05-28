@@ -42,6 +42,7 @@ void RenderingData::updateLight() {
 	const auto& light = lightList[0];
 	lightData.lightPos = glm::vec4(light.pos, light.type);
 	lightData.lightData = glm::vec4(light.intensity, light.falloff, 0.0f, 0.0f);
+	lightData.cameraPos = glm::vec4(cameraPos, 0.0f);
 }
 
 const std::vector<Light>& RenderingData::getLightList() const {
