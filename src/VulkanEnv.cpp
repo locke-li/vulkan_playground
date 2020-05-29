@@ -1,5 +1,6 @@
 #include "VulkanEnv.h"
 #include "MeshNode.h"
+#include "DebugHelper.hpp"
 #include <unordered_set>
 #include <cstdint>
 #include <algorithm>
@@ -1632,6 +1633,9 @@ void VulkanEnv::destroySwapchain() {
 		vmaDestroyBuffer(vmaAllocator, uniformBufferMatrix[i].buffer, uniformBufferMatrix[i].allocation);
 		vmaDestroyBuffer(vmaAllocator, uniformBufferLight[i].buffer, uniformBufferLight[i].allocation);
 	}
+	for (auto& frame : inFlightFrame) {
+		frame.descriptorPool = nullptr;
+	}
 	for (auto pool : descriptorPool) {
 		vkDestroyDescriptorPool(device, pool, nullptr);
 	}
@@ -1651,18 +1655,17 @@ bool VulkanEnv::recreateSwapchain() {
 	destroySwapchain();
 	querySwapChainSupport(physicalDevice, surface, &swapchainSupport);
 
-	bool result =
-		createSwapchain() &&
-		createSwapchainImageView() &&
-		createMsaaColorBuffer() &&
-		createDepthBuffer() &&
-		createRenderPass() &&
-		createGraphicsPipelineLayout() &&
-		createGraphicsPipeline() &&
-		createFrameBuffer() &&
-		createUniformBuffer() &&
-		prepareDescriptor() &&
-		updateUniformBuffer();
+	bool result = logResult("create swapchain", createSwapchain()) &&
+		logResult("create swapchain image view", createSwapchainImageView()) &&
+		logResult("create msaa color buffer", createMsaaColorBuffer()) &&
+		logResult("create depth buffer", createDepthBuffer()) &&
+		logResult("create render pass", createRenderPass()) &&
+		logResult("create graphics pipeline layout", createGraphicsPipelineLayout()) &&
+		logResult("create graphics pipeline", createGraphicsPipeline()) &&
+		logResult("create framebuffer", createFrameBuffer()) &&
+		logResult("create uniform buffer", createUniformBuffer()) &&
+		logResult("prepare descriptor", prepareDescriptor()) &&
+		logResult("update uniform buffer", updateUniformBuffer());
 	return result;
 }
 

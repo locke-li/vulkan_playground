@@ -13,10 +13,11 @@ static void log(const glm::mat4& mat) {
 	std::cout << "-----" << std::endl;
 }
 
-static void logResult(const char* title, bool result) {
+static bool logResult(const char* title, bool result) {
 	static auto startTime = std::chrono::high_resolution_clock::now();
 
 	auto time = std::chrono::high_resolution_clock::now();
 	auto duration = std::chrono::duration<float, std::chrono::milliseconds::period>(time - startTime).count();
 	std::cout << "[" << result << "][" << duration << "]" << title << "\n";
+	return result;
 }
