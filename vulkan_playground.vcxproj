@@ -156,6 +156,7 @@
     <None Include="shader\frag_color.glsl" />
     <None Include="shader\frag_pbr.glsl" />
     <None Include="shader\frag_simple.glsl" />
+    <None Include="shader\vert_lighting.glsl" />
     <None Include="shader\vert_min.glsl" />
     <None Include="shader\vert_simple.glsl" />
     <None Include="_input" />

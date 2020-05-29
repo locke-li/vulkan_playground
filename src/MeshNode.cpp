@@ -20,20 +20,25 @@ VkVertexInputBindingDescription MeshNode::getBindingDescription() {
 }
 
 std::vector<VkVertexInputAttributeDescription> MeshNode::getAttributeDescription() {
-	std::vector<VkVertexInputAttributeDescription> attribute(3);
+	std::vector<VkVertexInputAttributeDescription> attribute(4);
 	auto& attributePos = attribute[0];
 	attributePos.binding = 0;
 	attributePos.location = 0;
 	attributePos.format = VK_FORMAT_R32G32B32_SFLOAT;//vec3
 	attributePos.offset = offsetof(Vertex, pos);
-	auto& attributeColor = attribute[1];
+	auto& attributeNormal = attribute[1];
+	attributeNormal.binding = 0;
+	attributeNormal.location = 1;
+	attributeNormal.format = VK_FORMAT_R32G32B32_SFLOAT;//vec3
+	attributeNormal.offset = offsetof(Vertex, normal);
+	auto& attributeColor = attribute[2];
 	attributeColor.binding = 0;
-	attributeColor.location = 1;
+	attributeColor.location = 2;
 	attributeColor.format = VK_FORMAT_R32G32B32_SFLOAT;//vec3
 	attributeColor.offset = offsetof(Vertex, color);
-	auto& attributeTexCoord = attribute[2];
+	auto& attributeTexCoord = attribute[3];
 	attributeTexCoord.binding = 0;
-	attributeTexCoord.location = 2;
+	attributeTexCoord.location = 3;
 	attributeTexCoord.format = VK_FORMAT_R32G32_SFLOAT;//vec2
 	attributeTexCoord.offset = offsetof(Vertex, texCoord);
 	return attribute;

@@ -20,12 +20,13 @@ void onFramebufferResize(GLFWwindow* window, int width, int height) {
 }
 
  void RenderingTest::prepareModel(const Setting::Misc& input) {
+	 glm::vec3 noNormal(0.0f);
 	 VertexIndexed tetrahedron = {
 		 {
-			 {{0.0f, -0.577f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
-			 {{0.0f, 0.289f, 0.577f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-			 {{-0.5f, 0.289f, -0.289f}, {0.0f, 1.0f, 0.0f}, {0.5f, 0.0f}},
-			 {{0.5f, 0.289f, -0.289f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}}
+			 {{0.0f, -0.577f, 0.0f}, noNormal, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
+			 {{0.0f, 0.289f, 0.577f}, noNormal, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+			 {{-0.5f, 0.289f, -0.289f}, noNormal, {0.0f, 1.0f, 0.0f}, {0.5f, 0.0f}},
+			 {{0.5f, 0.289f, -0.289f}, noNormal, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}}
 		 },
 		 {
 			 0, 1, 2,
@@ -36,17 +37,18 @@ void onFramebufferResize(GLFWwindow* window, int width, int height) {
 		 0
 	 };
 	 MeshInput inputTetrahedron{ { 0.0f, 0.0f, -1.0f }, { 1.0f, 0.0f, 0.0f, 0.0f }, {1.0f, 1.0f, 1.0f} };
+	 inputTetrahedron.calculateNormal(tetrahedron);
 	 inputTetrahedron.setMesh(std::move(tetrahedron));
 	 VertexIndexed cube = {
 		 {
-			 {{-0.5f, -0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
-			 {{0.5f, -0.5f, 0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-			 {{0.5f, 0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}, {0.5f, 0.0f}},
-			 {{-0.5f, 0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
-			 {{-0.5f, -0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
-			 {{-0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
-			 {{0.5f, 0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.5f, 0.0f}},
-			 {{0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+			 {{-0.5f, -0.5f, 0.5f}, noNormal, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
+			 {{0.5f, -0.5f, 0.5f}, noNormal, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+			 {{0.5f, 0.5f, 0.5f}, noNormal, {0.0f, 1.0f, 0.0f}, {0.5f, 0.0f}},
+			 {{-0.5f, 0.5f, 0.5f}, noNormal, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
+			 {{-0.5f, -0.5f, -0.5f}, noNormal, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
+			 {{-0.5f, 0.5f, -0.5f}, noNormal, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
+			 {{0.5f, 0.5f, -0.5f}, noNormal, {0.0f, 1.0f, 0.0f}, {0.5f, 0.0f}},
+			 {{0.5f, -0.5f, -0.5f}, noNormal, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
 		 },
 		 {
 			 4, 5, 6, 6, 7, 4,//back
@@ -59,6 +61,7 @@ void onFramebufferResize(GLFWwindow* window, int width, int height) {
 		 0
 	 };
 	 MeshInput inputCube{ { 0.0f, 0.0f, -2.0f }, { 1.0f, 0.0f, 0.0f, 0.0f }, { 1.0f, 1.0f, 1.0f } };
+	 inputCube.calculateNormal(cube);
 	 inputCube.setMesh(std::move(cube));
 	 MeshInput inputLoadedModel{ { 0.2f, 0.0f, 0.0f }, glm::quat({0.0f, glm::radians(-45.0f), glm::radians(180.0f)}), {1.0f, 1.0f, 1.0f} };
 	 ModelImport modelImport;
@@ -119,7 +122,8 @@ int RenderingTest::mainLoop() {
 	logResult("create descriptor set layout", vulkanEnv.createDescriptorSetLayout());
 	logResult("create graphics pipeline layout", vulkanEnv.createGraphicsPipelineLayout());
 	logResult("create graphics pipeline", vulkanEnv.createGraphicsPipeline());
-	shader.unload();
+	//TODO if unloaded, how should we reload/unload it when create swapchain
+	//shader.unload();
 	logResult("create frame buffer", vulkanEnv.createFrameBuffer());
 	logResult("setup fence", vulkanEnv.setupFence());
 	logResult("create command pool", vulkanEnv.createCommandPool());

@@ -34,6 +34,7 @@ public:
 	const glm::mat4& getModelMatrix() const;
 	const std::vector<MeshNode>& getMeshList() const;
 	void reserve(size_t size);
+	void calculateNormal(VertexIndexed& data) const;
 	void setMesh(VertexIndexed&& meshData);
 	void setMesh(std::vector<MeshData>&& meshDataList);
 	void updateConstantData();

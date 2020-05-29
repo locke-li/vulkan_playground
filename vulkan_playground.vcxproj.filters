@@ -36,6 +36,9 @@
     <None Include="shader\frag_simple.glsl">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="shader\vert_lighting.glsl">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\ImageInput.cpp">

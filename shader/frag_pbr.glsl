@@ -56,7 +56,8 @@ struct PBR_Data {
     vec3 lightDir;
     vec3 viewDir;
     vec3 normal;
-    vec2 metallicRoughness;
+    float metalness;
+    float roughness;
     vec4 diffuseColor;
 };
 
@@ -87,30 +88,33 @@ float Geometry_Smith(vec3 n, vec3 l, vec3 v, float a) {
 }
 
 vec3 BRDF_Specular(PBR_Data data) {
-    float D = NDF_TRGGX(data.lightDir, data.viewDir, data.normal, data.metallicRoughness.g);
-    vec3 F = Fresnel_Schlick(data.diffuseColor.rgb, data.metallicRoughness.r);
-    float G = Geometry_Smith(data.normal, data.lightDir, data.viewDir, data.metallicRoughness.g);
+    float D = NDF_TRGGX(data.lightDir, data.viewDir, data.normal, data.roughness);
+    vec3 F = Fresnel_Schlick(data.diffuseColor.rgb, data.metalness);
+    float G = Geometry_Smith(data.normal, data.lightDir, data.viewDir, data.roughness);
 
     return D * F * G / (4 * dot(data.lightDir, data.normal) * dot(data.viewDir, data.normal));
 }
 
 vec3 BRDF_Diffuse(PBR_Data data) {
-    return data.diffuseColor.rgb / PI;
+    return data.diffuseColor.rgb;
 }
 
-float calculateSpecularPbr(float metallic) {
-    return metallic;
+float calculateSpecularPbr(float metallic, float roughness) {
+    return metallic * (1 - roughness);
 }
 
 vec3 BRDF(PBR_Data data) {
-    float specularComp = calculateSpecularPbr(data.metallicRoughness.r);
+    float specularComp = calculateSpecularPbr(data.metalness, data.roughness);
     float diffuseComp = 1.0 - specularComp;
     return specularComp * BRDF_Specular(data) + diffuseComp * BRDF_Diffuse(data);
+    //return vec3(diffuseComp);
 }
 
 void main() {
     PBR_Data pbr_data;
-    pbr_data.metallicRoughness = texture(sampler2D(metallicRoughnessTex, texSampler), texCoord).rg;
+    vec4 metallicRoughness = texture(sampler2D(metallicRoughnessTex, texSampler), texCoord);
+    pbr_data.metalness = metallicRoughness.b;
+    pbr_data.roughness = metallicRoughness.g;
     pbr_data.diffuseColor = texture(sampler2D(baseTex, texSampler), texCoord);
     pbr_data.lightDir = lighting.lightPos.xyz - position;
     pbr_data.viewDir = lighting.cameraPos.xyz - position;

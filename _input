@@ -2,7 +2,7 @@
 model=model/U-557_glb/U-557.glb
 texture=texture/vibrant-watercolor-flow-texture-background_1017-19544.jpg
 
-vertex_shader=shader/vert_simple.spv
+vertex_shader=shader/vert_lighting.spv
 fragment_shader=shader/frag_pbr.spv
 
 enable_validation_layer=true

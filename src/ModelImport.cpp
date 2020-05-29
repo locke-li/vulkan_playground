@@ -80,6 +80,11 @@ bool ModelImport::loadObj(const char* path, ModelLoadingInfo&& info, Offset&& of
 				attrib.vertices[index + 1] / info.scale,
 				attrib.vertices[index + 2] / info.scale,
 			};
+			vertex.normal = {
+				attrib.normals[index],
+				attrib.normals[index + 1],
+				attrib.normals[index + 2],
+			};
 			index = indexInfo.texcoord_index * 2;
 			vertex.texCoord = {
 				attrib.texcoords[index],
@@ -121,19 +126,30 @@ bool loadGltfNodeMesh(const tinygltf::Model& model, const tinygltf::Node& node, 
 		if (posIter == primitive.attributes.end()) {
 			continue;
 		}
-		const float* texcoord0 = nullptr;
 		const auto& accessorPos = model.accessors[posIter->second];
 		const auto& bufferViewPos = model.bufferViews[accessorPos.bufferView];
-		const auto* pos = reinterpret_cast<const float*>(&model.buffers[bufferViewPos.buffer].data[accessorPos.byteOffset + bufferViewPos.byteOffset]);
+		const float* pos = reinterpret_cast<const float*>(&model.buffers[bufferViewPos.buffer].data[accessorPos.byteOffset + bufferViewPos.byteOffset]);
+		
+		const auto& accessorIndices = model.accessors[primitive.indices];
+		const auto& bufferViewIndices = model.bufferViews[accessorIndices.bufferView];
+		const void* indices = &model.buffers[bufferViewIndices.buffer].data[accessorIndices.byteOffset + bufferViewIndices.byteOffset];
+
 		const auto& texcoord0Iter = primitive.attributes.find("TEXCOORD_0");
+		const float* texcoord0 = nullptr;
 		if (texcoord0Iter != primitive.attributes.end()) {
 			const auto& accessorTexcoord0 = model.accessors[texcoord0Iter->second];
 			const auto& bufferViewTexcoord0 = model.bufferViews[accessorTexcoord0.bufferView];
 			texcoord0 = reinterpret_cast<const float*>(&model.buffers[bufferViewTexcoord0.buffer].data[accessorTexcoord0.byteOffset + bufferViewTexcoord0.byteOffset]);
 		}
-		const auto& accessorIndices = model.accessors[primitive.indices];
-		const auto& bufferViewIndices = model.bufferViews[accessorIndices.bufferView];
-		const void* indices = &model.buffers[bufferViewIndices.buffer].data[accessorIndices.byteOffset + bufferViewIndices.byteOffset];
+
+		const auto& normalIter = primitive.attributes.find("NORMAL_0");
+		const float* normal = nullptr;
+		if (normalIter != primitive.attributes.end()) {
+			const auto& accessorNormal = model.accessors[normalIter->second];
+			const auto& bufferViewNormal = model.bufferViews[accessorNormal.bufferView];
+			normal = reinterpret_cast<const float*>(&model.buffers[bufferViewNormal.buffer].data[accessorNormal.byteOffset + bufferViewNormal.byteOffset]);
+		}
+		
 		VertexIndexed data;
 		data.vertices.reserve(accessorPos.count);
 		for (auto i = 0; i < accessorPos.count; ++i) {
@@ -141,6 +157,9 @@ bool loadGltfNodeMesh(const tinygltf::Model& model, const tinygltf::Node& node, 
 			vertex.pos = glm::make_vec3(reinterpret_cast<const float*>(pos + i * 3)) / loadingData.info.scale;
 			if (texcoord0) {
 				vertex.texCoord = glm::make_vec2(texcoord0 + i * 2);
+			}
+			if (normal) {
+				vertex.normal = glm::make_vec3(normal + i * 3);
 			}
 			data.vertices.push_back(std::move(vertex));
 		}
@@ -178,6 +197,9 @@ bool loadGltfNodeMesh(const tinygltf::Model& model, const tinygltf::Node& node, 
 			data.material = -1;
 		}
 		std::cout << data.vertices.size() << "|" << data.indices.size() << "|" << data.material << "\n";
+		if (normal == nullptr) {
+			loadingData.info.mesh.calculateNormal(data);
+		}
 		meshData.data.push_back(std::move(data));
 	}
 	loadingData.mesh.push_back(std::move(meshData));
@@ -248,6 +270,7 @@ void loadGltfMaterial(const tinygltf::Material& mat, ModelLoadingInfo& info, Mod
 		material.addTextureEntry(mat.pbrMetallicRoughness.baseColorTexture.index + offset.texture);
 	}
 	if (pbr.metallicRoughnessTexture.index > -1) {
+		//gltf spec specifies metalness in B channel & roughness in G channel
 		material.addTextureEntry(mat.pbrMetallicRoughness.metallicRoughnessTexture.index + offset.texture);
 	}
 	if (mat.normalTexture.index > -1) {

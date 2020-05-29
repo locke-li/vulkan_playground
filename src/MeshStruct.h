@@ -7,6 +7,7 @@
 //TODO separate vertex position improves depth prepass/shadow mapping efficiency
 struct Vertex {
 	glm::vec3 pos;
+	glm::vec3 normal;
 	glm::vec3 color;
 	glm::vec2 texCoord;
 
@@ -17,6 +18,7 @@ namespace std {
 	template<> struct hash<Vertex> {
 		size_t operator()(const Vertex& vertex) const {
 			return (hash<glm::vec3>()(vertex.pos)) ^
+				(hash<glm::vec3>()(vertex.normal)) ^
 				(hash<glm::vec2>()(vertex.texCoord) << 1) ^
 				(hash<glm::vec3>()(vertex.color) >> 1);
 		}
@@ -29,7 +31,7 @@ struct MatrixInput {
 	glm::vec3 scale;
 	glm::mat4 matrix;
 
-	static MatrixInput identity() {
+	static inline MatrixInput identity() {
 		return {
 			glm::vec3(0.0f),
 			glm::identity<glm::quat>(),
