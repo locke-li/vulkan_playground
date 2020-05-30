@@ -94,7 +94,6 @@ BufferView MeshInput::createView(const size_t offset, const VertexIndexed& data)
 
 void MeshInput::calculateNormal(VertexIndexed& data) const {
 	std::vector<glm::vec3> normal(data.vertices.size());
-	std::vector<int> count(data.vertices.size());
 	for (auto i = 0; i < data.indices.size(); i += 3) {
 		auto v0 = data.indices[i];
 		auto v1 = data.indices[i + 1];
@@ -105,12 +104,9 @@ void MeshInput::calculateNormal(VertexIndexed& data) const {
 		normal[v0] += faceNormal;
 		normal[v1] += faceNormal;
 		normal[v2] += faceNormal;
-		++count[v0];
-		++count[v1];
-		++count[v2];
 	}
 	for (auto i = 0; i < normal.size(); ++i) {
-		data.vertices[i].normal = normal[i] / static_cast<float>(count[i]);
+		data.vertices[i].normal = glm::normalize(normal[i]);
 	}
 }
 

@@ -142,7 +142,7 @@ bool loadGltfNodeMesh(const tinygltf::Model& model, const tinygltf::Node& node, 
 			texcoord0 = reinterpret_cast<const float*>(&model.buffers[bufferViewTexcoord0.buffer].data[accessorTexcoord0.byteOffset + bufferViewTexcoord0.byteOffset]);
 		}
 
-		const auto& normalIter = primitive.attributes.find("NORMAL_0");
+		const auto& normalIter = primitive.attributes.find("NORMAL");
 		const float* normal = nullptr;
 		if (normalIter != primitive.attributes.end()) {
 			const auto& accessorNormal = model.accessors[normalIter->second];
@@ -196,10 +196,12 @@ bool loadGltfNodeMesh(const tinygltf::Model& model, const tinygltf::Node& node, 
 		else {
 			data.material = -1;
 		}
-		std::cout << data.vertices.size() << "|" << data.indices.size() << "|" << data.material << "\n";
+		std::cout << data.vertices.size() << "|" << data.indices.size() << "|" << data.material;
 		if (normal == nullptr) {
+			std::cout << "|NoNormal";
 			loadingData.info.mesh.calculateNormal(data);
 		}
+		std::cout << "\n";
 		meshData.data.push_back(std::move(data));
 	}
 	loadingData.mesh.push_back(std::move(meshData));

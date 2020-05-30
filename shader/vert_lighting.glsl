@@ -25,6 +25,5 @@ void main() {
     fragColor = color;
     fragTexCoord = texCoord;
     fragPosition = gl_Position.xyz;
-    //TODO handle non-trivial case of non-uniform scale
-    fragNormal = mat3(pc.model) * normal;
+    fragNormal = normalize(transpose(inverse(mat3(pc.model))) * position);
 }
