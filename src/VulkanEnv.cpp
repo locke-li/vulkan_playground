@@ -8,6 +8,8 @@
 #include <fstream>
 #include <array>
 
+constexpr int TestMaxTextureCount = 5;
+
 enum class PhysicalDeviceScore: uint32_t {
 	DiscreteGPU = 300,
 	IntegratedGPU = 200,
@@ -619,8 +621,8 @@ bool VulkanEnv::createDescriptorSetLayout() {
 	descriptorSetLayoutMaterial.resize(matPrototypeList.size());
 	for (auto k = 0; k < matPrototypeList.size(); ++k) {
 		const auto& prototype = matPrototypeList[k];
-		auto textureCount = 3;//TODO prototype.textureCount;
-		std::vector<VkDescriptorSetLayoutBinding> binding(textureCount + 1);
+		//TODO prototype.textureCount;
+		std::vector<VkDescriptorSetLayoutBinding> binding(TestMaxTextureCount + 1);
 		VkDescriptorSetLayoutBinding& value = binding[0];
 		value.binding = 0;
 		value.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -628,7 +630,7 @@ bool VulkanEnv::createDescriptorSetLayout() {
 		value.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 		value.pImmutableSamplers = nullptr;
 
-		for (auto n = 0; n < textureCount; ++n) {
+		for (auto n = 0; n < TestMaxTextureCount; ++n) {
 			auto m = n + 1;
 			VkDescriptorSetLayoutBinding& texture = binding[m];
 			texture.binding = m;
@@ -1323,7 +1325,7 @@ bool VulkanEnv::prepareDescriptor() {
 bool VulkanEnv::createDescriptorPool(int requirement, VkDescriptorPool& pool) {
 	uint32_t imageCount = static_cast<uint32_t>(imageSet.image.size());//TODO this assumes no empty/unset material texture
 	uint32_t materialCount = static_cast<uint32_t>(descriptorSetLayoutMaterial.size());
-	uint32_t imageSetCount = materialCount * 3;//TODO
+	uint32_t imageSetCount = materialCount * TestMaxTextureCount;//TODO
 	//these determines the pool capacity
 	std::array<VkDescriptorPoolSize, 3> poolSize;
 	poolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
