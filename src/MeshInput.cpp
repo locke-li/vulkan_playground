@@ -100,8 +100,8 @@ void MeshInput::calculateNormal(VertexIndexed& data) const {
 		auto v1 = data.indices[i + 1];
 		auto v2 = data.indices[i + 2];
 		auto e01 = data.vertices[v1].pos - data.vertices[v0].pos;
-		auto e02 = data.vertices[v2].pos - data.vertices[v0].pos;
-		auto faceNormal = glm::normalize(glm::cross(e01, e02));//TODO winding
+		auto e12 = data.vertices[v2].pos - data.vertices[v1].pos;
+		auto faceNormal = glm::normalize(glm::cross(e01, e12));//TODO winding
 		normal[v0] += faceNormal;
 		normal[v1] += faceNormal;
 		normal[v2] += faceNormal;

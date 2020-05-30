@@ -8,8 +8,8 @@
 #include <chrono>
 
 const char* APP_TITLE = "vulkan";
-const uint32_t WIDTH = 400;
-const uint32_t HEIGHT = 400;
+const uint32_t WIDTH = 1200;
+const uint32_t HEIGHT = 1200;
 
 void onFramebufferResize(GLFWwindow* window, int width, int height) {
 	auto* renderContext = reinterpret_cast<RenderingTest::RenderContext*>(glfwGetWindowUserPointer(window));
@@ -66,8 +66,8 @@ void onFramebufferResize(GLFWwindow* window, int width, int height) {
 	 MeshInput inputLoadedModel{ { 0.2f, 0.0f, 0.0f }, glm::quat({0.0f, glm::radians(-45.0f), glm::radians(180.0f)}), {1.0f, 1.0f, 1.0f} };
 	 ModelImport modelImport;
 	 logResult("model loading", modelImport.load(input.modelPath, { 28, inputLoadedModel, textureManager, materialManager }));
-	 meshManager.addMesh(std::move(inputTetrahedron));
-	 meshManager.addMesh(std::move(inputCube));
+	 //meshManager.addMesh(std::move(inputTetrahedron));
+	 //meshManager.addMesh(std::move(inputCube));
 	 meshManager.addMesh(std::move(inputLoadedModel));
  }
 
@@ -92,7 +92,7 @@ int RenderingTest::mainLoop() {
 
 	prepareModel(setting.misc);
 	renderingData.updateCamera(45.0f, WIDTH / (float)HEIGHT, glm::vec3(0.0f, -1.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f));
-	renderingData.addLight({ LightType::Point, 1.0f, 5.0f, glm::vec3(0.0f, -1.5f, 0.0f) });
+	renderingData.addLight({ LightType::Point, 1.0f, 5.0f, glm::vec3(0.0f, -1.5f, 1.0f) });
 	renderingData.updateLight();
 	renderingData.setRenderListFiltered(meshManager.getMeshList());
 	ShaderInput shader(setting.misc.vertexShaderPath, setting.misc.fragmentShaderPath);
@@ -143,8 +143,9 @@ int RenderingTest::mainLoop() {
 
 	while (!windowLayer.shouldClose()) {
 		windowLayer.handleEvent();
-		meshManager.getMeshAt(0).animate(90);
-		meshManager.getMeshAt(1).animate(45);
+		//meshManager.getMeshAt(0).animate(90);
+		//meshManager.getMeshAt(1).animate(45);
+		meshManager.getMeshAt(0).animate(15);
 		vulkanEnv.drawFrame(renderingData);
 	}
 

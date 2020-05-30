@@ -2,9 +2,9 @@
 #extension GL_ARB_separate_shader_objects : enable
 
 layout(binding = 1) uniform UniformLight {
+    vec4 cameraPos;
 	vec4 lightPos;
 	vec4 lightData;
-    vec4 cameraPos;
 } lighting;
 
 layout(location = 0) in vec3 color;
@@ -61,16 +61,15 @@ struct PBR_Data {
     vec4 diffuseColor;
 };
 
-float NDF_TRGGX(vec3 l, vec3 v, vec3 n, float a) {
-    vec3 h = (l + v) / 2;
+float NDF_TRGGX(float ndoth, float a) {
     float a2 = a * a;
-    float denom = dot(n, h);
-    denom = denom * denom * (a2 - 1) + 1;
+    float denom = ndoth * ndoth * (a2 - 1) + 1;
     return a2 / (PI * pow(denom, 2));
 }
 
-vec3 Fresnel_Schlick(vec3 c, float a) {
-    return mix(vec3(0.04), c, a);
+vec3 Fresnel_Schlick(vec3 c, float a, float ndoth) {
+    vec3 baseReflectivity = mix(vec3(0.04), c, a);
+    return baseReflectivity + (1 - baseReflectivity) * pow(ndoth, 5);
 }
 
 float GeometryRoughness(float a) {
@@ -78,7 +77,7 @@ float GeometryRoughness(float a) {
 }
 
 float Geometry_Schlick(vec3 n, vec3 v, float k) {
-    float ndotv = dot(n, v);
+    float ndotv = max(dot(n, v), 0.0);
     return ndotv/(ndotv * (1-k) + k);
 }
 
@@ -88,10 +87,17 @@ float Geometry_Smith(vec3 n, vec3 l, vec3 v, float a) {
 }
 
 vec3 BRDF_Specular(PBR_Data data) {
-    float D = NDF_TRGGX(data.lightDir, data.viewDir, data.normal, data.roughness);
-    vec3 F = Fresnel_Schlick(data.diffuseColor.rgb, data.metalness);
+    vec3 h = (data.lightDir + data.viewDir) / 2;
+    float ndoth = max(dot(data.normal, h), 0.0);
+    float D = NDF_TRGGX(ndoth, data.roughness);
+    //return vec3(D);
+    vec3 F = Fresnel_Schlick(data.diffuseColor.rgb, data.metalness, ndoth);
+    //return F;
     float G = Geometry_Smith(data.normal, data.lightDir, data.viewDir, data.roughness);
-
+    //return vec3(G);
+    //float k = GeometryRoughness(data.roughness);
+    //return vec3(Geometry_Schlick(data.normal, data.viewDir, k), Geometry_Schlick(data.normal, data.lightDir, k), 0.0);
+    //return D*F*G;
     return D * F * G / (4 * dot(data.lightDir, data.normal) * dot(data.viewDir, data.normal));
 }
 
@@ -100,14 +106,14 @@ vec3 BRDF_Diffuse(PBR_Data data) {
 }
 
 float calculateSpecularPbr(float metallic, float roughness) {
-    return metallic * (1 - roughness);
+    return metallic;
 }
 
 vec3 BRDF(PBR_Data data) {
     float specularComp = calculateSpecularPbr(data.metalness, data.roughness);
     float diffuseComp = 1.0 - specularComp;
     return specularComp * BRDF_Specular(data) + diffuseComp * BRDF_Diffuse(data);
-    //return vec3(diffuseComp);
+    //return specularComp * BRDF_Specular(data);
 }
 
 void main() {
@@ -116,8 +122,8 @@ void main() {
     pbr_data.metalness = metallicRoughness.b;
     pbr_data.roughness = metallicRoughness.g;
     pbr_data.diffuseColor = texture(sampler2D(baseTex, texSampler), texCoord);
-    pbr_data.lightDir = lighting.lightPos.xyz - position;
-    pbr_data.viewDir = lighting.cameraPos.xyz - position;
+    pbr_data.lightDir = normalize(lighting.lightPos.xyz - position);
+    pbr_data.viewDir = normalize(lighting.cameraPos.xyz - position);
     pbr_data.normal = normal;
     vec3 brdf = BRDF(pbr_data);
     outColor = vec4(brdf, pbr_data.diffuseColor.a);
