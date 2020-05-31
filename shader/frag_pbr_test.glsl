@@ -12,11 +12,6 @@ layout(location = 1) in vec2 texCoord;
 layout(location = 2) in vec3 position;
 layout(location = 3) in vec3 normal;
 
-layout(set = 0, binding = 2) uniform sampler texSampler;
-layout(set = 1, binding = 1) uniform texture2D baseTex;
-layout(set = 1, binding = 2) uniform texture2D metallicRoughnessTex;
-layout(set = 1, binding = 3) uniform texture2D normalMap;
-
 layout(location = 0) out vec4 outColor;
 
 #define PI 3.141592653589793
@@ -59,7 +54,7 @@ struct PBR_Data {
     vec3 normal;
     float metalness;
     float roughness;
-    vec3 diffuseColor;
+    vec4 diffuseColor;
 };
 
 float NDF_TRGGX(float ndoth, float a) {
@@ -94,9 +89,15 @@ vec3 BRDF_Specular(PBR_Data data, float ndotl, out vec3 kS) {
 	float ndotv = max(dot(data.normal, data.viewDir), 0.0);
 	float roughness = data.roughness * data.roughness;
     float D = NDF_TRGGX(ndoth, roughness);
+	//return vec3(D);
     vec3 F = Fresnel_Schlick(data.diffuseColor.rgb, data.metalness, vdoth);
 	kS = F;
+	//return F;
     float G = Geometry_Smith(ndotl, ndotv, roughness);
+	//return vec3(G);
+	//return vec3(D, F.r, G);
+	//return vec3(ndotl, ndotv, 0.0);
+	//return D*F*G;
     return D * F * G / max(4.0 * ndotl * ndotv, NEAR_ZERO);
 }
 
@@ -114,14 +115,12 @@ vec3 BRDF(PBR_Data data) {
 
 void main() {
     PBR_Data pbr_data;
-	vec4 baseColor = texture(sampler2D(baseTex, texSampler), texCoord);
-    vec4 metallicRoughness = pow(texture(sampler2D(metallicRoughnessTex, texSampler), texCoord), vec4(1.0/2.2));
-    pbr_data.metalness = metallicRoughness.b;
-    pbr_data.roughness = metallicRoughness.g;
-    pbr_data.diffuseColor = pow(baseColor.rgb, vec3(1.0/2.2));
+    pbr_data.metalness = 1;
+    pbr_data.roughness = 0.5;
+    pbr_data.diffuseColor = vec4(1.0,1.0,1.0,1.0);
     pbr_data.lightDir = normalize(lighting.lightPos.xyz - position);
     pbr_data.viewDir = normalize(lighting.cameraPos.xyz - position);
     pbr_data.normal = normalize(normal);
     vec3 brdf = pow(BRDF(pbr_data), vec3(2.2));
-    outColor = vec4(brdf, baseColor.a);
+    outColor = vec4(brdf, pbr_data.diffuseColor.a);
 }

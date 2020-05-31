@@ -63,9 +63,9 @@ void onFramebufferResize(GLFWwindow* window, int width, int height) {
 	 MeshInput inputCube{ { 0.0f, 0.0f, -2.0f }, { 1.0f, 0.0f, 0.0f, 0.0f }, { 1.0f, 1.0f, 1.0f } };
 	 inputCube.calculateNormal(cube);
 	 inputCube.setMesh(std::move(cube));
-	 MeshInput inputLoadedModel{ { 0.2f, 0.0f, 0.0f }, glm::quat({0.0f, glm::radians(-45.0f), glm::radians(180.0f)}), {1.0f, 1.0f, 1.0f} };
+	 MeshInput inputLoadedModel{ { 0.0f, 0.0f, 0.0f }, glm::quat({0.0f, glm::radians(-45.0f), glm::radians(180.0f)}), {1.0f, 1.0f, 1.0f} };
 	 ModelImport modelImport;
-	 logResult("model loading", modelImport.load(input.modelPath, { 28, inputLoadedModel, textureManager, materialManager }));
+	 logResult("model loading", modelImport.load(input.modelPath, { 1.5, inputLoadedModel, textureManager, materialManager }));
 	 //meshManager.addMesh(std::move(inputTetrahedron));
 	 //meshManager.addMesh(std::move(inputCube));
 	 meshManager.addMesh(std::move(inputLoadedModel));
@@ -91,8 +91,8 @@ int RenderingTest::mainLoop() {
 	materialManager.addMaterial(std::move(defaultMaterial));
 
 	prepareModel(setting.misc);
-	renderingData.updateCamera(45.0f, WIDTH / (float)HEIGHT, glm::vec3(0.0f, -1.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f));
-	renderingData.addLight({ LightType::Point, 1.0f, 5.0f, glm::vec3(0.0f, -1.5f, 1.0f) });
+	renderingData.updateCamera(45.0f, WIDTH / (float)HEIGHT, glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, 0.0f));
+	renderingData.addLight({ LightType::Point, 1.0f, 5.0f, glm::vec3(4.0f, -4.0f, 4.0f) });
 	renderingData.updateLight();
 	renderingData.setRenderListFiltered(meshManager.getMeshList());
 	ShaderInput shader(setting.misc.vertexShaderPath, setting.misc.fragmentShaderPath);

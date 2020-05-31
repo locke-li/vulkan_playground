@@ -1,5 +1,5 @@
 #downloaded from https://sketchfab.com/3d-models/u-557-ae10491added470c88e4e21bc8672cd1
-model=model/U-557_glb/U-557.glb
+model=model/AnimatedMorphSphere/AnimatedMorphSphere.glb
 texture=texture/vibrant-watercolor-flow-texture-background_1017-19544.jpg
 
 vertex_shader=shader/vert_lighting.spv
