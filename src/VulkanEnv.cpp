@@ -180,12 +180,9 @@ void VulkanEnv::setRenderingData(const RenderingData& data) noexcept {
 	renderingData = &data;
 }
 
-void VulkanEnv::setMaterialManager(const MaterialManager& material) noexcept {
+void VulkanEnv::setRenderingManager(const MaterialManager& material, ShaderManager& shader) noexcept {
 	materialManager = &material;
-}
-
-void VulkanEnv::setShader(const ShaderInput& input) noexcept {
-	shader = &input;
+	shaderManager = &shader;
 }
 
 void VulkanEnv::setMaxFrameInFlight(const uint32_t value) noexcept {
@@ -674,10 +671,12 @@ bool VulkanEnv::createGraphicsPipelineLayout() {
 }
 
 bool VulkanEnv::createGraphicsPipeline() {
+	//TODO
+	auto& shader = shaderManager->getShaderAt(0);
 	VkShaderModule vertShader;
-	createShaderModule(device, shader->getVertData(), &vertShader);
+	createShaderModule(device, shader.getVertData(), &vertShader);
 	VkShaderModule fragShader;
-	createShaderModule(device, shader->getFragData(), &fragShader);
+	createShaderModule(device, shader.getFragData(), &fragShader);
 
 	VkPipelineShaderStageCreateInfo vertStage;
 	vertStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -1762,7 +1761,9 @@ bool VulkanEnv::drawFrame(const RenderingData& renderingData) {
 
 	auto result = vkQueuePresentKHR(presentQueue, &presentInfo);
 	if (frameBufferResized || result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+		shaderManager->preload();
 		recreateSwapchain();
+		shaderManager->unload();
 	}
 	else if (result != VK_SUCCESS) {
 		return false;

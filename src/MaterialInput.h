@@ -18,11 +18,14 @@ class MaterialInput
 private:
 	std::vector<MaterialTextureEntry> textureEntry;
 	std::vector<MaterialValueEntry> valueEntry;
+	int shaderIndex = 0;
 	int prototypeIndex;
 public:
 	MaterialInput() = default;
 	MaterialInput(const MaterialInput&) = delete;
 	MaterialInput(MaterialInput&&) = default;
+	void setShaderIndex(int index);
+	int getShaderIndex() const;
 	void setPrototypeIndex(int index);
 	int getPrototypeIndex() const;
 	const std::vector<MaterialTextureEntry> getTextureEntry() const noexcept;

@@ -86,6 +86,8 @@ int RenderingTest::mainLoop() {
 	defaultTexture.setMipLevel(3);
 	logResult("texture loading", defaultTexture.load(setting.misc.texturePath));
 	textureManager.addTexture(std::move(defaultTexture));
+	ShaderInput defaultShader(setting.misc.vertexShaderPath, setting.misc.fragmentShaderPath);
+	shaderManager.addShader(std::move(defaultShader));
 	MaterialInput defaultMaterial;
 	defaultMaterial.addTextureEntry(0);
 	materialManager.addMaterial(std::move(defaultMaterial));
@@ -95,19 +97,18 @@ int RenderingTest::mainLoop() {
 	renderingData.addLight({ LightType::Point, 1.0f, 5.0f, glm::vec3(4.0f, -4.0f, 4.0f) });
 	renderingData.updateLight();
 	renderingData.setRenderListFiltered(meshManager.getMeshList());
-	ShaderInput shader(setting.misc.vertexShaderPath, setting.misc.fragmentShaderPath);
-	logResult("shader loading", shader.preload());
+	
 	vulkanEnv.setWindow(windowLayer.getWindow());
 	vulkanEnv.setRenderingData(renderingData);
-	vulkanEnv.setMaterialManager(materialManager);
+	vulkanEnv.setRenderingManager(materialManager, shaderManager);
 	if (setting.misc.enableValidationLayer) {
 		vulkanEnv.enableValidationLayer({ "VK_LAYER_KHRONOS_validation" });
 	}
-	vulkanEnv.setShader(shader);
 	vulkanEnv.setMaxFrameInFlight(graphicsSetting.MaxFrameInFlight);
 	vulkanEnv.setMsaaSample(graphicsSetting.MSAASample);
 	renderContext.vulkanEnv = &vulkanEnv;
 	renderContext.renderingData = &renderingData;
+	renderContext.shaderManager = &shaderManager;
 
 	logResult("create instance", vulkanEnv.createInstance(APP_TITLE));
 	logResult("create surface", vulkanEnv.createSurface());
@@ -121,9 +122,9 @@ int RenderingTest::mainLoop() {
 	logResult("create render pass", vulkanEnv.createRenderPass());
 	logResult("create descriptor set layout", vulkanEnv.createDescriptorSetLayout());
 	logResult("create graphics pipeline layout", vulkanEnv.createGraphicsPipelineLayout());
+	logResult("loading shader", shaderManager.preload());
 	logResult("create graphics pipeline", vulkanEnv.createGraphicsPipeline());
-	//TODO if unloaded, how should we reload/unload it when create swapchain
-	//shader.unload();
+	shaderManager.unload();
 	logResult("create frame buffer", vulkanEnv.createFrameBuffer());
 	logResult("setup fence", vulkanEnv.setupFence());
 	logResult("create command pool", vulkanEnv.createCommandPool());

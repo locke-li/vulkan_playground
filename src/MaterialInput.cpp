@@ -1,5 +1,12 @@
 #include "MaterialInput.h"
 
+void MaterialInput::setShaderIndex(int index) {
+	shaderIndex = index;
+}
+int MaterialInput::getShaderIndex() const {
+	return shaderIndex;
+}
+
 void MaterialInput::setPrototypeIndex(int index) {
 	prototypeIndex = index;
 }

@@ -5,6 +5,7 @@
 #include "VulkanEnv.h"
 #include "MeshManager.h"
 #include "MaterialManager.h"
+#include "ShaderManager.h"
 #include "TextureManager.h"
 #include <vector>
 #include <string>
@@ -15,6 +16,7 @@ public:
 	struct RenderContext {
 		VulkanEnv* vulkanEnv;
 		RenderingData* renderingData;
+		ShaderManager* shaderManager;
 	};
 private:
 	WindowLayer windowLayer;
@@ -23,6 +25,7 @@ private:
 	VulkanEnv vulkanEnv;
 	RenderContext renderContext;
 	TextureManager textureManager;
+	ShaderManager shaderManager;
 	MaterialManager materialManager;
 	MeshManager meshManager;
 	void prepareModel(const Setting::Misc&);

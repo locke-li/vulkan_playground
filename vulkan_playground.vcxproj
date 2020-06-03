@@ -179,6 +179,7 @@
     <ClCompile Include="src\RenderingTest.cpp" />
     <ClCompile Include="src\Setting.cpp" />
     <ClCompile Include="src\ShaderInput.cpp" />
+    <ClCompile Include="src\ShaderManager.cpp" />
     <ClCompile Include="src\TextureManager.cpp" />
     <ClCompile Include="src\VulkanEnv.cpp" />
     <ClCompile Include="src\WindowLayer.cpp" />
@@ -197,6 +198,7 @@
     <ClInclude Include="src\RenderingTest.h" />
     <ClInclude Include="src\Setting.h" />
     <ClInclude Include="src\ShaderInput.h" />
+    <ClInclude Include="src\ShaderManager.h" />
     <ClInclude Include="src\TextureManager.h" />
     <ClInclude Include="src\VulkanEnv.h" />
     <ClInclude Include="src\WindowLayer.h" />

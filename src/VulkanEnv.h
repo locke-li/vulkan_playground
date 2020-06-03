@@ -3,6 +3,7 @@
 #include "GLFW/glfw3.h"
 #include "vk_mem_alloc.h"
 #include "MeshNode.h"
+#include "ShaderManager.h"
 #include "MaterialManager.h"
 #include "RenderingData.h"
 #include "ImageInput.h"
@@ -89,9 +90,9 @@ class VulkanEnv
 private:
 	GLFWwindow* window;
 	const RenderingData* renderingData;
-	const ShaderInput* shader;
 	std::vector<const char*> validationLayer;
 	const MaterialManager* materialManager;
+	ShaderManager* shaderManager;
 
 	VkInstance instance;
 	VkSurfaceKHR surface;
@@ -165,8 +166,7 @@ private:
 public:
 	void setWindow(GLFWwindow *window) noexcept;
 	void setRenderingData(const RenderingData& data) noexcept;
-	void setMaterialManager(const MaterialManager&) noexcept;
-	void setShader(const ShaderInput& input) noexcept;
+	void setRenderingManager(const MaterialManager&, ShaderManager&) noexcept;
 	void setMaxFrameInFlight(const uint32_t value) noexcept;
 	void setPreferedPresentMode(const VkPresentModeKHR mode) noexcept;
 	void setMsaaSample(const uint32_t count) noexcept;
