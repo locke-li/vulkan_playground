@@ -28,6 +28,7 @@ private:
 	ShaderManager shaderManager;
 	MaterialManager materialManager;
 	MeshManager meshManager;
+	int drawFailure = 0;
 	void prepareModel(const Setting::Misc&);
 public:
 	int mainLoop();

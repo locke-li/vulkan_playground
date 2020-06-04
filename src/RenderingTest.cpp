@@ -8,8 +8,9 @@
 #include <chrono>
 
 const char* APP_TITLE = "vulkan";
-const uint32_t WIDTH = 1200;
-const uint32_t HEIGHT = 1200;
+constexpr uint32_t WIDTH = 1200;
+constexpr uint32_t HEIGHT = 1200;
+constexpr int DRAW_FAILURE_THRESHOLD = 120;
 
 void onFramebufferResize(GLFWwindow* window, int width, int height) {
 	auto* renderContext = reinterpret_cast<RenderingTest::RenderContext*>(glfwGetWindowUserPointer(window));
@@ -147,7 +148,15 @@ int RenderingTest::mainLoop() {
 		//meshManager.getMeshAt(0).animate(90);
 		//meshManager.getMeshAt(1).animate(45);
 		meshManager.getMeshAt(0).animate(15);
-		vulkanEnv.drawFrame(renderingData);
+		if (!vulkanEnv.drawFrame(renderingData)) {
+			if (++drawFailure > DRAW_FAILURE_THRESHOLD) {
+				std::cout << "Consecutive frame draw failure! (" << drawFailure << ")"  << std::endl;
+				break;
+			}
+			else {
+				drawFailure = 0;
+			}
+		}
 	}
 
 	vulkanEnv.waitUntilIdle();

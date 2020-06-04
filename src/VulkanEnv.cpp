@@ -1577,8 +1577,8 @@ bool VulkanEnv::createFrameSyncObject() {
 
 	for (uint32_t i = 0; i < maxFrameInFlight; ++i) {
 		auto& frame = inFlightFrame[i];
-		if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &frame.semaphoreImageAquired) != VK_SUCCESS ||
-			vkCreateSemaphore(device, &semaphoreInfo, nullptr, &frame.semaphoreRenderFinished) != VK_SUCCESS ||
+		if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &frame.semaphoreRenderFinished) != VK_SUCCESS ||
+			vkCreateFence(device, &fenceInfo, nullptr, &frame.fenceImageAquired) != VK_SUCCESS ||
 			vkCreateFence(device, &fenceInfo, nullptr, &frame.fenceInFlight) != VK_SUCCESS) {
 			return false;
 		}
@@ -1588,8 +1588,8 @@ bool VulkanEnv::createFrameSyncObject() {
 
 void VulkanEnv::destroy() {
 	for (auto& frame : inFlightFrame) {
-		vkDestroySemaphore(device, frame.semaphoreImageAquired, nullptr);
 		vkDestroySemaphore(device, frame.semaphoreRenderFinished, nullptr);
+		vkDestroyFence(device, frame.fenceImageAquired, nullptr);
 		vkDestroyFence(device, frame.fenceInFlight, nullptr);
 	}
 	destroySwapchain();
@@ -1714,6 +1714,19 @@ bool VulkanEnv::requestDescriptorPool(int requirement, VkDescriptorPool& pool) {
 	return true;
 }
 
+bool VulkanEnv::frameDrawCheck(VkResult result) {
+	if (frameBufferResized || result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+		shaderManager->preload();
+		recreateSwapchain();
+		shaderManager->unload();
+		return false;
+	}
+	if (result != VK_SUCCESS) {
+		return false;
+	}
+	return true;
+}
+
 bool VulkanEnv::drawFrame(const RenderingData& renderingData) {
 	auto& frame = inFlightFrame[currentFrame];
 	auto frameIndex = currentFrame;
@@ -1721,9 +1734,15 @@ bool VulkanEnv::drawFrame(const RenderingData& renderingData) {
 
 	uint32_t imageIndex;
 	uint64_t timeout = 1000000000;//ns
-	auto result1 = vkAcquireNextImageKHR(device, swapchain, timeout, frame.semaphoreImageAquired, VK_NULL_HANDLE, &imageIndex);
+	vkResetFences(device, 1, &frame.fenceImageAquired);
+	auto acquireResult = vkAcquireNextImageKHR(device, swapchain, timeout, VK_NULL_HANDLE, frame.fenceImageAquired, &imageIndex);
+	if (!frameDrawCheck(acquireResult)) {
+		vkWaitForFences(device, 1, &frame.fenceImageAquired, VK_TRUE, timeout);
+		return false;
+	}
+	VkFence frameFence[]{ frame.fenceImageAquired, frame.fenceInFlight };
 	//std::cout << "image acquired " << imageIndex << std::endl;
-	vkWaitForFences(device, 1, &frame.fenceInFlight, VK_TRUE, UINT64_MAX);
+	vkWaitForFences(device, 2, frameFence, VK_TRUE, UINT64_MAX);
 	//std::cout << "frame fence pass " << currentFrame << std::endl;
 
 	releaseDescriptorPool(frame.descriptorPool);
@@ -1736,8 +1755,8 @@ bool VulkanEnv::drawFrame(const RenderingData& renderingData) {
 	submitInfo.pNext = nullptr;
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &commandBuffer[frameIndex];
-	submitInfo.waitSemaphoreCount = 1;
-	submitInfo.pWaitSemaphores = &frame.semaphoreImageAquired;
+	submitInfo.waitSemaphoreCount = 0;
+	submitInfo.pWaitSemaphores = VK_NULL_HANDLE;
 	VkPipelineStageFlags waitStage[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 	submitInfo.pWaitDstStageMask = waitStage;
 	submitInfo.signalSemaphoreCount = 1;
@@ -1745,9 +1764,7 @@ bool VulkanEnv::drawFrame(const RenderingData& renderingData) {
 
 	vkResetFences(device, 1, &frame.fenceInFlight);
 	//std::cout << "frame submit " << currentFrame << std::endl;
-	if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, frame.fenceInFlight) != VK_SUCCESS) {
-		return false;
-	}
+	vkQueueSubmit(graphicsQueue, 1, &submitInfo, frame.fenceInFlight);
 
 	VkPresentInfoKHR presentInfo;
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -1759,14 +1776,6 @@ bool VulkanEnv::drawFrame(const RenderingData& renderingData) {
 	presentInfo.pWaitSemaphores = &frame.semaphoreRenderFinished;
 	presentInfo.pResults = nullptr;
 
-	auto result = vkQueuePresentKHR(presentQueue, &presentInfo);
-	if (frameBufferResized || result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
-		shaderManager->preload();
-		recreateSwapchain();
-		shaderManager->unload();
-	}
-	else if (result != VK_SUCCESS) {
-		return false;
-	}
-	return true;
+	auto presentResult = vkQueuePresentKHR(presentQueue, &presentInfo);
+	return frameDrawCheck(presentResult);
 }

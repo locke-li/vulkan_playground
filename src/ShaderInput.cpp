@@ -1,5 +1,6 @@
 #include "ShaderInput.h"
 #include <fstream>
+#include <iostream>
 
 ShaderInput::ShaderInput(const std::string& vertexPath, const std::string& fragmentPath)
 	: vertPath(vertexPath)
@@ -13,6 +14,10 @@ bool ShaderInput::loadFile(const std::string& path, std::vector<char>& buffer) c
 	}
 	auto size = (size_t)file.tellg();
 	//size should be multiples of 4
+	if (size % 4 != 0) {
+		std::cout << "size should be multiples of 4" << std::endl;
+		return false;
+	}
 	buffer.resize(size);
 	file.seekg(0);
 	file.read(buffer.data(), size);

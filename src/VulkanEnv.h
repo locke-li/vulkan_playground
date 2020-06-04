@@ -28,8 +28,8 @@ struct PhysicalDeviceCandidate {
 };
 
 struct InFlightFrame {
-	VkSemaphore semaphoreImageAquired;
 	VkSemaphore semaphoreRenderFinished;
+	VkFence fenceImageAquired;
 	VkFence fenceInFlight;
 	VkDescriptorPool descriptorPool;
 };
@@ -207,6 +207,7 @@ public:
 	bool updateUniformBuffer();
 	bool updateUniformBufferMatrix(const uint32_t imageIndex);
 	bool updateUniformBufferLight(const uint32_t imageIndex);
+	bool frameDrawCheck(VkResult result);
 	bool drawFrame(const RenderingData& renderingData);
 };
 
