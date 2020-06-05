@@ -10,6 +10,7 @@ struct MatrixUniformBufferData {
 };
 
 struct LightUniformBufferData {
+	glm::vec4 debugOption;//reserved for debug
 	glm::vec4 cameraPos;//(xyz:pos, w:)
 	glm::vec4 lightPos;//(xyz:pos/dir, w:type)
 	glm::vec4 lightData;//(x:intensity, y:falloff, z:, w:)
@@ -45,6 +46,8 @@ public:
 	void setFov(const float fov);
 	void setAspectRatio(const float ratio);
 	void setPos(const glm::vec3&& pos);
+	void setDebugOption(glm::vec4&& debug);
+	glm::vec4& getDebugOption();
 	void updateCamera(const float fov, const float aspectRatio, const glm::vec3&& pos, const glm::vec3&& center);
 	void addLight(Light&& light);
 	void updateLight();

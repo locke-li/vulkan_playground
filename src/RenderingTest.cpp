@@ -6,6 +6,7 @@
 #include <iostream>
 #include <fstream>
 #include <chrono>
+#include <algorithm>
 
 const char* APP_TITLE = "vulkan";
 constexpr uint32_t WIDTH = 1200;
@@ -19,6 +20,46 @@ void onFramebufferResize(GLFWwindow* window, int width, int height) {
 		renderContext->renderingData->setAspectRatio(width / (float)height);
 	}
 }
+
+void onKeyPressed(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+	if (action == GLFW_PRESS) {
+		auto* renderContext = reinterpret_cast<RenderingTest::RenderContext*>(glfwGetWindowUserPointer(window));
+		auto& option = renderContext->renderingData->getDebugOption();
+		if (key == GLFW_KEY_P) {
+			option.x = 0;
+		}
+		if (key == GLFW_KEY_Q) {
+			option.x = 1;
+		}
+		if (key == GLFW_KEY_W) {
+			option.x = 2;
+		}
+		if (key == GLFW_KEY_E) {
+			option.x = 3;
+		}
+		if (key == GLFW_KEY_R) {
+			option.x = 4;
+		}
+		//metalness
+		if (key == GLFW_KEY_J) {
+			option.y = std::max(0.0f, option.y - 0.1f);
+		}
+		if (key == GLFW_KEY_K) {
+			option.y = std::min(1.0f, option.y + 0.1f);
+		}
+		//roughness
+		if (key == GLFW_KEY_N) {
+			option.z = std::max(0.1f, option.z - 0.1f);
+		}
+		if (key == GLFW_KEY_M) {
+			option.z = std::min(1.0f, option.z + 0.1f);
+		}
+		//debug only, alway update
+		renderContext->vulkanEnv->updateUniformBuffer();
+	}
+}
+
 
  void RenderingTest::prepareModel(const Setting::Misc& input) {
 	 glm::vec3 noNormal(0.0f);
@@ -98,6 +139,7 @@ int RenderingTest::mainLoop() {
 	renderingData.addLight({ LightType::Point, 1.0f, 5.0f, glm::vec3(4.0f, -4.0f, 4.0f) });
 	renderingData.updateLight();
 	renderingData.setRenderListFiltered(meshManager.getMeshList());
+	renderingData.setDebugOption({ 0.0f, 1.0f, 0.1f, 0.0f });
 	
 	vulkanEnv.setWindow(windowLayer.getWindow());
 	vulkanEnv.setRenderingData(renderingData);
@@ -110,6 +152,7 @@ int RenderingTest::mainLoop() {
 	renderContext.vulkanEnv = &vulkanEnv;
 	renderContext.renderingData = &renderingData;
 	renderContext.shaderManager = &shaderManager;
+	windowLayer.setUserDataPtr(&renderContext);
 
 	logResult("create instance", vulkanEnv.createInstance(APP_TITLE));
 	logResult("create surface", vulkanEnv.createSurface());
@@ -141,7 +184,8 @@ int RenderingTest::mainLoop() {
 	logResult("update uniform buffer", vulkanEnv.updateUniformBuffer());
 	std::cout << std::endl;
 
-	windowLayer.setEventCallback(&renderContext, onFramebufferResize);
+	windowLayer.setEventCallback(onFramebufferResize);
+	windowLayer.setKeyCallback(onKeyPressed);
 
 	while (!windowLayer.shouldClose()) {
 		windowLayer.handleEvent();

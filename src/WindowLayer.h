@@ -12,7 +12,9 @@ public:
 	GLFWwindow* getWindow() const;
 	bool init() const;
 	bool createWindow(const char* title, const int width, const int height);
-	void setEventCallback(void* ptr, GLFWframebuffersizefun resizeFun) const;
+	void setUserDataPtr(void* userData) const;
+	void setEventCallback(GLFWframebuffersizefun resizeFun) const;
+	void setKeyCallback(GLFWkeyfun keyFun) const;
 	bool shouldClose() const;
 	void handleEvent() const;
 	void destroy();

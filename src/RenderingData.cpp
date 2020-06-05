@@ -25,6 +25,13 @@ void RenderingData::setPos(const glm::vec3&& pos) {
 	updateView();
 }
 
+void RenderingData::setDebugOption(glm::vec4&& debug) {
+	lightData.debugOption = debug;
+}
+glm::vec4& RenderingData::getDebugOption() {
+	return lightData.debugOption;
+}
+
 void RenderingData::updateCamera(const float fov, const float aspectRatio, const glm::vec3&& pos, const glm::vec3&& center) {
 	cameraFov = fov;
 	cameraPos = pos;

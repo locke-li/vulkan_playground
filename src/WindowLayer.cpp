@@ -21,9 +21,16 @@ bool WindowLayer::createWindow(const char* title, const int width, const int hei
 	return true;
 }
 
-void WindowLayer::setEventCallback(void* ptr, GLFWframebuffersizefun resizeFun) const {
-	glfwSetWindowUserPointer(window, ptr);
+void WindowLayer::setUserDataPtr(void* userData) const {
+	glfwSetWindowUserPointer(window, userData);
+}
+
+void WindowLayer::setEventCallback(GLFWframebuffersizefun resizeFun) const {
 	glfwSetFramebufferSizeCallback(window, resizeFun);
+}
+
+void WindowLayer::setKeyCallback(GLFWkeyfun keyFun) const {
+	glfwSetKeyCallback(window, keyFun);
 }
 
 bool WindowLayer::shouldClose() const {

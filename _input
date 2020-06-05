@@ -3,6 +3,6 @@ model=model/AnimatedMorphSphere/AnimatedMorphSphere.glb
 texture=texture/vibrant-watercolor-flow-texture-background_1017-19544.jpg
 
 vertex_shader=shader/vert_lighting.spv
-fragment_shader=shader/frag_pbr.spv
+fragment_shader=shader/frag_pbr_test.spv
 
 enable_validation_layer=true

@@ -2,6 +2,7 @@
 #extension GL_ARB_separate_shader_objects : enable
 
 layout(binding = 1) uniform UniformLight {
+    vec4 debugOption;
     vec4 cameraPos;
 	vec4 lightPos;
 	vec4 lightData;
@@ -89,15 +90,21 @@ vec3 BRDF_Specular(PBR_Data data, float ndotl, out vec3 kS) {
 	float ndotv = max(dot(data.normal, data.viewDir), 0.0);
 	float roughness = data.roughness * data.roughness;
     float D = NDF_TRGGX(ndoth, roughness);
-	//return vec3(D);
     vec3 F = Fresnel_Schlick(data.diffuseColor.rgb, data.metalness, vdoth);
 	kS = F;
-	//return F;
     float G = Geometry_Smith(ndotl, ndotv, roughness);
-	//return vec3(G);
-	//return vec3(D, F.r, G);
-	//return vec3(ndotl, ndotv, 0.0);
-	//return D*F*G;
+    if(lighting.debugOption.x == 1.0) {
+	    return vec3(D, F.r, G);
+    }
+    if(lighting.debugOption.x == 2.0) {
+        return vec3(max(4.0 * ndotl * ndotv, NEAR_ZERO), D*F.r*G, 0);
+    }
+    if(lighting.debugOption.x == 3.0) {
+        return vec3(ndotl, ndotv, 0);
+    }
+    if(lighting.debugOption.x == 4.0) {
+	    return vec3(1/ndotl, 1/ndotv, 0.0);
+    }
     return D * F * G / max(4.0 * ndotl * ndotv, NEAR_ZERO);
 }
 
@@ -115,8 +122,8 @@ vec3 BRDF(PBR_Data data) {
 
 void main() {
     PBR_Data pbr_data;
-    pbr_data.metalness = 1;
-    pbr_data.roughness = 0.5;
+    pbr_data.metalness = lighting.debugOption.y;
+    pbr_data.roughness = lighting.debugOption.z;
     pbr_data.diffuseColor = vec4(1.0,1.0,1.0,1.0);
     pbr_data.lightDir = normalize(lighting.lightPos.xyz - position);
     pbr_data.viewDir = normalize(lighting.cameraPos.xyz - position);
