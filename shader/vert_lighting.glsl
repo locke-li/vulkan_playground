@@ -21,9 +21,10 @@ layout(location = 2) out vec3 fragPosition;
 layout(location = 3) out vec3 fragNormal;
 
 void main() {
-    gl_Position = matrix.proj * matrix.view * pc.model * vec4(position, 1.0);
+    vec4 worldPosition = pc.model * vec4(position, 1.0);
+    gl_Position = matrix.proj * matrix.view * worldPosition;
     fragColor = color;
     fragTexCoord = texCoord;
-    fragPosition = gl_Position.xyz;
+    fragPosition = worldPosition.xyz;
     fragNormal = normalize(transpose(inverse(mat3(pc.model))) * position);
 }
