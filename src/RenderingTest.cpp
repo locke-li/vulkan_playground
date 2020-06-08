@@ -44,16 +44,20 @@ void onKeyPressed(GLFWwindow* window, int key, int scancode, int action, int mod
 		//metalness
 		if (key == GLFW_KEY_J) {
 			option.y = std::max(0.0f, option.y - 0.1f);
+			std::cout << "metalness=" << option.y << std::endl;
 		}
 		if (key == GLFW_KEY_K) {
 			option.y = std::min(1.0f, option.y + 0.1f);
+			std::cout << "metalness=" << option.y << std::endl;
 		}
 		//roughness
 		if (key == GLFW_KEY_N) {
 			option.z = std::max(0.1f, option.z - 0.1f);
+			std::cout << "roughness=" << option.z << std::endl;
 		}
 		if (key == GLFW_KEY_M) {
 			option.z = std::min(1.0f, option.z + 0.1f);
+			std::cout << "roughness=" << option.z << std::endl;
 		}
 		//debug only, alway update
 		renderContext->vulkanEnv->updateUniformBuffer();
