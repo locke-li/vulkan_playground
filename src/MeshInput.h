@@ -25,11 +25,11 @@ public:
 	void setEnabled(bool value) noexcept;
 	bool isEnabled() const noexcept;
 	const uint8_t* bufferData(const int index) const;
-	void setPosition(const glm::vec3& pos) noexcept;
+	void setPosition(glm::vec3&& pos) noexcept;
 	const glm::vec3& getPosition() const noexcept;
-	void setRotation(const glm::quat& rot) noexcept;
+	void setRotation(glm::quat&& rot) noexcept;
 	const glm::quat& getRotation() const noexcept;
-	void setScale(const glm::vec3& scaleIn) noexcept;
+	void setScale(glm::vec3&& scaleIn) noexcept;
 	const glm::vec3& getScale() const noexcept;
 	const glm::mat4& getModelMatrix() const;
 	const std::vector<MeshNode>& getMeshList() const;

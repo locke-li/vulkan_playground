@@ -40,19 +40,19 @@ const uint8_t* MeshInput::bufferData(const int index) const {
 	return bufferList[index].data();
 }
 
-void MeshInput::setPosition(const glm::vec3& pos) noexcept {
+void MeshInput::setPosition(glm::vec3&& pos) noexcept {
 	position = pos;
 }
 const glm::vec3& MeshInput::getPosition() const noexcept {
 	return position;
 }
-void MeshInput::setRotation(const glm::quat& rot) noexcept {
+void MeshInput::setRotation(glm::quat&& rot) noexcept {
 	rotation = rot;
 }
 const glm::quat& MeshInput::getRotation() const noexcept {
 	return rotation;
 }
-void MeshInput::setScale(const glm::vec3& scaleIn) noexcept {
+void MeshInput::setScale(glm::vec3&& scaleIn) noexcept {
 	scale = scaleIn;
 }
 const glm::vec3& MeshInput::getScale() const noexcept {

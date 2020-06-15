@@ -353,7 +353,8 @@ bool VulkanEnv::createDevice() {
 
 bool VulkanEnv::createAllocator() {
 	VmaAllocatorCreateInfo info{};
-	info.frameInUseCount = swapchainImage.size() - 1;
+	//max frame count - 1
+	info.frameInUseCount = static_cast<uint32_t>(swapchainImage.size() - 1);
 	info.instance = instance;
 	info.physicalDevice = physicalDevice;
 	info.device = device;
