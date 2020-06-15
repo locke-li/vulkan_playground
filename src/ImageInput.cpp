@@ -3,25 +3,9 @@
 #include <algorithm>
 #include <iostream>
 
-ImageInput::ImageInput(const bool preserve, const bool mipmap)
-	: preserve(preserve)
-	, mipmap(mipmap)
-	, mipLevel(1)
-	, channel(0)
-	, width(0)
-	, height(0)
-	, pixelData(nullptr)
-	, byteSize(-1)
-{
-}
-
 ImageInput ImageInput::operator=(ImageInput&& other) noexcept
 {
 	return ImageInput(std::move(other));
-}
-
-ImageInput::~ImageInput() {
-	release();
 }
 
 bool ImageInput::isValid() const {
@@ -37,7 +21,7 @@ int ImageInput::getHeight() const {
 }
 
 uint32_t ImageInput::getMipLevel() const {
-	return mipmap ? mipLevel : 1;
+	return mipLevel > 1 ? mipLevel : 1;
 }
 
 bool ImageInput::preserveData() const {
@@ -45,7 +29,7 @@ bool ImageInput::preserveData() const {
 }
 
 bool ImageInput::shouldGenerateMipmap() const {
-	return mipmap && mipLevel > 1;
+	return mipLevel > 1;
 }
 
 uint32_t ImageInput::getByteSize() const {
@@ -54,6 +38,10 @@ uint32_t ImageInput::getByteSize() const {
 
 const uint8_t* ImageInput::pixel() const noexcept {
 	return pixelData.get();
+}
+
+void ImageInput::setPreserved(const bool value) {
+	preserve = value;
 }
 
 void ImageInput::setMipLevel(const int offset) {

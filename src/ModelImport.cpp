@@ -31,7 +31,9 @@ bool LoadImageData(tinygltf::Image* image, const int image_idx, std::string* err
 		return false;
 	}
 	auto* data = static_cast<LoadingGltfData*>(userData);
-	ImageInput imageInput(false, true);
+	ImageInput imageInput;
+	//TODO where is the mipmap level info
+	imageInput.setMipLevel(1);
 	imageInput.loadRaw(bytes, size);
 	data->info.texture.addTexture(std::move(imageInput));
 	return true;

@@ -131,6 +131,9 @@ int RenderingTest::mainLoop() {
 	windowLayer.createWindow(APP_TITLE, WIDTH, HEIGHT);
 
 	const auto& graphicsSetting = setting.graphics;
+	//create a test texture, with runtime generated mipmap
+	ImageInput defaultTexture;
+	defaultTexture.setPreserved(true);
 	defaultTexture.setMipLevel(3);
 	//texture loading test
 	logResult("texture loading", defaultTexture.load(setting.misc.texturePath));
