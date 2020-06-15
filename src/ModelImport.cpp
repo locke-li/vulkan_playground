@@ -123,6 +123,7 @@ bool loadGltfNodeMesh(const tinygltf::Model& model, const tinygltf::Node& node, 
 		//which is not a valid vertex array
 		//thus we need to fill our Vertex array, this comes with the benefit of selectively choosing the vertex attributes/types to use
 		const auto& posIter = primitive.attributes.find("POSITION");
+		//position data is required
 		if (posIter == primitive.attributes.end()) {
 			continue;
 		}
@@ -174,6 +175,8 @@ bool loadGltfNodeMesh(const tinygltf::Model& model, const tinygltf::Node& node, 
 			break;
 		}
 		case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT: {
+			//we know vertex data now uses uint16_t, copy directly
+			//TODO adaptive?
 			data.indices.resize(accessorIndices.count);
 			memcpy(data.indices.data(), indices, accessorIndices.count * sizeof(uint16_t));
 			break;
@@ -253,7 +256,7 @@ bool loadGltfNode(const tinygltf::Model& model, const int nodeIndex, const int* 
 	int currentIndex = static_cast<int>(loadingData.mesh.size() - 1);
 	for (const auto childIndex : node.children) {
 		std::cout << nodeIndex << " child:";
-		//children flattened
+		//children flattened to one list, hierarchical link saved with node
 		if (!loadGltfNode(model, childIndex, &currentIndex, loadingData)) {
 			return false;
 		}
@@ -327,20 +330,21 @@ bool ModelImport::loadGltf(const std::string& path, const bool isBinary, ModelLo
 }
 
 bool ModelImport::load(const std::string& path, ModelLoadingInfo&& info) const {
-	bool result = false;
+	//index offset for texture & material
 	Offset offset{
 		info.texture.count(),
 		info.material.count()
 	};
+	//load dispatch by extension
 	if (stringEndsWith(path, ".obj")) {
 		return loadObj(path.c_str(), std::move(info), std::move(offset));
 	}
-	else if (stringEndsWith(path, ".gltf")) {
+	if (stringEndsWith(path, ".gltf")) {
 		return loadGltf(path, false, std::move(info), std::move(offset));
 	}
-	else if (stringEndsWith(path, ".glb")) {
+	if (stringEndsWith(path, ".glb")) {
 		return loadGltf(path, true, std::move(info), std::move(offset));
 	}
 	std::cout << "unknown format" << std::endl;
-	return result;
+	return false;
 }

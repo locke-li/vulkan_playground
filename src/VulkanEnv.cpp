@@ -353,7 +353,7 @@ bool VulkanEnv::createDevice() {
 
 bool VulkanEnv::createAllocator() {
 	VmaAllocatorCreateInfo info{};
-	info.frameInUseCount = 2;//TODO associate with frame count
+	info.frameInUseCount = swapchainImage.size() - 1;
 	info.instance = instance;
 	info.physicalDevice = physicalDevice;
 	info.device = device;
@@ -1696,7 +1696,6 @@ bool VulkanEnv::updateUniformBufferLight(const uint32_t imageIndex) {
 	vmaUnmapMemory(vmaAllocator, uniformBufferLight[imageIndex].allocation);
 	return true;
 }
-
 
 void VulkanEnv::releaseDescriptorPool(VkDescriptorPool pool) {
 	if (pool == nullptr) return;

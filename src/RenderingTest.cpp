@@ -26,6 +26,7 @@ void onKeyPressed(GLFWwindow* window, int key, int scancode, int action, int mod
 	if (action == GLFW_PRESS) {
 		auto* renderContext = reinterpret_cast<RenderingTest::RenderContext*>(glfwGetWindowUserPointer(window));
 		auto& option = renderContext->renderingData->getDebugOption();
+		//value for shader side debug
 		if (key == GLFW_KEY_P) {
 			option.x = 0;
 		}
@@ -69,6 +70,7 @@ void onKeyPressed(GLFWwindow* window, int key, int scancode, int action, int mod
 	 glm::vec3 noNormal(0.0f);
 	 VertexIndexed tetrahedron = {
 		 {
+			 //position, normal, color, uv
 			 {{0.0f, -0.577f, 0.0f}, noNormal, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
 			 {{0.0f, 0.289f, 0.577f}, noNormal, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
 			 {{-0.5f, 0.289f, -0.289f}, noNormal, {0.0f, 1.0f, 0.0f}, {0.5f, 0.0f}},
@@ -87,6 +89,7 @@ void onKeyPressed(GLFWwindow* window, int key, int scancode, int action, int mod
 	 inputTetrahedron.setMesh(std::move(tetrahedron));
 	 VertexIndexed cube = {
 		 {
+			 //position, normal, color, uv
 			 {{-0.5f, -0.5f, 0.5f}, noNormal, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
 			 {{0.5f, -0.5f, 0.5f}, noNormal, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
 			 {{0.5f, 0.5f, 0.5f}, noNormal, {0.0f, 1.0f, 0.0f}, {0.5f, 0.0f}},
@@ -128,12 +131,14 @@ int RenderingTest::mainLoop() {
 	windowLayer.createWindow(APP_TITLE, WIDTH, HEIGHT);
 
 	const auto& graphicsSetting = setting.graphics;
-	ImageInput defaultTexture(true, true);
 	defaultTexture.setMipLevel(3);
+	//texture loading test
 	logResult("texture loading", defaultTexture.load(setting.misc.texturePath));
 	textureManager.addTexture(std::move(defaultTexture));
+	//defaut shaders
 	ShaderInput defaultShader(setting.misc.vertexShaderPath, setting.misc.fragmentShaderPath);
 	shaderManager.addShader(std::move(defaultShader));
+	//default material(s)
 	MaterialInput defaultMaterial;
 	defaultMaterial.addTextureEntry(0);
 	materialManager.addMaterial(std::move(defaultMaterial));
@@ -153,17 +158,20 @@ int RenderingTest::mainLoop() {
 	}
 	vulkanEnv.setMaxFrameInFlight(graphicsSetting.MaxFrameInFlight);
 	vulkanEnv.setMsaaSample(graphicsSetting.MSAASample);
+
+	//render context used for C-style callback methods
 	renderContext.vulkanEnv = &vulkanEnv;
 	renderContext.renderingData = &renderingData;
 	renderContext.shaderManager = &shaderManager;
 	windowLayer.setUserDataPtr(&renderContext);
 
+	//initialization sequence
 	logResult("create instance", vulkanEnv.createInstance(APP_TITLE));
 	logResult("create surface", vulkanEnv.createSurface());
 	logResult("create physical device", vulkanEnv.createPhysicalDevice());
 	logResult("create logical device", vulkanEnv.createDevice());
-	logResult("create allocator", vulkanEnv.createAllocator());
 	logResult("create swapchain", vulkanEnv.createSwapchain());
+	logResult("create allocator", vulkanEnv.createAllocator());
 	logResult("create swapchain imageview", vulkanEnv.createSwapchainImageView());
 	logResult("create msaa color buffer", vulkanEnv.createMsaaColorBuffer());
 	logResult("create depth buffer", vulkanEnv.createDepthBuffer());
@@ -186,17 +194,25 @@ int RenderingTest::mainLoop() {
 	logResult("allocate swapchain command buffer", vulkanEnv.allocateFrameCommandBuffer());
 	logResult("create frame sync object", vulkanEnv.createFrameSyncObject());
 	logResult("update uniform buffer", vulkanEnv.updateUniformBuffer());
+	//flush output
 	std::cout << std::endl;
 
+	//glfw event callback
 	windowLayer.setEventCallback(onFramebufferResize);
 	windowLayer.setKeyCallback(onKeyPressed);
 
+	//render loop
 	while (!windowLayer.shouldClose()) {
+		//frame dependent input handling
 		windowLayer.handleEvent();
+
+		//animate mesh forr debugging
 		//meshManager.getMeshAt(0).animate(90);
 		//meshManager.getMeshAt(1).animate(45);
 		meshManager.getMeshAt(0).animate(15);
+
 		if (!vulkanEnv.drawFrame(renderingData)) {
+			//draw frame failed, only consecutive failure causes loop exit
 			if (++drawFailure > DRAW_FAILURE_THRESHOLD) {
 				std::cout << "Consecutive frame draw failure! (" << drawFailure << ")"  << std::endl;
 				break;
@@ -207,6 +223,7 @@ int RenderingTest::mainLoop() {
 		}
 	}
 
+	//cleanup
 	vulkanEnv.waitUntilIdle();
 	vulkanEnv.destroy();
 
