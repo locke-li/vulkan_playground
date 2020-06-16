@@ -1,12 +1,12 @@
 #include "MaterialManager.h"
 
 MaterialInput& MaterialManager::getMaterial(const int index) {
-	//TODO range check
+	assert(index >= 0 && index < materialList.size());
 	return materialList[index];
 }
 
 const MaterialInput& MaterialManager::getMaterial(const int index) const {
-	//TODO range check
+	assert(index >= 0 && index < materialList.size());
 	return materialList[index];
 }
 
@@ -14,7 +14,7 @@ const std::vector<MaterialInput>& MaterialManager::getMaterialList() const {
 	return materialList;
 }
 
-const std::vector<MaterialManager::Prototype>& MaterialManager::getPrototypeList() const {
+const std::vector<MaterialInput::Prototype>& MaterialManager::getPrototypeList() const {
 	return prototypeList;
 }
 
@@ -28,7 +28,12 @@ void MaterialManager::addMaterial(MaterialInput&& material) {
 }
 
 void MaterialManager::matchPrototype(MaterialInput& material) {
-	//TODO
-	prototypeList.push_back({ material.textureCount() });
-	material.setPrototypeIndex(0);
+	for (auto i = 0; i < prototypeList.size(); ++i) {
+		if (material.compatibleWith(prototypeList[i])) {
+			material.setPrototypeIndex(i);
+			return;
+		}
+	}
+	material.setPrototypeIndex(static_cast<int>(prototypeList.size()));
+	prototypeList.push_back(std::move(material.makePrototype()));
 }

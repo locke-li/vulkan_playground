@@ -8,21 +8,18 @@ int MaterialInput::getShaderIndex() const {
 }
 
 void MaterialInput::setPrototypeIndex(int index) {
+	//TODO use uint32_t for indexes?
 	prototypeIndex = index;
 }
 int MaterialInput::getPrototypeIndex() const {
 	return prototypeIndex;
 }
 
-const std::vector<MaterialTextureEntry> MaterialInput::getTextureEntry() const noexcept {
+const std::vector<MaterialInput::TextureEntry> MaterialInput::getTextureEntry() const noexcept {
 	return textureEntry;
 }
-const std::vector<MaterialValueEntry> MaterialInput::getValueEntry() const noexcept {
+const std::vector<MaterialInput::ValueEntry> MaterialInput::getValueEntry() const noexcept {
 	return valueEntry;
-}
-
-int MaterialInput::textureCount() const {
-	return static_cast<int>(textureEntry.size());
 }
 
 void MaterialInput::addTextureEntry(const uint16_t index) {
@@ -31,4 +28,16 @@ void MaterialInput::addTextureEntry(const uint16_t index) {
 
 void MaterialInput::addValueEntry(const glm::vec4 value) {
 	valueEntry.push_back({ value });
+}
+
+bool MaterialInput::compatibleWith(const MaterialInput::Prototype& prototype) const {
+	return prototype.textureCount == textureEntry.size()
+		&& prototype.valueCount == valueEntry.size();
+}
+
+MaterialInput::Prototype MaterialInput::makePrototype() const {
+	return {
+		static_cast<uint16_t>(textureEntry.size()),
+		static_cast<uint16_t>(valueEntry.size())
+	};
 }

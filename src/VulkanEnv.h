@@ -195,7 +195,7 @@ public:
 	bool createTextureImageView();
 	bool createTextureSampler();
 	bool setupFence();
-	bool createVertexBufferIndice(const std::vector<const MeshInput*>& input);
+	bool createVertexBufferIndice();
 	bool createUniformBuffer();
 	bool prepareDescriptor();
 	bool createCommandPool();

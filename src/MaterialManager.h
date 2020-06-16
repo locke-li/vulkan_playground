@@ -4,17 +4,14 @@
 
 class MaterialManager
 {
-	struct Prototype {
-		int textureCount;
-	};
 private:
 	std::vector<MaterialInput> materialList;
-	std::vector<Prototype> prototypeList;
+	std::vector<MaterialInput::Prototype> prototypeList;
 public:
 	MaterialInput& getMaterial(const int index);
 	const MaterialInput& getMaterial(const int index) const;
 	const std::vector<MaterialInput>& getMaterialList() const;
-	const std::vector<Prototype>& getPrototypeList() const;
+	const std::vector<MaterialInput::Prototype>& getPrototypeList() const;
 	int count() const;
 	void addMaterial(MaterialInput&&);
 	void matchPrototype(MaterialInput&);

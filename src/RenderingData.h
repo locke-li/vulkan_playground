@@ -1,5 +1,6 @@
 #pragma once
 #include "glm.hpp"
+#include "MaterialInput.h"
 #include "MeshInput.h"
 #include "MeshNode.h"
 #include <vector>
@@ -38,6 +39,7 @@ private:
 	glm::vec3 cameraViewCenter;
 	float windowAspectRatio;
 	std::vector<const MeshInput*> renderList;
+	std::vector<const MaterialInput::Prototype*> prototypeList;
 	std::vector<Light> lightList;
 		
 	void updateProjection();
@@ -55,6 +57,7 @@ public:
 	const MatrixUniformBufferData& getMatrixUniform() const;
 	const LightUniformBufferData& getLightUniform() const;
 	void setRenderListFiltered(const std::vector<MeshInput>& list);
-	const std::vector<const MeshInput*> getRenderList() const;
+	const std::vector<const MeshInput*>& getRenderList() const;
+	const std::vector<const MaterialInput::Prototype*>& getPrototypeList() const;
 };
 

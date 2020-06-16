@@ -94,7 +94,7 @@ VkPresentModeKHR choosePresentMode(const std::vector<VkPresentModeKHR>& availabl
 			return mode;
 		}
 	}
-	//guaranteed to be available
+	//FIFO is guaranteed to be available by vulkans spec
 	return VK_PRESENT_MODE_FIFO_KHR;
 }
 
@@ -583,6 +583,9 @@ bool VulkanEnv::createRenderPass() {
 }
 
 bool VulkanEnv::createDescriptorSetLayout() {
+	auto& prototypeList = renderingData->getPrototypeList();
+	//TODO create descriptor set for each prototype
+
 	VkDescriptorSetLayoutBinding uniformMatrix;
 	uniformMatrix.binding = 0;
 	uniformMatrix.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -1178,7 +1181,8 @@ bool VulkanEnv::createStagingBuffer(VkDeviceSize size, VkBuffer& buffer, VmaAllo
 	return createBuffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY, buffer, allocation);
 }
 
-bool VulkanEnv::createVertexBufferIndice(const std::vector<const MeshInput*>& input) {
+bool VulkanEnv::createVertexBufferIndice() {
+	auto& input = renderingData->getRenderList();
 	uint32_t vCount = 0, vSize = 0, iSize = 0;
 	for (const auto& vertexInput : input) {
 		for (const auto& mesh : vertexInput->getMeshList()) {

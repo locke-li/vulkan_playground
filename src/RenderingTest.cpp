@@ -191,7 +191,7 @@ int RenderingTest::mainLoop() {
 	textureManager.releaseNonPreserved();
 	logResult("create texture image view", vulkanEnv.createTextureImageView());
 	logResult("create texture sampler", vulkanEnv.createTextureSampler());
-	logResult("create vertex/index buffer", vulkanEnv.createVertexBufferIndice(renderingData.getRenderList()));
+	logResult("create vertex/index buffer", vulkanEnv.createVertexBufferIndice());
 	logResult("create uniform buffer", vulkanEnv.createUniformBuffer());
 	logResult("prepare descriptor", vulkanEnv.prepareDescriptor());
 	logResult("allocate swapchain command buffer", vulkanEnv.allocateFrameCommandBuffer());

@@ -71,9 +71,14 @@ void RenderingData::setRenderListFiltered(const std::vector<MeshInput>& list) {
 	for (const auto& input : list) {
 		if (!input.isEnabled()) continue;
 		renderList.push_back(&input);
+		//TODO add prototype
 	}
 }
 
-const std::vector<const MeshInput*> RenderingData::getRenderList() const {
+const std::vector<const MeshInput*>& RenderingData::getRenderList() const {
 	return renderList;
+}
+
+const std::vector<const MaterialInput::Prototype*>& RenderingData::getPrototypeList() const {
+	return prototypeList;
 }
