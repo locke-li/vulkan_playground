@@ -14,7 +14,12 @@ const std::vector<MaterialInput>& MaterialManager::getMaterialList() const {
 	return materialList;
 }
 
-const std::vector<MaterialInput::Prototype>& MaterialManager::getPrototypeList() const {
+const MaterialPrototype& MaterialManager::getPrototype(const int index) const {
+	assert(index >= 0 && index < prototypeList.size());
+	return prototypeList[index];
+}
+
+const std::vector<MaterialPrototype>& MaterialManager::getPrototypeList() const {
 	return prototypeList;
 }
 

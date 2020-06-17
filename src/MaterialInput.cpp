@@ -30,12 +30,12 @@ void MaterialInput::addValueEntry(const glm::vec4 value) {
 	valueEntry.push_back({ value });
 }
 
-bool MaterialInput::compatibleWith(const MaterialInput::Prototype& prototype) const {
+bool MaterialInput::compatibleWith(const MaterialPrototype& prototype) const {
 	return prototype.textureCount == textureEntry.size()
 		&& prototype.valueCount == valueEntry.size();
 }
 
-MaterialInput::Prototype MaterialInput::makePrototype() const {
+MaterialPrototype MaterialInput::makePrototype() const {
 	return {
 		static_cast<uint16_t>(textureEntry.size()),
 		static_cast<uint16_t>(valueEntry.size())

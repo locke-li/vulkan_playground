@@ -1,5 +1,6 @@
 #include "VulkanEnv.h"
 #include "MeshNode.h"
+#include "MeshInput.h"
 #include "DebugHelper.hpp"
 #include <unordered_set>
 #include <cstdint>

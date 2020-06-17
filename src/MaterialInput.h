@@ -2,6 +2,11 @@
 #include "glm.hpp"
 #include <vector>
 
+struct MaterialPrototype {
+	uint16_t textureCount;
+	uint16_t valueCount;
+};
+
 class MaterialInput
 {
 private:
@@ -14,11 +19,6 @@ private:
 	struct ValueEntry {
 		glm::vec4 value;
 		//TODO shader mapping info
-	};
-public:
-	struct Prototype {
-		uint16_t textureCount;
-		uint16_t valueCount;
 	};
 private:
 	std::vector<TextureEntry> textureEntry;
@@ -38,7 +38,7 @@ public:
 	void addTextureEntry(const uint16_t index);
 	void addValueEntry(const glm::vec4 value);
 	//TODO remove an entry
-	bool compatibleWith(const Prototype& prototype) const;
-	Prototype makePrototype() const;
+	bool compatibleWith(const MaterialPrototype& prototype) const;
+	MaterialPrototype makePrototype() const;
 };
 

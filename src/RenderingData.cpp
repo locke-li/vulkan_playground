@@ -79,6 +79,6 @@ const std::vector<const MeshInput*>& RenderingData::getRenderList() const {
 	return renderList;
 }
 
-const std::vector<const MaterialInput::Prototype*>& RenderingData::getPrototypeList() const {
+const std::unordered_set<const MaterialPrototype*>& RenderingData::getPrototypeList() const {
 	return prototypeList;
 }
