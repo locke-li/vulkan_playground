@@ -120,6 +120,19 @@ void onKeyPressed(GLFWwindow* window, int key, int scancode, int action, int mod
 	 meshManager.addMesh(std::move(inputLoadedModel));
  }
 
+ std::vector<MeshRenderData> RenderingTest::setupRenderList() {
+	 auto& meshList = meshManager.getMeshList();
+	 std::vector<MeshRenderData> meshRenderList(meshList.size());
+	 for (auto i = 0; i < meshList.size(); ++i) {
+		 auto& mesh = meshList[i];
+		 meshRenderList[i] = {
+			 &mesh,
+			 &materialManager.getMaterial(mesh.getMaterialIndex())
+		 };
+	 }
+	 return meshRenderList;
+ }
+
 int RenderingTest::mainLoop() {
 	if (!setting.loadFrom("_input")) {
 		return 2;
@@ -150,8 +163,8 @@ int RenderingTest::mainLoop() {
 	renderingData.updateCamera(45.0f, WIDTH / (float)HEIGHT, glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, 0.0f));
 	renderingData.addLight({ LightType::Point, 1.0f, 5.0f, glm::vec3(4.0f, -4.0f, 4.0f) });
 	renderingData.updateLight();
-	renderingData.setRenderListFiltered(meshManager.getMeshList());
 	renderingData.setDebugOption({ 0.0f, 1.0f, 0.1f, 0.0f });
+	renderingData.setRenderListFiltered(setupRenderList(), materialManager, textureManager);
 	
 	vulkanEnv.setWindow(windowLayer.getWindow());
 	vulkanEnv.setRenderingData(renderingData);

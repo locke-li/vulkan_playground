@@ -63,6 +63,13 @@ const glm::mat4& MeshInput::getModelMatrix() const {
 	return modelMatrix;
 }
 
+void MeshInput::setMaterial(int index) {
+	materialIndex = index;
+}
+int MeshInput::getMaterialIndex() const {
+	return materialIndex;
+}
+
 const std::vector<MeshNode>& MeshInput::getMeshList() const {
 	return meshList;
 }

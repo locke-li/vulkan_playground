@@ -30,6 +30,7 @@ private:
 	MeshManager meshManager;
 	int drawFailure = 0;
 	void prepareModel(const Setting::Misc&);
+	std::vector<MeshRenderData> setupRenderList();
 public:
 	int mainLoop();
 };

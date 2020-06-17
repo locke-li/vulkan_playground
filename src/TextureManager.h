@@ -9,6 +9,7 @@ private:
 public:
 	size_t addTexture(ImageInput&& texture);
 	ImageInput& getTexture(const int index);
+	const ImageInput& getTexture(const int index) const;
 	std::vector<ImageInput>& getTextureList();
 	int count() const;
 	void releaseNonPreserved();

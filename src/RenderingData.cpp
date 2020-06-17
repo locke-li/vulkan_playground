@@ -3,6 +3,11 @@
 #define GLM_FORCE_LEFT_HANDED
 #include "glm.hpp"
 #include "gtc/matrix_transform.hpp"
+#include "MaterialInput.h"
+#include "MeshInput.h"
+#include "ImageInput.h"
+#include "MaterialManager.h"
+#include "TextureManager.h"
 
 void RenderingData::updateProjection() {
 	matrixData.proj = glm::perspective(glm::radians(cameraFov), windowAspectRatio, 0.05f, 10.0f);
@@ -64,14 +69,21 @@ const LightUniformBufferData& RenderingData::getLightUniform() const {
 	return lightData;
 }
 
-void RenderingData::setRenderListFiltered(const std::vector<MeshInput>& list) {
+void RenderingData::setRenderListFiltered(std::vector<MeshRenderData>&& list, const MaterialManager& materialManager, const TextureManager& textureManager) {
 	renderList.clear();
 	renderList.reserve(list.size());
 	//TODO filter/culling
 	for (const auto& input : list) {
-		if (!input.isEnabled()) continue;
-		renderList.push_back(&input);
-		//TODO add prototype
+		if (!input.mesh->isEnabled()) continue;
+		renderList.push_back(input.mesh);
+		//add prototype
+		auto& material = materialManager.getMaterial(input.mesh->getMaterialIndex());
+		prototypeList.insert(&materialManager.getPrototype(material.getPrototypeIndex()));
+		//add texture
+		for (const auto& texEntry : material.getTextureEntry()) {
+			//TODO placeholder texture
+			textureList.insert(&textureManager.getTexture(texEntry.textureIndex));
+		}
 	}
 }
 
@@ -81,4 +93,8 @@ const std::vector<const MeshInput*>& RenderingData::getRenderList() const {
 
 const std::unordered_set<const MaterialPrototype*>& RenderingData::getPrototypeList() const {
 	return prototypeList;
+}
+
+const std::unordered_set<const ImageInput*>& RenderingData::getTextureList() const {
+	return textureList;
 }

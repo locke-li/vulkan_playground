@@ -1,10 +1,14 @@
 #pragma once
 #include "glm.hpp"
 #include <vector>
+#include <unordered_set>
+
 class MeshInput;
 class ImageInput;
 class MaterialInput;
 struct MaterialPrototype;
+class MaterialManager;
+class TextureManager;
 
 struct MatrixUniformBufferData {
 	alignas(16)glm::mat4 view;
@@ -16,6 +20,12 @@ struct LightUniformBufferData {
 	glm::vec4 cameraPos;//(xyz:pos, w:)
 	glm::vec4 lightPos;//(xyz:pos/dir, w:type)
 	glm::vec4 lightData;//(x:intensity, y:falloff, z:, w:)
+};
+
+struct MeshRenderData {
+	const MeshInput* mesh;
+	const MaterialInput* material;
+	//TODO per mesh render data
 };
 
 enum class LightType : uint8_t {
@@ -41,6 +51,7 @@ private:
 	float windowAspectRatio;
 	std::vector<const MeshInput*> renderList;
 	std::unordered_set<const MaterialPrototype*> prototypeList;
+	std::unordered_set<const ImageInput*> textureList;
 	std::vector<Light> lightList;
 		
 	void updateProjection();
@@ -57,8 +68,9 @@ public:
 	const std::vector<Light>& getLightList() const;
 	const MatrixUniformBufferData& getMatrixUniform() const;
 	const LightUniformBufferData& getLightUniform() const;
-	void setRenderListFiltered(const std::vector<MeshInput>& list);
+	void setRenderListFiltered(std::vector<MeshRenderData>&& list, const MaterialManager& materialManager, const TextureManager& textureManager);
 	const std::vector<const MeshInput*>& getRenderList() const;
 	const std::unordered_set<const MaterialPrototype*>& getPrototypeList() const;
+	const std::unordered_set<const ImageInput*>& getTextureList() const;
 };
 

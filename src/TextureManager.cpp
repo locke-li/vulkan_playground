@@ -1,5 +1,6 @@
 #include "TextureManager.h"
 #include <algorithm>
+#include <cassert>
 
 size_t TextureManager::addTexture(ImageInput&& texture) {
 	auto index = textureList.size();
@@ -8,7 +9,12 @@ size_t TextureManager::addTexture(ImageInput&& texture) {
 }
 
 ImageInput& TextureManager::getTexture(const int index) {
-	//TODO range check
+	assert(index >= 0 && index < textureList.size());
+	return textureList[index];
+}
+
+const ImageInput& TextureManager::getTexture(const int index) const {
+	assert(index >= 0 && index < textureList.size());
 	return textureList[index];
 }
 

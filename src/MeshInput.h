@@ -12,6 +12,7 @@ private:
 	glm::quat rotation;
 	glm::vec3 scale;
 	glm::mat4 modelMatrix;
+	int materialIndex = 0;
 	std::vector<MeshNode> meshList;
 	BufferView createView(const size_t offset, const VertexIndexed& data) const;
 	void addMesh(MeshNode&& mesh);
@@ -32,6 +33,8 @@ public:
 	void setScale(glm::vec3&& scaleIn) noexcept;
 	const glm::vec3& getScale() const noexcept;
 	const glm::mat4& getModelMatrix() const;
+	void setMaterial(int index);
+	int getMaterialIndex() const;
 	const std::vector<MeshNode>& getMeshList() const;
 	void reserve(size_t size);
 	void calculateNormal(VertexIndexed& data) const;
