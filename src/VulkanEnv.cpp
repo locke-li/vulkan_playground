@@ -12,10 +12,16 @@
 constexpr int TestMaxTextureCount = 5;
 
 enum class PhysicalDeviceScore: uint32_t {
+	//GPU type
 	DiscreteGPU = 300,
 	IntegratedGPU = 200,
 	VirtualGPU = 100,
+	//feature
+	GeometryShader = 10,
+	SamplerAnisotropy = 10,
+	//extension
 	ExtensionValid = 1000,
+	//queue family
 	QueueFamilyValid = 1000,
 };
 
@@ -25,24 +31,39 @@ const std::vector<const char*> extension = {
 
 bool deviceValid(const VkPhysicalDevice device, uint32_t& score) {
 	VkPhysicalDeviceProperties properties;
-	VkPhysicalDeviceFeatures features;
 	vkGetPhysicalDeviceProperties(device, &properties);
-	vkGetPhysicalDeviceFeatures(device, &features);
 
 	if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
 		score += static_cast<uint32_t>(PhysicalDeviceScore::DiscreteGPU);
+		return true;
 	}
-	else if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) {
+	if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) {
 		score += static_cast<uint32_t>(PhysicalDeviceScore::IntegratedGPU);
+		return true;
 	}
-	else if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU) {
+	if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU) {
 		score += static_cast<uint32_t>(PhysicalDeviceScore::VirtualGPU);
+		return true;
+	}
+	return false;
+}
+
+//this should be changed according to actual feature demands
+bool deviceFeatureSupport(const VkPhysicalDevice device, uint32_t& score) {
+	VkPhysicalDeviceFeatures features;
+	vkGetPhysicalDeviceFeatures(device, &features);
+	//required
+	if (features.samplerAnisotropy) {
+		score += static_cast<uint32_t>(PhysicalDeviceScore::SamplerAnisotropy);
 	}
 	else {
 		return false;
 	}
-	return features.geometryShader &&
-		features.samplerAnisotropy;
+	//optional
+	if (features.geometryShader) {
+		score += static_cast<uint32_t>(PhysicalDeviceScore::GeometryShader);
+	}
+	return true;
 }
 
 bool deviceExtensionSupport(const VkPhysicalDevice device, uint32_t& score) {
@@ -95,7 +116,7 @@ VkPresentModeKHR choosePresentMode(const std::vector<VkPresentModeKHR>& availabl
 			return mode;
 		}
 	}
-	//FIFO is guaranteed to be available by vulkans spec
+	//FIFO is guaranteed to be available by vulkan spec
 	return VK_PRESENT_MODE_FIFO_KHR;
 }
 
@@ -295,7 +316,8 @@ bool VulkanEnv::createPhysicalDevice() {
 		score = 0;
 		if (deviceValid(device, score) &&
 			queueFamilyValid(device, score) &&
-			deviceExtensionSupport(device, score)) {
+			deviceExtensionSupport(device, score) &&
+			deviceFeatureSupport(device, score)) {
 			std::cout << "device candidate score=" << score << std::endl;
 			if (score > maxScore) {
 				maxScore = score;
