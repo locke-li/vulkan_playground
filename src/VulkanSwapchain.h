@@ -1,18 +1,25 @@
 #pragma once
 #include "VulkanSupportStruct.h"
-#include "ShaderManager.h"
 #include "vk_mem_alloc.h"
 
 class VulkanSwapchain {
 private:
+	GLFWwindow* window;
+	VkSurfaceKHR surface;
+
+	//value copy from VulkanEnv
 	VkInstance instance;
 	VkPhysicalDevice physicalDevice;
 	VkDevice device;
 	VmaAllocator vmaAllocator;
-	GLFWwindow* window;
-	VkSurfaceKHR surface;
+	//related resources
+	VkPipelineLayout graphicsPipelineLayout;
+	VkPipeline graphicsPipeline;
+	VkRenderPass renderPass;
+	std::vector<Buffer> bufferList;
+	std::vector<VkDescriptorPool> descriptorPool;
 
-	VkSwapchainKHR swapchain;
+	VkSwapchainKHR swapchain = VK_NULL_HANDLE;
 	VkSurfaceFormatKHR format;
 	VkExtent2D extent;
 	std::vector<VkImage> image;
@@ -29,11 +36,16 @@ private:
 
 	bool framebufferResized;
 public:
+	void setWindow(GLFWwindow* win) noexcept;
 	void setMaxFrameInFlight(const uint32_t value) noexcept;
 	void setInstance(VkInstance instance) noexcept;
 	void setDevice(VkDevice device) noexcept;
 	void setAllocator(VmaAllocator allocator) noexcept;
-	void setWindow(GLFWwindow* win) noexcept;
+	void setGraphicsPipeline(VkPipeline pipeline) noexcept;
+	void setGraphicsPipelineLayout(VkPipelineLayout layout) noexcept;
+	void setRenderPass(VkRenderPass renderPassIn) noexcept;
+	void copyToBufferList(const std::vector<Buffer>& list);
+	void copyDescriptorPool(VkDescriptorPool pool) noexcept;
 	void setPreferedPresentMode(const VkPresentModeKHR mode) noexcept;
 	void setMsaaSample(const uint32_t count) noexcept;
 	VkSampleCountFlagBits msaaSampleCount() const;
@@ -46,10 +58,10 @@ public:
 	VkFramebuffer getFramebuffer(int index);
 	void onFramebufferResize() noexcept;
 	void selectPhysicalDevice(const PhysicalDeviceCandidate& candidate);
-	void querySupport(VkPhysicalDevice physicalDevice);
+	void querySupport();
 	bool createSurface();
 	bool createSwapchain();
-	bool createFramebuffer(VkRenderPass renderPass);
+	bool createFramebuffer();
 	bool createDepthBuffer();
 	bool createMsaaColorBuffer();
 	void waitForValidSize();

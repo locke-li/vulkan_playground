@@ -198,7 +198,7 @@ int RenderingTest::mainLoop() {
 	logResult("loading shader", shaderManager.preload());
 	logResult("create graphics pipeline", vulkanEnv.createGraphicsPipeline());
 	shaderManager.unload();
-	logResult("create frame buffer", vulkanEnv.createFramebuffer());
+	logResult("create frame buffer", swapchain.createFramebuffer());
 	logResult("setup fence", vulkanEnv.setupFence());
 	logResult("create command pool", vulkanEnv.createCommandPool());
 	logResult("create texture image", vulkanEnv.createTextureImage(textureManager.getTextureList()));

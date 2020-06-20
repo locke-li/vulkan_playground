@@ -26,6 +26,7 @@ private:
 	VkQueue graphicsQueue;
 	VkQueue presentQueue;
 	VulkanSwapchain swapchain;
+	VulkanSwapchain retiredSwapchain;
 	std::vector<Buffer> uniformBufferMatrix;
 	std::vector<Buffer> uniformBufferLight;
 	std::vector<std::vector<VkDescriptorSet>> descriptorSet;
@@ -64,7 +65,6 @@ private:
 	bool allocateCommandBuffer(const VkCommandPool pool, const uint32_t count, VkCommandBuffer* cmd);
 	bool setupDescriptorSet(int imageIndex, VkDescriptorPool pool);
 	bool setupCommandBuffer(const uint32_t index, const uint32_t imageIndex);
-	void destroySwapchain();
 public:
 	VulkanSwapchain& getSwapchain() noexcept;
 	void setRenderingData(const RenderingData& data) noexcept;
@@ -82,7 +82,6 @@ public:
 	bool createDescriptorSetLayout();
 	bool createGraphicsPipelineLayout();
 	bool createGraphicsPipeline();
-	bool createFramebuffer();
 	bool createTextureImage(const std::vector<ImageInput>& input);
 	bool createTextureImageView();
 	bool createTextureSampler();

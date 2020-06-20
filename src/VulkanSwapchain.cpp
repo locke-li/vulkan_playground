@@ -5,6 +5,10 @@
 #include <iostream>
 #include <cassert>
 
+void VulkanSwapchain::setWindow(GLFWwindow* win) noexcept {
+	window = win;
+}
+
 void VulkanSwapchain::setMaxFrameInFlight(const uint32_t value) noexcept {
 	maxFrameInFlight = value;
 }
@@ -21,8 +25,28 @@ void VulkanSwapchain::setAllocator(VmaAllocator allocator) noexcept {
 	vmaAllocator = allocator;
 }
 
-void VulkanSwapchain::setWindow(GLFWwindow* win) noexcept {
-	window = win;
+void VulkanSwapchain::setGraphicsPipeline(VkPipeline pipeline) noexcept {
+	graphicsPipeline = pipeline;
+}
+
+void VulkanSwapchain::setGraphicsPipelineLayout(VkPipelineLayout layout) noexcept {
+	graphicsPipelineLayout = layout;
+}
+
+void VulkanSwapchain::setRenderPass(VkRenderPass renderPassIn) noexcept {
+	renderPass = renderPassIn;
+}
+
+void VulkanSwapchain::copyToBufferList(const std::vector<Buffer>& list) {
+	bufferList.reserve(bufferList.size() + list.size());
+	//TODO memcpy
+	for (auto& buffer : list) {
+		bufferList.push_back(buffer);
+	}
+}
+
+void VulkanSwapchain::copyDescriptorPool(VkDescriptorPool pool) noexcept {
+	descriptorPool.push_back(pool);
 }
 
 void VulkanSwapchain::setPreferedPresentMode(const VkPresentModeKHR mode) noexcept {
@@ -76,7 +100,7 @@ void VulkanSwapchain::selectPhysicalDevice(const PhysicalDeviceCandidate& candid
 	msaaSample = findUsableMsaaSampleCount(candidate.device, targetMsaaSample);
 }
 
-void VulkanSwapchain::querySupport(VkPhysicalDevice physicalDevice) {
+void VulkanSwapchain::querySupport() {
 	querySwapChainSupport(physicalDevice, surface, &support);
 }
 
@@ -115,8 +139,7 @@ bool VulkanSwapchain::createSwapchain() {
 	info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;//alpha blending with other window
 	info.presentMode = mode;
 	info.clipped = VK_TRUE;
-	info.oldSwapchain = VK_NULL_HANDLE;//used for swapchain runtime swap
-
+	info.oldSwapchain = swapchain;
 	if (vkCreateSwapchainKHR(device, &info, nullptr, &swapchain) != VK_SUCCESS) {
 		return false;
 	}
@@ -137,7 +160,7 @@ bool VulkanSwapchain::createSwapchain() {
 	return true;
 }
 
-bool VulkanSwapchain::createFramebuffer(VkRenderPass renderPass) {
+bool VulkanSwapchain::createFramebuffer() {
 	framebuffer.resize(image.size());
 	for (auto i = 0; i < image.size(); ++i) {
 		VkFramebufferCreateInfo info;
@@ -239,6 +262,9 @@ void VulkanSwapchain::waitForValidSize() {
 }
 
 void VulkanSwapchain::destroy() {
+	if (swapchain == VK_NULL_HANDLE) {
+		return;
+	}
 	for (const auto framebuffer : framebuffer) {
 		vkDestroyFramebuffer(device, framebuffer, nullptr);
 	}
@@ -249,5 +275,20 @@ void VulkanSwapchain::destroy() {
 	for (auto i = 0; i < imageView.size(); ++i) {
 		vkDestroyImageView(device, imageView[i], nullptr);
 	}
+	vkDestroyPipelineLayout(device, graphicsPipelineLayout, nullptr);
+	graphicsPipelineLayout = VK_NULL_HANDLE;
+	vkDestroyPipeline(device, graphicsPipeline, nullptr);
+	graphicsPipeline = VK_NULL_HANDLE;
+	vkDestroyRenderPass(device, renderPass, nullptr);
+	renderPass = VK_NULL_HANDLE;
+	for (const auto& buffer : bufferList) {
+		vmaDestroyBuffer(vmaAllocator, buffer.buffer, buffer.allocation);
+	}
+	bufferList.clear();
+	for (auto& pool : descriptorPool) {
+		vkDestroyDescriptorPool(device, pool, nullptr);
+	}
+	descriptorPool.clear();
 	vkDestroySwapchainKHR(device, swapchain, nullptr);
+	swapchain = VK_NULL_HANDLE;
 }

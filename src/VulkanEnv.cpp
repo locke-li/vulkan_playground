@@ -287,7 +287,11 @@ bool VulkanEnv::createRenderPass() {
 		renderPassInfo.attachmentCount = 2;
 	}
 
-	return vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) == VK_SUCCESS;
+	if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
+		return false;
+	}
+	swapchain.setRenderPass(renderPass);
+	return true;
 }
 
 bool VulkanEnv::createDescriptorSetLayout() {
@@ -365,7 +369,11 @@ bool VulkanEnv::createDescriptorSetLayout() {
 bool VulkanEnv::createGraphicsPipelineLayout() {
 	//TODO multiple layout
 	VkDescriptorSetLayout layout[]{ descriptorSetLayoutUniform, descriptorSetLayoutMaterial[0] };
-	return createGraphicsPipelineLayoutWithVertexConst(device, layout, 2, &graphicsPipelineLayout);
+	if (!createGraphicsPipelineLayoutWithVertexConst(device, layout, 2, &graphicsPipelineLayout)) {
+		return false;
+	}
+	swapchain.setGraphicsPipelineLayout(graphicsPipelineLayout);
+	return true;
 }
 
 bool VulkanEnv::createGraphicsPipeline() {
@@ -541,11 +549,8 @@ bool VulkanEnv::createGraphicsPipeline() {
 
 	vkDestroyShaderModule(device, vertShader, nullptr);
 	vkDestroyShaderModule(device, fragShader, nullptr);
+	swapchain.setGraphicsPipeline(graphicsPipeline);
 	return true;
-}
-
-bool VulkanEnv::createFramebuffer() {
-	return swapchain.createFramebuffer(renderPass);
 }
 
 bool VulkanEnv::createTextureImage(const std::vector<ImageInput>& textureList) {
@@ -795,13 +800,16 @@ bool VulkanEnv::createUniformBuffer() {
 			return false;
 		}
 	}
+	//TODO merge
+	swapchain.copyToBufferList(uniformBufferMatrix);
+	swapchain.copyToBufferList(uniformBufferLight);
 	return true;
 }
 
 bool VulkanEnv::prepareDescriptor() {
-	descriptorPool.resize(uniformBufferMatrix.size());
-	descriptorPoolFree.reserve(uniformBufferMatrix.size());
-	descriptorSet.resize(uniformBufferMatrix.size());
+	descriptorPool.resize(swapchain.size());
+	descriptorPoolFree.reserve(swapchain.size());
+	descriptorSet.resize(swapchain.size());
 	for (auto& pool : descriptorPool) {
 		if (!createDescriptorPool(0, pool)) {
 			return false;
@@ -1057,7 +1065,11 @@ void VulkanEnv::destroy() {
 		vkDestroyFence(device, frame.fenceImageAquired, nullptr);
 		vkDestroyFence(device, frame.fenceInFlight, nullptr);
 	}
-	destroySwapchain();
+	swapchain.destroy();
+	retiredSwapchain.destroy();
+	for (auto& pool : descriptorPool) {
+		vkDestroyDescriptorPool(device, pool, nullptr);
+	}
 	for (auto i = 0; i < vertexBuffer.buffer.size(); ++i) {
 		vmaDestroyBuffer(vmaAllocator, vertexBuffer.buffer[i], vertexBuffer.allocation[i]);
 	}
@@ -1083,28 +1095,14 @@ void VulkanEnv::destroy() {
 	vkDestroyInstance(instance, nullptr);
 }
 
-void VulkanEnv::destroySwapchain() {
-	vkDestroyPipelineLayout(device, graphicsPipelineLayout, nullptr);
-	vkDestroyPipeline(device, graphicsPipeline, nullptr);
-	vkDestroyRenderPass(device, renderPass, nullptr);
-	for (uint32_t i = 0; i < swapchain.size(); ++i) {
-		vmaDestroyBuffer(vmaAllocator, uniformBufferMatrix[i].buffer, uniformBufferMatrix[i].allocation);
-		vmaDestroyBuffer(vmaAllocator, uniformBufferLight[i].buffer, uniformBufferLight[i].allocation);
-	}
+bool VulkanEnv::recreateSwapchain() {
 	for (auto& frame : inFlightFrame) {
+		swapchain.copyDescriptorPool(frame.descriptorPool);
 		frame.descriptorPool = nullptr;
 	}
-	for (auto pool : descriptorPool) {
-		vkDestroyDescriptorPool(device, pool, nullptr);
-	}
-	swapchain.destroy();
-}
-
-bool VulkanEnv::recreateSwapchain() {
-	//TODO exchange swapchain on the fly with VkSwapchainCreateInfoKHR.oldSwapchain
-	vkDeviceWaitIdle(device);
-	destroySwapchain();
-	swapchain.querySupport(physicalDevice);
+	retiredSwapchain.destroy();
+	retiredSwapchain = swapchain;
+	swapchain.querySupport();
 
 	bool result = logResult("create swapchain", swapchain.createSwapchain()) &&
 		logResult("create msaa color buffer", swapchain.createMsaaColorBuffer()) &&
@@ -1112,7 +1110,7 @@ bool VulkanEnv::recreateSwapchain() {
 		logResult("create render pass", createRenderPass()) &&
 		logResult("create graphics pipeline layout", createGraphicsPipelineLayout()) &&
 		logResult("create graphics pipeline", createGraphicsPipeline()) &&
-		logResult("create framebuffer", createFramebuffer()) &&
+		logResult("create framebuffer", swapchain.createFramebuffer()) &&
 		logResult("create uniform buffer", createUniformBuffer()) &&
 		logResult("prepare descriptor", prepareDescriptor()) &&
 		logResult("update uniform buffer", updateUniformBuffer());
@@ -1195,6 +1193,8 @@ bool VulkanEnv::drawFrame(const RenderingData& renderingData) {
 	//std::cout << "image acquired " << imageIndex << std::endl;
 	vkWaitForFences(device, 2, frameFence, VK_TRUE, UINT64_MAX);
 	//std::cout << "frame fence pass " << currentFrame << std::endl;
+	//TODO find the correct timing
+	retiredSwapchain.destroy();
 
 	releaseDescriptorPool(frame.descriptorPool);
 	requestDescriptorPool(0, frame.descriptorPool);
