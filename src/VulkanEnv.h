@@ -1,6 +1,4 @@
 #pragma once
-#define GLFW_INCLUDE_VULKAN 
-#include "GLFW/glfw3.h"
 #include "vk_mem_alloc.h"
 #include "MeshNode.h"
 #include "ShaderManager.h"
@@ -8,106 +6,26 @@
 #include "RenderingData.h"
 #include "ImageInput.h"
 #include "ShaderInput.h"
+#include "VulkanSupportStruct.h"
+#include "VulkanSwapchain.h"
 #include <vector>
-
-struct QueueFamily {
-	uint32_t graphics;
-	uint32_t present;
-};
-
-struct SwapchainSupport {
-	VkSurfaceCapabilitiesKHR capabilities;
-	std::vector<VkSurfaceFormatKHR> formats;
-	std::vector<VkPresentModeKHR> presentMode;
-};
-
-struct PhysicalDeviceCandidate {
-	const VkPhysicalDevice& device;
-	SwapchainSupport swapchainSupport;
-	uint32_t score;
-};
-
-struct InFlightFrame {
-	VkSemaphore semaphoreRenderFinished;
-	VkFence fenceImageAquired;
-	VkFence fenceInFlight;
-	VkDescriptorPool descriptorPool;
-};
-
-struct Buffer {
-	VkBuffer buffer;
-	VmaAllocation allocation;
-};
-
-struct DrawInfo {
-	int setIndex;
-	const void* constantData;
-};
-
-struct DepthBuffer {
-	VkImage image;
-	VmaAllocation imageAllocation;
-	VkImageView view;
-	VkFormat format;
-};
-
-struct MsaaColorBuffer {
-	VkImage image;
-	VmaAllocation imageAllocation;
-	VkImageView view;
-};
-
-struct VertexBuffer {
-	std::vector<VkBuffer> buffer;
-	std::vector<VmaAllocation> allocation;
-	std::vector<VkDeviceSize> offset;
-};
-
-struct IndexBuffer {
-	VkBuffer buffer;
-	VmaAllocation allocation;
-	std::vector<DrawInfo> drawInfo;
-	std::vector<VkDeviceSize> offset;
-	std::vector<uint32_t> vOffset;
-	std::vector<uint32_t> iCount;
-};
-
-struct ImageOption {
-	uint32_t mipLevel;
-	VkFormat format;
-};
-
-struct ImageSet {
-	std::vector<VkImage> image;
-	std::vector<ImageOption> option;
-	std::vector<VkImageView> view;
-	std::vector<VmaAllocation> allocation;
-	std::vector<VkSampler> sampler;
-};
 
 class VulkanEnv
 {
 private:
-	GLFWwindow* window;
 	const RenderingData* renderingData;
 	std::vector<const char*> validationLayer;
 	const MaterialManager* materialManager;
 	ShaderManager* shaderManager;
 
 	VkInstance instance;
-	VkSurfaceKHR surface;
 	std::vector<PhysicalDeviceCandidate> physicalDeviceCandidate;
 	VkPhysicalDevice physicalDevice;
 	VkDevice device;
 	VmaAllocator vmaAllocator;
 	VkQueue graphicsQueue;
 	VkQueue presentQueue;
-	VkSwapchainKHR swapchain;
-	VkSurfaceFormatKHR swapchainFormat;
-	VkExtent2D swapchainExtent;
-	std::vector<VkImage> swapchainImage;
-	std::vector<VkImageView> swapchainImageView;
-	std::vector<VkFramebuffer> swapchainFramebuffer;
+	VulkanSwapchain swapchain;
 	std::vector<Buffer> uniformBufferMatrix;
 	std::vector<Buffer> uniformBufferLight;
 	std::vector<std::vector<VkDescriptorSet>> descriptorSet;
@@ -146,20 +64,10 @@ private:
 	VkViewport viewport;
 private:
 	bool queueFamilyValid(const VkPhysicalDevice device, uint32_t& score);
-	bool findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags flags, uint32_t* typeIndex);
-	bool findDepthFormat(VkFormat* format);
-	bool createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VmaMemoryUsage allocUsage, VkBuffer& buffer, VmaAllocation& allocation);
-	bool createStagingBuffer(VkDeviceSize size, VkBuffer& buffer, VmaAllocation& allocation);
-	bool createImage(const VkImageCreateInfo& info, VkImage& image, VmaAllocation& allocation);
-	bool cmdTransitionImageLayout(VkCommandBuffer cmd, VkImage image, const ImageOption& option, VkImageLayout oldLyaout, VkImageLayout newLayout);
-	void cmdCopyImage(VkCommandBuffer cmd, VkBuffer src, VkImage dst, uint32_t width, uint32_t height, uint32_t mipLevel);
-	bool cmdGenerateTextureMipmap(VkCommandBuffer cmd, VkImage image, const ImageOption& option, uint32_t width, uint32_t height);
 	void releaseDescriptorPool(VkDescriptorPool pool);
 	bool requestDescriptorPool(int requirement, VkDescriptorPool& pool);
 	bool createDescriptorPool(int requirement, VkDescriptorPool& pool);
 	bool allocateCommandBuffer(const VkCommandPool pool, const uint32_t count, VkCommandBuffer* cmd);
-	bool beginCommand(VkCommandBuffer& cmd, VkCommandBufferUsageFlags flag);
-	bool submitCommand(VkCommandBuffer* cmd, uint32_t count, VkQueue queue, VkFence fence);
 	bool setupDescriptorSet(int imageIndex, VkDescriptorPool pool);
 	bool setupCommandBuffer(const uint32_t index, const uint32_t imageIndex);
 	void destroySwapchain();

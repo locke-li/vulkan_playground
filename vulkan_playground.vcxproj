@@ -182,6 +182,7 @@
     <ClCompile Include="src\ShaderManager.cpp" />
     <ClCompile Include="src\TextureManager.cpp" />
     <ClCompile Include="src\VulkanEnv.cpp" />
+    <ClCompile Include="src\VulkanHelper.cpp" />
     <ClCompile Include="src\WindowLayer.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -201,6 +202,8 @@
     <ClInclude Include="src\ShaderManager.h" />
     <ClInclude Include="src\TextureManager.h" />
     <ClInclude Include="src\VulkanEnv.h" />
+    <ClInclude Include="src\VulkanHelper.h" />
+    <ClInclude Include="src\VulkanSupportStruct.h" />
     <ClInclude Include="src\WindowLayer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
