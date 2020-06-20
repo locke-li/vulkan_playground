@@ -47,6 +47,8 @@ private:
 	MsaaColorBuffer msaaColorBuffer;
 
 	uint32_t maxFrameInFlight;
+	std::vector<const char*> extension;
+	uint32_t optionalExtensionOffset;
 	std::vector<InFlightFrame> inFlightFrame;
 	uint32_t currentFrame;
 	VkPresentModeKHR preferedPresentMode = VK_PRESENT_MODE_FIFO_KHR;
