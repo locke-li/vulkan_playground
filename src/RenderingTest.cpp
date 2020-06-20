@@ -178,7 +178,6 @@ int RenderingTest::mainLoop() {
 	//render context used for C-style callback methods
 	renderContext.vulkanEnv = &vulkanEnv;
 	renderContext.renderingData = &renderingData;
-	renderContext.shaderManager = &shaderManager;
 	windowLayer.setUserDataPtr(&renderContext);
 
 	//initialization sequence

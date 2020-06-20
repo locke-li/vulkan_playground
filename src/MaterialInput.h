@@ -3,6 +3,7 @@
 #include <vector>
 
 struct MaterialPrototype {
+	//TODO shader input info
 	uint16_t textureCount;
 	uint16_t valueCount;
 };

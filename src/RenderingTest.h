@@ -16,7 +16,6 @@ public:
 	struct RenderContext {
 		VulkanEnv* vulkanEnv;
 		RenderingData* renderingData;
-		ShaderManager* shaderManager;
 	};
 private:
 	WindowLayer windowLayer;
