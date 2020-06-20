@@ -104,6 +104,9 @@
     <ClCompile Include="src\ShaderManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\VulkanSwapchain.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="src\VulkanHelper.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -161,6 +164,9 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="src\VulkanSupportStruct.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\VulkanSwapchain.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\VulkanHelper.h">
