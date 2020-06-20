@@ -15,7 +15,7 @@ constexpr int DRAW_FAILURE_THRESHOLD = 120;
 
 void onFramebufferResize(GLFWwindow* window, int width, int height) {
 	auto* renderContext = reinterpret_cast<RenderingTest::RenderContext*>(glfwGetWindowUserPointer(window));
-	renderContext->vulkanEnv->onFramebufferResize();
+	renderContext->vulkanEnv->getSwapchain().onFramebufferResize();
 	if (height > 0) {
 		renderContext->renderingData->setAspectRatio(width / (float)height);
 	}
@@ -166,14 +166,17 @@ int RenderingTest::mainLoop() {
 	renderingData.setDebugOption({ 0.0f, 1.0f, 0.1f, 0.0f });
 	renderingData.setRenderListFiltered(setupRenderList(), materialManager, textureManager);
 	
-	vulkanEnv.setWindow(windowLayer.getWindow());
+	auto& swapchain = vulkanEnv.getSwapchain();
+	swapchain.setWindow(windowLayer.getWindow());
+	swapchain.setMaxFrameInFlight(graphicsSetting.MaxFrameInFlight);
+	swapchain.setMsaaSample(graphicsSetting.MSAASample);
+
 	vulkanEnv.setRenderingData(renderingData);
 	vulkanEnv.setRenderingManager(materialManager, shaderManager);
 	if (setting.misc.enableValidationLayer) {
 		vulkanEnv.enableValidationLayer({ "VK_LAYER_KHRONOS_validation" });
 	}
-	vulkanEnv.setMaxFrameInFlight(graphicsSetting.MaxFrameInFlight);
-	vulkanEnv.setMsaaSample(graphicsSetting.MSAASample);
+	vulkanEnv.checkExtensionRequirement();
 
 	//render context used for C-style callback methods
 	renderContext.vulkanEnv = &vulkanEnv;
@@ -182,21 +185,20 @@ int RenderingTest::mainLoop() {
 
 	//initialization sequence
 	logResult("create instance", vulkanEnv.createInstance(APP_TITLE));
-	logResult("create surface", vulkanEnv.createSurface());
+	logResult("create surface", swapchain.createSurface());
 	logResult("create physical device", vulkanEnv.createPhysicalDevice());
 	logResult("create logical device", vulkanEnv.createDevice());
-	logResult("create swapchain", vulkanEnv.createSwapchain());
+	logResult("create swapchain", swapchain.createSwapchain());
 	logResult("create allocator", vulkanEnv.createAllocator());
-	logResult("create swapchain imageview", vulkanEnv.createSwapchainImageView());
-	logResult("create msaa color buffer", vulkanEnv.createMsaaColorBuffer());
-	logResult("create depth buffer", vulkanEnv.createDepthBuffer());
+	logResult("create msaa color buffer", swapchain.createMsaaColorBuffer());
+	logResult("create depth buffer", swapchain.createDepthBuffer());
 	logResult("create render pass", vulkanEnv.createRenderPass());
 	logResult("create descriptor set layout", vulkanEnv.createDescriptorSetLayout());
 	logResult("create graphics pipeline layout", vulkanEnv.createGraphicsPipelineLayout());
 	logResult("loading shader", shaderManager.preload());
 	logResult("create graphics pipeline", vulkanEnv.createGraphicsPipeline());
 	shaderManager.unload();
-	logResult("create frame buffer", vulkanEnv.createFrameBuffer());
+	logResult("create frame buffer", vulkanEnv.createFramebuffer());
 	logResult("setup fence", vulkanEnv.setupFence());
 	logResult("create command pool", vulkanEnv.createCommandPool());
 	logResult("create texture image", vulkanEnv.createTextureImage(textureManager.getTextureList()));

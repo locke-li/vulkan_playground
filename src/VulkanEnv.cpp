@@ -11,9 +11,8 @@
 
 constexpr int TestMaxTextureCount = 5;
 
-
-void VulkanEnv::setWindow(GLFWwindow* win) noexcept {
-	window = win;
+VulkanSwapchain& VulkanEnv::getSwapchain() noexcept {
+	return swapchain;
 }
 
 void VulkanEnv::setRenderingData(const RenderingData& data) noexcept {
@@ -25,32 +24,20 @@ void VulkanEnv::setRenderingManager(const MaterialManager& material, ShaderManag
 	shaderManager = &shader;
 }
 
-void VulkanEnv::setMaxFrameInFlight(const uint32_t value) noexcept {
-	maxFrameInFlight = value;
-}
-
-void VulkanEnv::setPreferedPresentMode(const VkPresentModeKHR mode) noexcept {
-	preferedPresentMode = mode;
-}
-
-void VulkanEnv::setMsaaSample(const uint32_t count) noexcept {
-	targetMsaaSample = count;
-}
-
-uint32_t VulkanEnv::getWidth() const {
-	return swapchainExtent.width;
-}
-
-uint32_t VulkanEnv::getHeight() const {
-	return swapchainExtent.height;
-}
-
 void VulkanEnv::enableValidationLayer(std::vector<const char*>&& layer) {
 	validationLayer = std::move(layer);
 }
 
-void VulkanEnv::onFramebufferResize() noexcept {
-	frameBufferResized = true;
+void VulkanEnv::checkExtensionRequirement() {
+	extension = {
+		VK_KHR_SWAPCHAIN_EXTENSION_NAME
+	};
+	optionalExtensionOffset = static_cast<uint32_t>(extension.size());
+	//TODO add optional
+	/*
+	extension.reserve(extension.size() + count);
+	extension.push_back(...);
+	*/
 }
 
 void VulkanEnv::waitUntilIdle() {
@@ -75,11 +62,11 @@ bool VulkanEnv::createInstance(const char* appName) {
 	info.enabledLayerCount = static_cast<uint32_t>(validationLayer.size());
 	info.ppEnabledLayerNames = validationLayer.data();
 
-	return vkCreateInstance(&info, nullptr, &instance) == VK_SUCCESS;
-}
-
-bool VulkanEnv::createSurface() {
-	return glfwCreateWindowSurface(instance, window, nullptr, &surface) == VK_SUCCESS;
+	if (vkCreateInstance(&info, nullptr, &instance) != VK_SUCCESS) {
+		return false;
+	}
+	swapchain.setInstance(instance);
+	return true;
 }
 
 bool VulkanEnv::queueFamilyValid(const VkPhysicalDevice device, uint32_t& score) {
@@ -103,7 +90,7 @@ bool VulkanEnv::queueFamilyValid(const VkPhysicalDevice device, uint32_t& score)
 	VkBool32 supportPresent = false;
 	i = 0;
 	for (const auto& queue : properties) {
-		vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &supportPresent);
+		vkGetPhysicalDeviceSurfaceSupportKHR(device, i, swapchain.getSurface(), &supportPresent);
 		if (supportPresent) {
 			queueFamily.present = i;
 			std::cout << "present queue family " << i << std::endl;
@@ -128,13 +115,13 @@ bool VulkanEnv::createPhysicalDevice() {
 	uint32_t maxScore = 0;
 	size_t deviceIndex = 0;
 	for (const auto& device : deviceList) {
-		if (!querySwapChainSupport(device, surface, &support)) {
+		if (!querySwapChainSupport(device, swapchain.getSurface(), &support)) {
 			continue;
 		}
 		score = 0;
 		if (deviceValid(device, score) &&
 			queueFamilyValid(device, score) &&
-			deviceExtensionSupport(device, score) &&
+			deviceExtensionSupport(device, extension, optionalExtensionOffset, score) &&
 			deviceFeatureSupport(device, score)) {
 			std::cout << "device candidate score=" << score << std::endl;
 			if (score > maxScore) {
@@ -150,9 +137,8 @@ bool VulkanEnv::createPhysicalDevice() {
 }
 
 void VulkanEnv::selectPhysicalDevice(const PhysicalDeviceCandidate& candidate) {
-	swapchainSupport = candidate.swapchainSupport;
+	swapchain.selectPhysicalDevice(candidate);
 	physicalDevice = candidate.device;
-	msaaSample = findUsableMsaaSampleCount(candidate.device, targetMsaaSample);
 }
 
 bool VulkanEnv::createDevice() {
@@ -187,6 +173,7 @@ bool VulkanEnv::createDevice() {
 	if (vkCreateDevice(physicalDevice, &info, nullptr, &device) != VK_SUCCESS) {
 		return false;
 	}
+	swapchain.setDevice(device);
 	vkGetDeviceQueue(device, queueFamily.graphics, 0, &graphicsQueue);
 	vkGetDeviceQueue(device, queueFamily.present, 0, &presentQueue);
 	return true;
@@ -195,134 +182,23 @@ bool VulkanEnv::createDevice() {
 bool VulkanEnv::createAllocator() {
 	VmaAllocatorCreateInfo info{};
 	//max frame count - 1
-	info.frameInUseCount = static_cast<uint32_t>(swapchainImage.size() - 1);
+	info.frameInUseCount = swapchain.size() - 1;
 	info.instance = instance;
 	info.physicalDevice = physicalDevice;
 	info.device = device;
-	return vmaCreateAllocator(&info, &vmaAllocator) == VK_SUCCESS;
-}
-
-bool VulkanEnv::createSwapchain() {
-	frameBufferResized = false;
-	swapchainFormat = chooseSwapSurfaceFormat(swapchainSupport.formats);
-	auto mode = choosePresentMode(swapchainSupport.presentMode, preferedPresentMode);
-	swapchainExtent = chooseSwapExtent(swapchainSupport.capabilities, window);
-	uint32_t imageCount = std::max(swapchainSupport.capabilities.minImageCount, maxFrameInFlight);
-	//TODO when do we need more swapchain image than frame in flight?
-	if (swapchainSupport.capabilities.maxImageCount > 0) {
-		imageCount = std::min(imageCount, swapchainSupport.capabilities.maxImageCount);
-		if (imageCount < maxFrameInFlight) {
-			std::cout << "requested max frame = " << maxFrameInFlight << ", ";
-			maxFrameInFlight = imageCount == 1 ? imageCount + 1 : imageCount;
-			std::cout << "but limited to " << maxFrameInFlight << std::endl;
-		}
-	}
-	std::cout << "swapchain count = " << imageCount;
-	std::cout << "[" << swapchainSupport.capabilities.minImageCount << "|" << swapchainSupport.capabilities.maxImageCount << "]" << std::endl;
-
-	VkSwapchainCreateInfoKHR info{};
-	info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-	info.surface = surface;
-	info.minImageCount = imageCount;
-	info.imageFormat = swapchainFormat.format;
-	info.imageColorSpace = swapchainFormat.colorSpace;
-	info.imageExtent = swapchainExtent;
-	info.imageArrayLayers = 1;
-	info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-	info.preTransform = swapchainSupport.capabilities.currentTransform;//no pre transform
-	info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;//alpha blending with other window
-	info.presentMode = mode;
-	info.clipped = VK_TRUE;
-	info.oldSwapchain = VK_NULL_HANDLE;//used for swapchain runtime swap
-
-	if (vkCreateSwapchainKHR(device, &info, nullptr, &swapchain) != VK_SUCCESS) {
+	if (vmaCreateAllocator(&info, &vmaAllocator) != VK_SUCCESS) {
 		return false;
 	}
-
-	uint32_t count;
-	vkGetSwapchainImagesKHR(device, swapchain, &count, nullptr);
-	swapchainImage.resize(count);
-	vkGetSwapchainImagesKHR(device, swapchain, &count, swapchainImage.data());
-	return true;
-}
-
-bool VulkanEnv::createSwapchainImageView() {
-	swapchainImageView.resize(swapchainImage.size());
-	for (auto i = 0; i < swapchainImage.size(); ++i) {
-		if (!createImageView(device, swapchainImage[i], swapchainFormat.format, VK_IMAGE_ASPECT_COLOR_BIT, 1, swapchainImageView[i])) {
-			return false;
-		}
-	}
-	return true;
-}
-
-bool VulkanEnv::createMsaaColorBuffer() {
-	if (msaaSample == VK_SAMPLE_COUNT_1_BIT) {
-		return true;
-	}
-	VkImageCreateInfo info;
-	info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-	info.flags = 0;
-	info.pNext = nullptr;
-	info.imageType = VK_IMAGE_TYPE_2D;
-	info.extent.width = swapchainExtent.width;
-	info.extent.height = swapchainExtent.height;
-	info.extent.depth = 1;
-	info.mipLevels = 1;
-	info.arrayLayers = 1;
-	info.format = swapchainFormat.format;
-	info.tiling = VK_IMAGE_TILING_OPTIMAL;
-	info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-	info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	info.samples = msaaSample;
-	info.queueFamilyIndexCount = 0;
-	info.pQueueFamilyIndices = nullptr;
-
-	if (!createImage(info, msaaColorBuffer.image, msaaColorBuffer.imageAllocation)) {
-		return false;
-	}
-	if (!createImageView(device, msaaColorBuffer.image, swapchainFormat.format, VK_IMAGE_ASPECT_COLOR_BIT, 1, msaaColorBuffer.view)) {
-		return false;
-	}
-	return true;
-}
-
-bool VulkanEnv::createDepthBuffer() {
-	if (!findDepthFormat(&depthBuffer.format)) {
-		return false;
-	}
-	VkImageCreateInfo info;
-	info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-	info.flags = 0;
-	info.pNext = nullptr;
-	info.imageType = VK_IMAGE_TYPE_2D;
-	info.extent.width = swapchainExtent.width;
-	info.extent.height = swapchainExtent.height;
-	info.extent.depth = 1;
-	info.mipLevels = 1;
-	info.arrayLayers = 1;
-	info.format = depthBuffer.format;
-	info.tiling = VK_IMAGE_TILING_OPTIMAL;
-	info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-	info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	info.samples = msaaSample;
-	info.queueFamilyIndexCount = 0;
-	info.pQueueFamilyIndices = nullptr;
-	if (!createImage(info, depthBuffer.image, depthBuffer.imageAllocation)) {
-		return false;
-	}
-	if (!createImageView(device, depthBuffer.image, depthBuffer.format, VK_IMAGE_ASPECT_DEPTH_BIT, 1, depthBuffer.view)) {
-		return false;
-	}
+	swapchain.setAllocator(vmaAllocator);
 	return true;
 }
 
 bool VulkanEnv::createRenderPass() {
+	auto msaaSample = swapchain.msaaSampleCount();
+
 	VkAttachmentDescription colorAttachment;
 	colorAttachment.flags = 0;
-	colorAttachment.format = swapchainFormat.format;
+	colorAttachment.format = swapchain.getFormat();
 	colorAttachment.samples = msaaSample;
 	colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;//don't care what it was previously
 	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
@@ -337,7 +213,7 @@ bool VulkanEnv::createRenderPass() {
 
 	VkAttachmentDescription depthAttachment;
 	depthAttachment.flags = 0;
-	depthAttachment.format = depthBuffer.format;
+	depthAttachment.format = swapchain.depthFormat();
 	depthAttachment.samples = msaaSample;
 	depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
@@ -387,7 +263,7 @@ bool VulkanEnv::createRenderPass() {
 		colorAttachmentRef.attachment = 2;
 		VkAttachmentDescription colorResolve;
 		colorResolve.flags = 0;
-		colorResolve.format = swapchainFormat.format;
+		colorResolve.format = swapchain.getFormat();
 		colorResolve.samples = VK_SAMPLE_COUNT_1_BIT;
 		colorResolve.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		colorResolve.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
@@ -537,16 +413,18 @@ bool VulkanEnv::createGraphicsPipeline() {
 	inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;
 
+	auto& extent = swapchain.getExtent();
+
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
-	viewport.width = static_cast<float>(swapchainExtent.width);
-	viewport.height = static_cast<float>(swapchainExtent.height);
+	viewport.width = static_cast<float>(extent.width);
+	viewport.height = static_cast<float>(extent.height);
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
 
 	VkRect2D scissor;
 	scissor.offset = { 0, 0 };
-	scissor.extent = swapchainExtent;
+	scissor.extent = extent;
 
 	VkPipelineViewportStateCreateInfo viewportStateInfo;
 	viewportStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -591,7 +469,7 @@ bool VulkanEnv::createGraphicsPipeline() {
 	multisampleInfo.flags = 0;
 	multisampleInfo.pNext = nullptr;
 	multisampleInfo.sampleShadingEnable = VK_FALSE;
-	multisampleInfo.rasterizationSamples = msaaSample;
+	multisampleInfo.rasterizationSamples = swapchain.msaaSampleCount();
 	multisampleInfo.minSampleShading = 1.0f;
 	multisampleInfo.pSampleMask = nullptr;
 	multisampleInfo.alphaToCoverageEnable = VK_FALSE;
@@ -666,40 +544,8 @@ bool VulkanEnv::createGraphicsPipeline() {
 	return true;
 }
 
-bool VulkanEnv::createFrameBuffer() {
-	swapchainFramebuffer.resize(swapchainImageView.size());
-	for (auto i = 0; i < swapchainImageView.size(); ++i) {
-		VkFramebufferCreateInfo info;
-		info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		info.flags = 0;
-		info.pNext = nullptr;
-		info.renderPass = renderPass;
-		info.width = swapchainExtent.width;
-		info.height = swapchainExtent.height;
-		info.layers = 1;
-		VkImageView attachments[3];
-		attachments[0] = swapchainImageView[i];
-		attachments[1] = depthBuffer.view;
-		info.pAttachments = attachments;
-		if (msaaSample == VK_SAMPLE_COUNT_1_BIT) {
-			info.attachmentCount = 2;
-		}
-		else {
-			attachments[2] = msaaColorBuffer.view;
-			info.attachmentCount = 3;
-		}
-
-		if (vkCreateFramebuffer(device, &info, nullptr, &swapchainFramebuffer[i]) != VK_SUCCESS) {
-			return false;
-		}
-	}
-	return true;
-}
-
-bool VulkanEnv::createImage(const VkImageCreateInfo& info, VkImage& image, VmaAllocation& allocation) {
-	VmaAllocationCreateInfo allocInfo{};
-	allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-	return vmaCreateImage(vmaAllocator, &info, &allocInfo, &image, &allocation, nullptr) == VK_SUCCESS;
+bool VulkanEnv::createFramebuffer() {
+	return swapchain.createFramebuffer(renderPass);
 }
 
 bool VulkanEnv::createTextureImage(const std::vector<ImageInput>& textureList) {
@@ -1129,7 +975,7 @@ bool VulkanEnv::allocateCommandBuffer(const VkCommandPool pool, const uint32_t c
 }
 
 bool VulkanEnv::allocateFrameCommandBuffer() {
-	commandBuffer.resize(maxFrameInFlight);
+	commandBuffer.resize(swapchain.size());
 	return allocateCommandBuffer(commandPoolReset, static_cast<uint32_t>(commandBuffer.size()), commandBuffer.data());
 }
 
@@ -1147,13 +993,13 @@ bool VulkanEnv::setupCommandBuffer(const uint32_t index, const uint32_t imageInd
 	VkRenderPassBeginInfo renderPassBegin;
 	renderPassBegin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	renderPassBegin.pNext = nullptr;
-	renderPassBegin.framebuffer = swapchainFramebuffer[imageIndex];
+	renderPassBegin.framebuffer = swapchain.getFramebuffer(imageIndex);
 	renderPassBegin.renderPass = renderPass;
 	renderPassBegin.renderArea.offset = { 0, 0 };
-	renderPassBegin.renderArea.extent = swapchainExtent;
+	renderPassBegin.renderArea.extent = swapchain.getExtent();
 	VkClearValue clearColor[3];
 	renderPassBegin.pClearValues = clearColor;
-	if (msaaSample == VK_SAMPLE_COUNT_1_BIT) {
+	if (swapchain.msaaSampleCount() == VK_SAMPLE_COUNT_1_BIT) {
 		clearColor[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
 		clearColor[1].depthStencil = { 1.0f, 0 };
 		renderPassBegin.clearValueCount = 2;
@@ -1179,12 +1025,11 @@ bool VulkanEnv::setupCommandBuffer(const uint32_t index, const uint32_t imageInd
 		vkCmdDrawIndexed(cmd, indexBuffer.iCount[i], 1, 0, indexBuffer.vOffset[i], 0);
 	}
 	vkCmdEndRenderPass(cmd);
-
 	return vkEndCommandBuffer(cmd) == VK_SUCCESS;
 }
 
 bool VulkanEnv::createFrameSyncObject() {
-	inFlightFrame.resize(maxFrameInFlight);
+	inFlightFrame.resize(swapchain.size());
 
 	VkSemaphoreCreateInfo semaphoreInfo;
 	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -1196,8 +1041,7 @@ bool VulkanEnv::createFrameSyncObject() {
 	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 	fenceInfo.pNext = nullptr;
 
-	for (uint32_t i = 0; i < maxFrameInFlight; ++i) {
-		auto& frame = inFlightFrame[i];
+	for (auto& frame : inFlightFrame) {
 		if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &frame.semaphoreRenderFinished) != VK_SUCCESS ||
 			vkCreateFence(device, &fenceInfo, nullptr, &frame.fenceImageAquired) != VK_SUCCESS ||
 			vkCreateFence(device, &fenceInfo, nullptr, &frame.fenceInFlight) != VK_SUCCESS) {
@@ -1235,23 +1079,15 @@ void VulkanEnv::destroy() {
 	}
 	vmaDestroyAllocator(vmaAllocator);
 	vkDestroyDevice(device, nullptr);
-	vkDestroySurfaceKHR(instance, surface, nullptr);
+	vkDestroySurfaceKHR(instance, swapchain.getSurface(), nullptr);
 	vkDestroyInstance(instance, nullptr);
 }
 
 void VulkanEnv::destroySwapchain() {
-	for (const auto framebuffer : swapchainFramebuffer) {
-		vkDestroyFramebuffer(device, framebuffer, nullptr);
-	}
 	vkDestroyPipelineLayout(device, graphicsPipelineLayout, nullptr);
 	vkDestroyPipeline(device, graphicsPipeline, nullptr);
 	vkDestroyRenderPass(device, renderPass, nullptr);
-	vkDestroyImageView(device, depthBuffer.view, nullptr);
-	vmaDestroyImage(vmaAllocator, depthBuffer.image, depthBuffer.imageAllocation);
-	vkDestroyImageView(device, msaaColorBuffer.view, nullptr);
-	vmaDestroyImage(vmaAllocator, msaaColorBuffer.image, msaaColorBuffer.imageAllocation);
-	for (auto i = 0; i < swapchainImageView.size(); ++i) {
-		vkDestroyImageView(device, swapchainImageView[i], nullptr);
+	for (uint32_t i = 0; i < swapchain.size(); ++i) {
 		vmaDestroyBuffer(vmaAllocator, uniformBufferMatrix[i].buffer, uniformBufferMatrix[i].allocation);
 		vmaDestroyBuffer(vmaAllocator, uniformBufferLight[i].buffer, uniformBufferLight[i].allocation);
 	}
@@ -1261,30 +1097,22 @@ void VulkanEnv::destroySwapchain() {
 	for (auto pool : descriptorPool) {
 		vkDestroyDescriptorPool(device, pool, nullptr);
 	}
-	vkDestroySwapchainKHR(device, swapchain, nullptr);
+	swapchain.destroy();
 }
 
 bool VulkanEnv::recreateSwapchain() {
-	int width, height;
-	glfwGetFramebufferSize(window, &width, &height);
-	while (width == 0 || height == 0) {//minimized and/or invisible
-		glfwGetFramebufferSize(window, &width, &height);
-		glfwWaitEvents();
-	}
-
 	//TODO exchange swapchain on the fly with VkSwapchainCreateInfoKHR.oldSwapchain
 	vkDeviceWaitIdle(device);
 	destroySwapchain();
-	querySwapChainSupport(physicalDevice, surface, &swapchainSupport);
+	swapchain.querySupport(physicalDevice);
 
-	bool result = logResult("create swapchain", createSwapchain()) &&
-		logResult("create swapchain image view", createSwapchainImageView()) &&
-		logResult("create msaa color buffer", createMsaaColorBuffer()) &&
-		logResult("create depth buffer", createDepthBuffer()) &&
+	bool result = logResult("create swapchain", swapchain.createSwapchain()) &&
+		logResult("create msaa color buffer", swapchain.createMsaaColorBuffer()) &&
+		logResult("create depth buffer", swapchain.createDepthBuffer()) &&
 		logResult("create render pass", createRenderPass()) &&
 		logResult("create graphics pipeline layout", createGraphicsPipelineLayout()) &&
 		logResult("create graphics pipeline", createGraphicsPipeline()) &&
-		logResult("create framebuffer", createFrameBuffer()) &&
+		logResult("create framebuffer", createFramebuffer()) &&
 		logResult("create uniform buffer", createUniformBuffer()) &&
 		logResult("prepare descriptor", prepareDescriptor()) &&
 		logResult("update uniform buffer", updateUniformBuffer());
@@ -1334,8 +1162,10 @@ bool VulkanEnv::requestDescriptorPool(int requirement, VkDescriptorPool& pool) {
 	return true;
 }
 
-bool VulkanEnv::frameDrawCheck(VkResult result) {
-	if (frameBufferResized || result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+bool VulkanEnv::frameResizeCheck(VkResult result) {
+	if (swapchain.resized() || result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+		swapchain.waitForValidSize();
+
 		shaderManager->preload();
 		recreateSwapchain();
 		shaderManager->unload();
@@ -1350,13 +1180,14 @@ bool VulkanEnv::frameDrawCheck(VkResult result) {
 bool VulkanEnv::drawFrame(const RenderingData& renderingData) {
 	auto& frame = inFlightFrame[currentFrame];
 	auto frameIndex = currentFrame;
-	currentFrame = (currentFrame + 1) % maxFrameInFlight;
+	currentFrame = (currentFrame + 1) % swapchain.size();
 
 	uint32_t imageIndex;
 	uint64_t timeout = 1000000000;//ns
 	vkResetFences(device, 1, &frame.fenceImageAquired);
-	auto acquireResult = vkAcquireNextImageKHR(device, swapchain, timeout, VK_NULL_HANDLE, frame.fenceImageAquired, &imageIndex);
-	if (!frameDrawCheck(acquireResult)) {
+	auto vkSwapchain = swapchain.getVkRaw();
+	auto acquireResult = vkAcquireNextImageKHR(device, vkSwapchain, timeout, VK_NULL_HANDLE, frame.fenceImageAquired, &imageIndex);
+	if (!frameResizeCheck(acquireResult)) {
 		vkWaitForFences(device, 1, &frame.fenceImageAquired, VK_TRUE, timeout);
 		return false;
 	}
@@ -1390,12 +1221,12 @@ bool VulkanEnv::drawFrame(const RenderingData& renderingData) {
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	presentInfo.pNext = nullptr;
 	presentInfo.swapchainCount = 1;
-	presentInfo.pSwapchains = &swapchain;
+	presentInfo.pSwapchains = &vkSwapchain;
 	presentInfo.pImageIndices = &imageIndex;
 	presentInfo.waitSemaphoreCount = 1;
 	presentInfo.pWaitSemaphores = &frame.semaphoreRenderFinished;
 	presentInfo.pResults = nullptr;
 
 	auto presentResult = vkQueuePresentKHR(presentQueue, &presentInfo);
-	return frameDrawCheck(presentResult);
+	return frameResizeCheck(presentResult);
 }

@@ -43,23 +43,15 @@ private:
 	VertexBuffer vertexBuffer;
 	IndexBuffer indexBuffer;
 	ImageSet imageSet;
-	DepthBuffer depthBuffer;
-	MsaaColorBuffer msaaColorBuffer;
 
-	uint32_t maxFrameInFlight;
 	std::vector<const char*> extension;
 	uint32_t optionalExtensionOffset;
 	std::vector<InFlightFrame> inFlightFrame;
 	uint32_t currentFrame;
-	VkPresentModeKHR preferedPresentMode = VK_PRESENT_MODE_FIFO_KHR;
 
 	QueueFamily queueFamily;
 	float queuePriority = 1.0;
-	SwapchainSupport swapchainSupport;
-	uint32_t targetMsaaSample = 1;
-	VkSampleCountFlagBits msaaSample;
 
-	bool frameBufferResized;
 	VkFence fenceVertexIndexCopy;
 	VkFence fenceImageCopy;
 
@@ -74,33 +66,23 @@ private:
 	bool setupCommandBuffer(const uint32_t index, const uint32_t imageIndex);
 	void destroySwapchain();
 public:
-	void setWindow(GLFWwindow *window) noexcept;
+	VulkanSwapchain& getSwapchain() noexcept;
 	void setRenderingData(const RenderingData& data) noexcept;
 	void setRenderingManager(const MaterialManager&, ShaderManager&) noexcept;
-	void setMaxFrameInFlight(const uint32_t value) noexcept;
-	void setPreferedPresentMode(const VkPresentModeKHR mode) noexcept;
-	void setMsaaSample(const uint32_t count) noexcept;
-	uint32_t getWidth() const;
-	uint32_t getHeight() const;
 	void enableValidationLayer(std::vector<const char*>&& layer);
+	void checkExtensionRequirement();
 	void selectPhysicalDevice(const PhysicalDeviceCandidate& candidate);
-	void onFramebufferResize() noexcept;
 	void waitUntilIdle();
 
 	bool createInstance(const char* appName);
 	bool createPhysicalDevice();
 	bool createDevice();
 	bool createAllocator();
-	bool createSurface();
-	bool createSwapchain();
-	bool createSwapchainImageView();
-	bool createMsaaColorBuffer();
-	bool createDepthBuffer();
 	bool createRenderPass();
 	bool createDescriptorSetLayout();
 	bool createGraphicsPipelineLayout();
 	bool createGraphicsPipeline();
-	bool createFrameBuffer();
+	bool createFramebuffer();
 	bool createTextureImage(const std::vector<ImageInput>& input);
 	bool createTextureImageView();
 	bool createTextureSampler();
@@ -117,7 +99,7 @@ public:
 	bool updateUniformBuffer();
 	bool updateUniformBufferMatrix(const uint32_t imageIndex);
 	bool updateUniformBufferLight(const uint32_t imageIndex);
-	bool frameDrawCheck(VkResult result);
+	bool frameResizeCheck(VkResult result);
 	bool drawFrame(const RenderingData& renderingData);
 };
 
