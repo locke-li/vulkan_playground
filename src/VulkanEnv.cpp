@@ -1100,10 +1100,11 @@ bool VulkanEnv::recreateSwapchain() {
 		swapchain.copyDescriptorPool(frame.descriptorPool);
 		frame.descriptorPool = nullptr;
 	}
-	retiredSwapchain.destroy();
 	retiredSwapchain = swapchain;
+	swapchain.reset();
 	swapchain.querySupport();
 
+	std::cout << "recreate swapchain" << std::endl;
 	bool result = logResult("create swapchain", swapchain.createSwapchain()) &&
 		logResult("create msaa color buffer", swapchain.createMsaaColorBuffer()) &&
 		logResult("create depth buffer", swapchain.createDepthBuffer()) &&
@@ -1160,14 +1161,15 @@ bool VulkanEnv::requestDescriptorPool(int requirement, VkDescriptorPool& pool) {
 	return true;
 }
 
-bool VulkanEnv::frameResizeCheck(VkResult result) {
-	if (swapchain.resized() || result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+bool VulkanEnv::frameResizeCheck(VkResult result, const InFlightFrame& frame) {
+	if (retiredFrame == nullptr && (swapchain.resized() || result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)) {
 		swapchain.waitForValidSize();
+		retiredFrame = &frame;
 
 		shaderManager->preload();
 		recreateSwapchain();
 		shaderManager->unload();
-		return false;
+		return true;
 	}
 	if (result != VK_SUCCESS) {
 		return false;
@@ -1188,8 +1190,10 @@ bool VulkanEnv::drawFrame(const RenderingData& renderingData) {
 	//std::cout << "image acquired " << imageIndex << std::endl;
 	vkWaitForFences(device, 2, frameFence, VK_TRUE, UINT64_MAX);
 	//std::cout << "frame fence pass " << currentFrame << std::endl;
-	//TODO find the correct timing
-	retiredSwapchain.destroy();
+	if (&frame == retiredFrame) {
+		retiredSwapchain.destroy();
+		retiredFrame = nullptr;
+	}
 	if (!frameResizeCheck(acquireResult, frame)) {
 		return false;
 	}
@@ -1226,5 +1230,5 @@ bool VulkanEnv::drawFrame(const RenderingData& renderingData) {
 	presentInfo.pResults = nullptr;
 
 	auto presentResult = vkQueuePresentKHR(presentQueue, &presentInfo);
-	return frameResizeCheck(presentResult);
+	return frameResizeCheck(presentResult, frame);
 }

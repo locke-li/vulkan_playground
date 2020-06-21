@@ -261,7 +261,17 @@ void VulkanSwapchain::waitForValidSize() {
 	}
 }
 
+void VulkanSwapchain::reset() {
+	bufferList.clear();
+	descriptorPool.clear();
+	graphicsPipelineLayout = VK_NULL_HANDLE;
+	graphicsPipeline = VK_NULL_HANDLE;
+	renderPass = VK_NULL_HANDLE;
+	swapchain = VK_NULL_HANDLE;
+}
+
 void VulkanSwapchain::destroy() {
+	std::cout << "destroy swapchain " << swapchain << std::endl;
 	if (swapchain == VK_NULL_HANDLE) {
 		return;
 	}
@@ -276,19 +286,14 @@ void VulkanSwapchain::destroy() {
 		vkDestroyImageView(device, imageView[i], nullptr);
 	}
 	vkDestroyPipelineLayout(device, graphicsPipelineLayout, nullptr);
-	graphicsPipelineLayout = VK_NULL_HANDLE;
 	vkDestroyPipeline(device, graphicsPipeline, nullptr);
-	graphicsPipeline = VK_NULL_HANDLE;
 	vkDestroyRenderPass(device, renderPass, nullptr);
-	renderPass = VK_NULL_HANDLE;
 	for (const auto& buffer : bufferList) {
 		vmaDestroyBuffer(vmaAllocator, buffer.buffer, buffer.allocation);
 	}
-	bufferList.clear();
 	for (auto& pool : descriptorPool) {
 		vkDestroyDescriptorPool(device, pool, nullptr);
 	}
-	descriptorPool.clear();
 	vkDestroySwapchainKHR(device, swapchain, nullptr);
-	swapchain = VK_NULL_HANDLE;
+	reset();
 }

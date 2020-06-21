@@ -27,6 +27,7 @@ private:
 	VkQueue presentQueue;
 	VulkanSwapchain swapchain;
 	VulkanSwapchain retiredSwapchain;
+	const InFlightFrame* retiredFrame = nullptr;
 	std::vector<Buffer> uniformBufferMatrix;
 	std::vector<Buffer> uniformBufferLight;
 	std::vector<std::vector<VkDescriptorSet>> descriptorSet;
@@ -98,7 +99,7 @@ public:
 	bool updateUniformBuffer();
 	bool updateUniformBufferMatrix(const uint32_t imageIndex);
 	bool updateUniformBufferLight(const uint32_t imageIndex);
-	bool frameResizeCheck(VkResult result);
+	bool frameResizeCheck(VkResult result, const InFlightFrame& frame);
 	bool drawFrame(const RenderingData& renderingData);
 };
 

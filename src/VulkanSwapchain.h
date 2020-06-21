@@ -66,6 +66,7 @@ public:
 	bool createMsaaColorBuffer();
 	void waitForValidSize();
 	void destroy();
+	void reset();
 
 	inline bool resized() const {
 		return framebufferResized;
