@@ -1051,7 +1051,7 @@ bool VulkanEnv::createFrameSyncObject() {
 
 	for (auto& frame : inFlightFrame) {
 		if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &frame.semaphoreRenderFinished) != VK_SUCCESS ||
-			vkCreateFence(device, &fenceInfo, nullptr, &frame.fenceImageAquired) != VK_SUCCESS ||
+			vkCreateFence(device, &fenceInfo, nullptr, &frame.fenceImageAcquired) != VK_SUCCESS ||
 			vkCreateFence(device, &fenceInfo, nullptr, &frame.fenceInFlight) != VK_SUCCESS) {
 			return false;
 		}
@@ -1062,7 +1062,7 @@ bool VulkanEnv::createFrameSyncObject() {
 void VulkanEnv::destroy() {
 	for (auto& frame : inFlightFrame) {
 		vkDestroySemaphore(device, frame.semaphoreRenderFinished, nullptr);
-		vkDestroyFence(device, frame.fenceImageAquired, nullptr);
+		vkDestroyFence(device, frame.fenceImageAcquired, nullptr);
 		vkDestroyFence(device, frame.fenceInFlight, nullptr);
 	}
 	swapchain.destroy();
@@ -1179,22 +1179,20 @@ bool VulkanEnv::drawFrame(const RenderingData& renderingData) {
 	auto& frame = inFlightFrame[currentFrame];
 	auto frameIndex = currentFrame;
 	currentFrame = (currentFrame + 1) % swapchain.size();
-
 	uint32_t imageIndex;
 	uint64_t timeout = 1000000000;//ns
-	vkResetFences(device, 1, &frame.fenceImageAquired);
+	vkResetFences(device, 1, &frame.fenceImageAcquired);
 	auto vkSwapchain = swapchain.getVkRaw();
-	auto acquireResult = vkAcquireNextImageKHR(device, vkSwapchain, timeout, VK_NULL_HANDLE, frame.fenceImageAquired, &imageIndex);
-	if (!frameResizeCheck(acquireResult)) {
-		vkWaitForFences(device, 1, &frame.fenceImageAquired, VK_TRUE, timeout);
-		return false;
-	}
-	VkFence frameFence[]{ frame.fenceImageAquired, frame.fenceInFlight };
+	auto acquireResult = vkAcquireNextImageKHR(device, vkSwapchain, timeout, VK_NULL_HANDLE, frame.fenceImageAcquired, &imageIndex);
+	VkFence frameFence[]{ frame.fenceImageAcquired, frame.fenceInFlight };
 	//std::cout << "image acquired " << imageIndex << std::endl;
 	vkWaitForFences(device, 2, frameFence, VK_TRUE, UINT64_MAX);
 	//std::cout << "frame fence pass " << currentFrame << std::endl;
 	//TODO find the correct timing
 	retiredSwapchain.destroy();
+	if (!frameResizeCheck(acquireResult, frame)) {
+		return false;
+	}
 
 	releaseDescriptorPool(frame.descriptorPool);
 	requestDescriptorPool(0, frame.descriptorPool);

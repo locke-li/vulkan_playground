@@ -27,7 +27,7 @@ struct PhysicalDeviceCandidate {
 
 struct InFlightFrame {
 	VkSemaphore semaphoreRenderFinished;
-	VkFence fenceImageAquired;
+	VkFence fenceImageAcquired;
 	VkFence fenceInFlight;
 	VkDescriptorPool descriptorPool;
 };
