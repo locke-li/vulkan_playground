@@ -8,6 +8,7 @@
 #include "ShaderInput.h"
 #include "VulkanSupportStruct.h"
 #include "VulkanSwapchain.h"
+#include "VulkanPipelineGroup.h"
 #include <vector>
 
 class VulkanEnv
@@ -27,6 +28,7 @@ private:
 	VkQueue presentQueue;
 	VulkanSwapchain swapchain;
 	VulkanSwapchain retiredSwapchain;
+	VulkanPipelineGroup pipelineGroup;
 	const InFlightFrame* retiredFrame = nullptr;
 	std::vector<const Buffer*> uniformBufferMatrix;
 	std::vector<const Buffer*> uniformBufferLight;
@@ -37,7 +39,6 @@ private:
 	std::vector<VkDescriptorSetLayout> descriptorSetLayoutMaterial;
 	VkRenderPass renderPass;
 	VkPipelineLayout graphicsPipelineLayout;
-	VkPipeline graphicsPipeline;
 	VkCommandPool commandPool;
 	VkCommandPool commandPoolReset;
 	std::vector<VkCommandBuffer> commandBuffer;
@@ -55,8 +56,6 @@ private:
 
 	VkFence fenceVertexIndexCopy;
 	VkFence fenceImageCopy;
-
-	VkViewport viewport;
 private:
 	bool queueFamilyValid(const VkPhysicalDevice device, uint32_t& score);
 	void releaseDescriptorPool(VkDescriptorPool pool);
