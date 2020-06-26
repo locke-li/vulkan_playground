@@ -4,9 +4,6 @@
 
 class VulkanSwapchain {
 private:
-	GLFWwindow* window;
-	VkSurfaceKHR surface;
-
 	//value copy from VulkanEnv
 	VkInstance instance;
 	VkPhysicalDevice physicalDevice;
@@ -19,6 +16,8 @@ private:
 	std::vector<Buffer> bufferList;
 	std::vector<VkDescriptorPool> descriptorPool;
 
+	GLFWwindow* window;
+	VkSurfaceKHR surface;
 	VkSwapchainKHR swapchain = VK_NULL_HANDLE;
 	VkSurfaceFormatKHR format;
 	VkExtent2D extent;
@@ -64,11 +63,11 @@ public:
 	bool createFramebuffer();
 	bool createDepthBuffer();
 	bool createMsaaColorBuffer();
+	void reserveForBufferCreate(int count);
+	bool createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VmaMemoryUsage allocUsage, const Buffer*& buffer);
 	void waitForValidSize();
 	void destroy();
 	void reset();
 
-	inline bool resized() const {
-		return framebufferResized;
-	}
+	inline bool resized() const { return framebufferResized; }
 };

@@ -28,8 +28,8 @@ private:
 	VulkanSwapchain swapchain;
 	VulkanSwapchain retiredSwapchain;
 	const InFlightFrame* retiredFrame = nullptr;
-	std::vector<Buffer> uniformBufferMatrix;
-	std::vector<Buffer> uniformBufferLight;
+	std::vector<const Buffer*> uniformBufferMatrix;
+	std::vector<const Buffer*> uniformBufferLight;
 	std::vector<std::vector<VkDescriptorSet>> descriptorSet;
 	std::vector<VkDescriptorPool> descriptorPool;
 	std::vector<VkDescriptorPool> descriptorPoolFree;

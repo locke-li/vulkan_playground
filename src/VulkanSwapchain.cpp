@@ -143,6 +143,7 @@ bool VulkanSwapchain::createSwapchain() {
 	if (vkCreateSwapchainKHR(device, &info, nullptr, &swapchain) != VK_SUCCESS) {
 		return false;
 	}
+	std::cout << "create swapchain " << swapchain << std::endl;
 
 	//get created swapchain image
 	uint32_t count;
@@ -252,6 +253,20 @@ bool VulkanSwapchain::createMsaaColorBuffer() {
 	return true;
 }
 
+void VulkanSwapchain::reserveForBufferCreate(int count) {
+	bufferList.reserve(bufferList.size() + count);
+}
+
+bool VulkanSwapchain::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VmaMemoryUsage allocUsage, const Buffer*& buffer) {
+	Buffer created;
+	if (!::createBuffer(vmaAllocator, size, usage, allocUsage, created.buffer, created.allocation)) {
+		return false;
+	}
+	bufferList.push_back(std::move(created));
+	buffer = &bufferList.back();
+	return true;
+}
+
 void VulkanSwapchain::waitForValidSize() {
 	int width, height;
 	glfwGetFramebufferSize(window, &width, &height);
@@ -271,10 +286,10 @@ void VulkanSwapchain::reset() {
 }
 
 void VulkanSwapchain::destroy() {
-	std::cout << "destroy swapchain " << swapchain << std::endl;
 	if (swapchain == VK_NULL_HANDLE) {
 		return;
 	}
+	std::cout << "destroy swapchain " << swapchain << std::endl;
 	for (const auto framebuffer : framebuffer) {
 		vkDestroyFramebuffer(device, framebuffer, nullptr);
 	}

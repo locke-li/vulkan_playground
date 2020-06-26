@@ -790,19 +790,17 @@ bool VulkanEnv::createVertexBufferIndice() {
 bool VulkanEnv::createUniformBuffer() {
 	uniformBufferMatrix.resize(swapchain.size());
 	uniformBufferLight.resize(swapchain.size());
+	swapchain.reserveForBufferCreate(swapchain.size() * 2);
 	for (uint32_t i = 0; i < swapchain.size(); ++i) {
-		if (!createBuffer(vmaAllocator, sizeof(MatrixUniformBufferData),
+		if (!swapchain.createBuffer(sizeof(MatrixUniformBufferData),
 				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-				VMA_MEMORY_USAGE_CPU_TO_GPU, uniformBufferMatrix[i].buffer, uniformBufferMatrix[i].allocation) ||
-			!createBuffer(vmaAllocator, sizeof(LightUniformBufferData),
+				VMA_MEMORY_USAGE_CPU_TO_GPU, uniformBufferMatrix[i]) || 
+			!swapchain.createBuffer(sizeof(LightUniformBufferData),
 				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-				VMA_MEMORY_USAGE_CPU_TO_GPU, uniformBufferLight[i].buffer, uniformBufferLight[i].allocation)) {
+				VMA_MEMORY_USAGE_CPU_TO_GPU, uniformBufferLight[i])) {
 			return false;
 		}
 	}
-	//TODO merge
-	swapchain.copyToBufferList(uniformBufferMatrix);
-	swapchain.copyToBufferList(uniformBufferLight);
 	return true;
 }
 
@@ -873,7 +871,7 @@ bool VulkanEnv::setupDescriptorSet(int imageIndex, VkDescriptorPool pool) {
 	writeArr.reserve(3 + materialLayoutCount * maxTextureCountPerMaterial);
 
 	VkDescriptorBufferInfo matrixBufferInfo;
-	matrixBufferInfo.buffer = uniformBufferMatrix[imageIndex].buffer;
+	matrixBufferInfo.buffer = uniformBufferMatrix[imageIndex]->buffer;
 	matrixBufferInfo.offset = 0;
 	matrixBufferInfo.range = sizeof(MatrixUniformBufferData);
 	VkWriteDescriptorSet uniformMatrixWrite;
@@ -890,7 +888,7 @@ bool VulkanEnv::setupDescriptorSet(int imageIndex, VkDescriptorPool pool) {
 	writeArr.push_back(std::move(uniformMatrixWrite));
 
 	VkDescriptorBufferInfo lightBufferInfo;
-	lightBufferInfo.buffer = uniformBufferLight[imageIndex].buffer;
+	lightBufferInfo.buffer = uniformBufferLight[imageIndex]->buffer;
 	lightBufferInfo.offset = 0;
 	lightBufferInfo.range = sizeof(LightUniformBufferData);
 	VkWriteDescriptorSet uniformLightWrite;
@@ -1130,18 +1128,18 @@ bool VulkanEnv::updateUniformBuffer() {
 bool VulkanEnv::updateUniformBufferMatrix(const uint32_t imageIndex) {
 	const auto& data = renderingData->getMatrixUniform();
 	void* buffer;
-	vmaMapMemory(vmaAllocator, uniformBufferMatrix[imageIndex].allocation, &buffer);
+	vmaMapMemory(vmaAllocator, uniformBufferMatrix[imageIndex]->allocation, &buffer);
 	memcpy(buffer, &data, sizeof(data));
-	vmaUnmapMemory(vmaAllocator, uniformBufferMatrix[imageIndex].allocation);
+	vmaUnmapMemory(vmaAllocator, uniformBufferMatrix[imageIndex]->allocation);
 	return true;
 }
 
 bool VulkanEnv::updateUniformBufferLight(const uint32_t imageIndex) {
 	const auto& data = renderingData->getLightUniform();
 	void* buffer;
-	vmaMapMemory(vmaAllocator, uniformBufferLight[imageIndex].allocation, &buffer);
+	vmaMapMemory(vmaAllocator, uniformBufferLight[imageIndex]->allocation, &buffer);
 	memcpy(buffer, &data, sizeof(data));
-	vmaUnmapMemory(vmaAllocator, uniformBufferLight[imageIndex].allocation);
+	vmaUnmapMemory(vmaAllocator, uniformBufferLight[imageIndex]->allocation);
 	return true;
 }
 
