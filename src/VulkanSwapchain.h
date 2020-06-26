@@ -9,12 +9,10 @@ private:
 	VkPhysicalDevice physicalDevice;
 	VkDevice device;
 	VmaAllocator vmaAllocator;
-	//related resources
+	//owned resources, but create externally
 	VkPipelineLayout graphicsPipelineLayout;
 	VkPipeline graphicsPipeline;
 	VkRenderPass renderPass;
-	std::vector<Buffer> bufferList;
-	std::vector<VkDescriptorPool> descriptorPool;
 
 	GLFWwindow* window;
 	VkSurfaceKHR surface;
@@ -26,6 +24,7 @@ private:
 	std::vector<VkFramebuffer> framebuffer;
 	DepthBuffer depthBuffer;
 	MsaaColorBuffer msaaColorBuffer;
+	std::vector<Buffer> bufferList;
 
 	SwapchainSupport support;
 	uint32_t maxFrameInFlight;
@@ -43,8 +42,6 @@ public:
 	void setGraphicsPipeline(VkPipeline pipeline) noexcept;
 	void setGraphicsPipelineLayout(VkPipelineLayout layout) noexcept;
 	void setRenderPass(VkRenderPass renderPassIn) noexcept;
-	void copyToBufferList(const std::vector<Buffer>& list);
-	void copyDescriptorPool(VkDescriptorPool pool) noexcept;
 	void setPreferedPresentMode(const VkPresentModeKHR mode) noexcept;
 	void setMsaaSample(const uint32_t count) noexcept;
 	VkSampleCountFlagBits msaaSampleCount() const;

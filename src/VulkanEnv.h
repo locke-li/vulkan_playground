@@ -31,7 +31,6 @@ private:
 	std::vector<const Buffer*> uniformBufferMatrix;
 	std::vector<const Buffer*> uniformBufferLight;
 	std::vector<std::vector<VkDescriptorSet>> descriptorSet;
-	std::vector<VkDescriptorPool> descriptorPool;
 	std::vector<VkDescriptorPool> descriptorPoolFree;
 	//TODO use pipeline cache
 	VkDescriptorSetLayout descriptorSetLayoutUniform;

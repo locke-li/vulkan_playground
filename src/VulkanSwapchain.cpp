@@ -37,18 +37,6 @@ void VulkanSwapchain::setRenderPass(VkRenderPass renderPassIn) noexcept {
 	renderPass = renderPassIn;
 }
 
-void VulkanSwapchain::copyToBufferList(const std::vector<Buffer>& list) {
-	bufferList.reserve(bufferList.size() + list.size());
-	//TODO memcpy
-	for (auto& buffer : list) {
-		bufferList.push_back(buffer);
-	}
-}
-
-void VulkanSwapchain::copyDescriptorPool(VkDescriptorPool pool) noexcept {
-	descriptorPool.push_back(pool);
-}
-
 void VulkanSwapchain::setPreferedPresentMode(const VkPresentModeKHR mode) noexcept {
 	preferedPresentMode = mode;
 }
@@ -278,7 +266,6 @@ void VulkanSwapchain::waitForValidSize() {
 
 void VulkanSwapchain::reset() {
 	bufferList.clear();
-	descriptorPool.clear();
 	graphicsPipelineLayout = VK_NULL_HANDLE;
 	graphicsPipeline = VK_NULL_HANDLE;
 	renderPass = VK_NULL_HANDLE;
@@ -305,9 +292,6 @@ void VulkanSwapchain::destroy() {
 	vkDestroyRenderPass(device, renderPass, nullptr);
 	for (const auto& buffer : bufferList) {
 		vmaDestroyBuffer(vmaAllocator, buffer.buffer, buffer.allocation);
-	}
-	for (auto& pool : descriptorPool) {
-		vkDestroyDescriptorPool(device, pool, nullptr);
 	}
 	vkDestroySwapchainKHR(device, swapchain, nullptr);
 	reset();

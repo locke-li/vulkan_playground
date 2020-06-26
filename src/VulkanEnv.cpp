@@ -805,14 +805,12 @@ bool VulkanEnv::createUniformBuffer() {
 }
 
 bool VulkanEnv::prepareDescriptor() {
-	descriptorPool.resize(swapchain.size());
 	descriptorPoolFree.reserve(swapchain.size());
 	descriptorSet.resize(swapchain.size());
-	for (auto& pool : descriptorPool) {
+	for (auto& pool : descriptorPoolFree) {
 		if (!createDescriptorPool(0, pool)) {
 			return false;
 		}
-		descriptorPoolFree.push_back(pool);
 	}
 	return true;
 }
@@ -1065,8 +1063,11 @@ void VulkanEnv::destroy() {
 	}
 	swapchain.destroy();
 	retiredSwapchain.destroy();
-	for (auto& pool : descriptorPool) {
+	for (auto& pool : descriptorPoolFree) {
 		vkDestroyDescriptorPool(device, pool, nullptr);
+	}
+	for (auto& frame : inFlightFrame) {
+		vkDestroyDescriptorPool(device, frame.descriptorPool, nullptr);
 	}
 	for (auto i = 0; i < vertexBuffer.buffer.size(); ++i) {
 		vmaDestroyBuffer(vmaAllocator, vertexBuffer.buffer[i], vertexBuffer.allocation[i]);
@@ -1094,10 +1095,6 @@ void VulkanEnv::destroy() {
 }
 
 bool VulkanEnv::recreateSwapchain() {
-	for (auto& frame : inFlightFrame) {
-		swapchain.copyDescriptorPool(frame.descriptorPool);
-		frame.descriptorPool = nullptr;
-	}
 	retiredSwapchain = swapchain;
 	swapchain.reset();
 	swapchain.querySupport();
